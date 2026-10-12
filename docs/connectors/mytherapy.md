@@ -59,6 +59,7 @@ follows the newest export.
 
 - A run reads the whole folder every time: the exports are small, and a dose
   you answer late, or delete in the app, has to follow the newest export.
+  *Full resync* reads it again, which changes nothing here.
 - A change in the folder (a file added, replaced or removed) drops
   `source=mytherapy` from `medication` (`DROP SERIES`) and rewrites the series
   from every export. Safe: nothing else writes that source. Nothing a dose is
