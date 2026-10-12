@@ -15,7 +15,8 @@ what the connectors declare (`app/schema.py`, each connector's
   domain's database holds every tracker of that domain.
 - **A `source` tag on every point**, naming the tracker
   (`audiobookshelf`, `kindle`, `renpho`...). Dashboards filter and colour by
-  it; nothing ever merges two sources into one series.
+  it; nothing ever merges two sources into one series. (One exception,
+  `body_thresholds`: it rates a person, not a tracker's reading.)
 - **One writer per source.** A source with an API and a richer export goes
   entirely through the same connector (both fill the same series and must
   be merged in one place). That's also what lets a connector rebuild its
@@ -71,6 +72,33 @@ Reading and listening. *Local time* on both measurements.
   `device` is the name a reader knows the device by.
 - `book_finished`: one point per book finished, at the time it was
   finished, `count` = 1.
+
+### `BodyStats`
+
+Body composition: weigh-ins of smart scales. No *local time*.
+
+| Measurement | Tags | Fields | Written by |
+|---|---|---|---|
+| `body_composition` | `source`, `user`, `scale`, `user_id` | `weight_kg` (float), `bmi` (float), `body_fat_pct` (float), `body_water_pct` (float), `muscle_pct` (float), `bone_pct` (float), `bmr_kcal` (float), `visceral_fat` (float), `subcutaneous_fat_pct` (float), `protein_pct` (float), `body_age` (float), `lean_body_mass_kg` (float), `fat_free_weight_kg` (float), `heart_rate_bpm` (float), `cardiac_index` (float), `body_shape` (float) | Tributary: `renpho`. Other tools (a scale's history import...) under their own `source`, every field a float |
+| `body_levels` | `source`, `user`, `scale`, `user_id` | `weight_kg` (float), `bmi` (float), `body_fat_pct` (float), `subcutaneous_fat_pct` (float), `visceral_fat` (float), `lean_body_mass_kg` (float), `muscle_pct` (float), `bone_pct` (float), `body_age` (float), `bmr_kcal` (float), `body_water_pct` (float), `protein_pct` (float) | Tributary: `renpho` |
+| `body_thresholds` | `user` | `weight_kg_t1` (float), `weight_kg_t2` (float), `weight_kg_t3` (float), `weight_kg_min` (float), `weight_kg_max` (float), `bmi_t1` (float), `bmi_t2` (float), `bmi_t3` (float), `bmi_min` (float), `bmi_max` (float), `body_fat_pct_t1` (float), `body_fat_pct_t2` (float), `body_fat_pct_t3` (float), `body_fat_pct_t4` (float), `body_fat_pct_min` (float), `body_fat_pct_max` (float), `subcutaneous_fat_pct_t1` (float), `subcutaneous_fat_pct_t2` (float), `subcutaneous_fat_pct_min` (float), `subcutaneous_fat_pct_max` (float), `visceral_fat_t1` (float), `visceral_fat_t2` (float), `visceral_fat_t3` (float), `visceral_fat_min` (float), `visceral_fat_max` (float), `lean_body_mass_kg_t1` (float), `lean_body_mass_kg_t2` (float), `lean_body_mass_kg_min` (float), `lean_body_mass_kg_max` (float), `muscle_pct_t1` (float), `muscle_pct_t2` (float), `muscle_pct_min` (float), `muscle_pct_max` (float), `bone_pct_t1` (float), `bone_pct_t2` (float), `bone_pct_min` (float), `bone_pct_max` (float), `body_age_t1` (float), `body_age_min` (float), `body_age_max` (float), `bmr_kcal_t1` (float), `bmr_kcal_min` (float), `bmr_kcal_max` (float), `body_water_pct_t1` (float), `body_water_pct_t2` (float), `body_water_pct_min` (float), `body_water_pct_max` (float), `protein_pct_t1` (float), `protein_pct_t2` (float), `protein_pct_min` (float), `protein_pct_max` (float) | Tributary: `renpho` |
+
+- `body_composition`: one point per weigh-in, at its time, with a field
+  for each metric the scale measured (none for one it didn't: never a
+  zero standing for "not measured"). Names follow the Renpho API rather
+  than its app: `bone_pct` is the bone *mass* in kg, `lean_body_mass_kg`
+  the app's "Muscle Mass", `muscle_pct` its "Skeletal Muscle Percentage",
+  `body_age` its "Metabolic Age". `scale` is the scale's model (Renpho
+  reports it for older scales only), `user_id` the Renpho account's
+  numeric id.
+- `body_levels`: same tags and time as the weigh-in it rates, a field per
+  rated metric: the level its value falls in, as the Renpho app rates it
+  (0 = the lowest: Below Avg., Average, Above Avg., Over...). Only for the
+  people given boundaries.
+- `body_thresholds`: those boundaries, per person: `<metric>_t1`...`_tN`
+  between the levels, `<metric>_min` / `_max` the scale of a gauge. Tagged
+  `user` only, stamped when written: read the latest
+  (`ORDER BY time DESC LIMIT 1`, no time filter).
 
 ## Adding a measurement
 

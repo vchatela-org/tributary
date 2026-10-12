@@ -26,10 +26,12 @@ many sources.
 | Connector | Writes | Docs |
 |---|---|---|
 | Audiobookshelf | listening sessions (audiobooks, podcasts) and finished books → `MediaStats` | [docs/connectors/audiobookshelf.md](docs/connectors/audiobookshelf.md) |
+| Renpho | smart-scale weigh-ins (weight, body fat, muscle, water...) of one or several people, rated with the app's levels → `BodyStats` | [docs/connectors/renpho.md](docs/connectors/renpho.md) |
 
 A connector is written only for a source no maintained tool covers: Garmin,
 for instance, is [garmin-grafana](docs/compatible-tools.md)'s.
-[Writing a connector](docs/connectors/README.md).
+[Writing a connector](docs/connectors/README.md);
+[porting a job that already feeds InfluxDB](docs/porting.md).
 
 ## Quick start
 

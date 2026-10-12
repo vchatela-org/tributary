@@ -15,6 +15,10 @@ os.environ.update({
     "TRIBUTARY_TZ": "Europe/Paris",
     "TRIBUTARY_ABS_URL": "",
     "TRIBUTARY_ABS_TOKEN": "",
+    "TRIBUTARY_RENPHO_EMAIL": "",
+    "TRIBUTARY_RENPHO_PASSWORD": "",
+    "TRIBUTARY_RENPHO_USER": "",
+    "TRIBUTARY_RENPHO_THRESHOLDS": "",
 })
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.chdir(Path(__file__).resolve().parents[1])  # templates/ and static/ are relative
@@ -22,7 +26,7 @@ os.chdir(Path(__file__).resolve().parents[1])  # templates/ and static/ are rela
 from app import connectors, scheduler  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.main import app  # noqa: E402,F401 -- creates the tables; scheduler off (nothing configured)
-from tests.fakes import FakeAbs, FakeInflux  # noqa: E402
+from tests.fakes import THRESHOLDS, FakeAbs, FakeInflux, FakeRenpho  # noqa: E402
 
 
 @pytest.fixture()
@@ -73,6 +77,40 @@ def abs_api(monkeypatch, abs_connector):
     monkeypatch.setattr(abs_connector, "_get", fake)
     monkeypatch.setattr(abs_connector, "_post", fake.post)
     return fake
+
+
+@pytest.fixture()
+def renpho_connector():
+    return connectors.get("renpho")
+
+
+@pytest.fixture()
+def renpho_cloud(monkeypatch, renpho_connector):
+    """Renpho configured with one account (alice, who has level boundaries),
+    its cloud served in-process over HTTP to the real renpho-api client."""
+    import json
+
+    from pydantic import SecretStr
+
+    fake = FakeRenpho()
+    monkeypatch.setattr("renpho.client.API_BASE_URL", fake.url)
+    settings_ = renpho_connector.settings
+    monkeypatch.setattr(settings_, "email", "alice@example.com")
+    monkeypatch.setattr(settings_, "password", SecretStr("alice-password"))
+    monkeypatch.setattr(settings_, "user", "alice")
+    monkeypatch.setattr(settings_, "thresholds", json.dumps(THRESHOLDS))
+    monkeypatch.setattr(settings_, "_numbered", {})
+    yield fake
+    fake.close()
+
+
+@pytest.fixture()
+def bob(monkeypatch, renpho_cloud, renpho_connector):
+    """A second Renpho account, bob's (no level boundaries)."""
+    monkeypatch.setattr(renpho_connector.settings, "_numbered", {
+        "TRIBUTARY_RENPHO_EMAIL_2": "bob@example.com", "TRIBUTARY_RENPHO_PASSWORD_2": "bob-password",
+        "TRIBUTARY_RENPHO_USER_2": "bob"})
+    return renpho_cloud
 
 
 @pytest.fixture()

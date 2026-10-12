@@ -3,6 +3,7 @@
 | Connector | Source | Input | Writes |
 |---|---|---|---|
 | [Audiobookshelf](audiobookshelf.md) | `audiobookshelf` | API, hourly | `MediaStats`: `reading_session`, `book_finished` |
+| [Renpho](renpho.md) | `renpho` | API, daily, one account per person | `BodyStats`: `body_composition`, `body_levels`, `body_thresholds` |
 
 ## Before writing one
 
@@ -26,9 +27,12 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
   [the schema](../schema.md); a test compares both.
 - `required_env`: the variables the UI asks for when it isn't configured.
 - An API input: `api_configured()` and `sync(cursor) -> SyncResult(points,
-  cursor, summary)`. The cursor is the connector's own JSON-able state
-  (keep it small: timestamps, not payloads), `None` on a first or full run,
-  saved only after a run that wrote everything.
+  cursor, summary, errors)`. The cursor is the connector's own JSON-able
+  state (keep it small: timestamps, not payloads), `None` on a first or full
+  run, saved only after a run that wrote everything. A source made of
+  independent parts (one account per person) lists the parts that failed in
+  `errors` rather than raise: the others are written, the cursor saved
+  (keep the failed parts' cursor as it was), and the run shows as failed.
 - A file input: `file_types` (e.g. `(".zip",)`) and
   `import_file(path) -> points`. It serves both the upload form and, when
   `TRIBUTARY_<KEY>_WATCH_DIR` is set, the files of a watched folder (new or
@@ -39,11 +43,18 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
   them from every file. Safe only because nothing else writes that source.
 
 Points are `Point(measurement, time, tags, fields)`, time in UTC. The core
-adds `source`, `user` (unless the point sets its own: a value for a
-connector syncing several people, `None` for none at all, e.g. a port of an
-old job that wrote no `user` tag), and for measurements with `local_time` the
+adds `source` (unless the measurement is declared `tagged_source=False`),
+`user` (unless the point sets its own: a value for a connector syncing
+several people, `None` for none at all, e.g. a port of an old job that
+wrote no `user` tag), and for measurements with `local_time` the
 `time_precision` tag and `local_hour` / `local_weekday` fields. It refuses
-an undeclared tag or field, and merges points sharing a key within a run.
+an undeclared tag or field, and merges points sharing a key within a run by
+summing their numbers: a source whose records may share a key and replace
+each other (the later one wins) merges them itself.
+
+Porting a job that already writes into InfluxDB? Follow
+[porting a feed](../porting.md): same series, proved equal before the
+switch.
 
 Tests: a fake of the source's API or a sample export (synthetic data only:
 the privacy check fails on real-looking identifiers), the mapping, paging
