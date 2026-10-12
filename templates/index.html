@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-baseline gap-3 mb-3">
+  <h1 class="h3 mb-0">Integrations</h1>
+  <span class="text-body-secondary">
+    {% if influxdb_configured %}
+      <i class="bi bi-database-check me-1"></i>InfluxDB configured{% if influxdb_user %}, user tag <code>{{ influxdb_user }}</code>{% endif %}.
+    {% else %}
+      <i class="bi bi-database-x me-1"></i>InfluxDB not configured: set <code>TRIBUTARY_INFLUXDB_URL</code>. Dry runs work without it.
+    {% endif %}
+  </span>
+</div>
+
+{% for item in items %}
+{% set c = item.connector %}
+<section class="card mb-4" id="{{ c.key }}">
+  <div class="card-body">
+    <div class="d-flex flex-wrap align-items-start gap-3">
+      <div class="me-auto" style="min-width: 18rem; flex: 1 1 28rem;">
+        <h2 class="h5 mb-1"><i class="bi {{ c.icon }} me-2"></i>{{ c.label }}
+          {% if item.configured %}
+          <span class="badge text-bg-primary-subtle text-primary-emphasis fw-normal ms-2">{{ c.schedule_label() }}</span>
+          {% else %}
+          <span class="badge text-bg-secondary fw-normal ms-2">Not configured</span>
+          {% endif %}
+        </h2>
+        <p class="text-body-secondary mb-1">{{ c.description }}</p>
+        {% if not item.configured and c.required_env %}
+        <p class="small mb-1">Set {% for name in c.required_env %}<code>{{ name }}</code>{% if not loop.last %}, {% endif %}{% endfor %} to sync it on a schedule.</p>
+        {% endif %}
+        <p class="small text-body-secondary mb-0">Writes
+          {% for ms in c.measurements %}<code>{{ ms.database }}.{{ ms.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %},
+          tagged <code>source={{ c.source }}</code>.</p>
+      </div>
+      {% if item.configured %}
+      <div class="d-flex flex-wrap gap-2">
+        <form method="post" action="/connectors/{{ c.key }}/run">
+          <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-arrow-repeat me-1"></i>Run now</button>
+        </form>
+        <form method="post" action="/connectors/{{ c.key }}/run">
+          <input type="hidden" name="dry_run" value="true" />
+          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Show the line protocol, write nothing"><i class="bi bi-eye me-1"></i>Dry run</button>
+        </form>
+        <form method="post" action="/connectors/{{ c.key }}/run">
+          <input type="hidden" name="full" value="true" />
+          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Read everything again, ignoring where the last run stopped; the same points overwrite themselves"><i class="bi bi-arrow-counterclockwise me-1"></i>Full resync</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if c.accepts_files %}
+    <form class="upload-form d-flex flex-wrap align-items-center gap-2 mt-3" method="post"
+          action="/connectors/{{ c.key }}/upload" enctype="multipart/form-data">
+      <input class="form-control form-control-sm" style="max-width: 24rem;" type="file" name="file"
+             accept="{{ c.file_types | join(',') }}" required />
+      <div class="form-check form-check-inline small mb-0">
+        <input class="form-check-input" type="checkbox" name="dry_run" value="true" id="dry-{{ c.key }}" />
+        <label class="form-check-label" for="dry-{{ c.key }}">Dry run</label>
+      </div>
+      <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-upload me-1"></i>Import file</button>
+      {% if c.watch_dir %}<span class="small text-body-secondary">Also watching <code>{{ c.watch_dir }}</code>.</span>{% endif %}
+    </form>
+    {% endif %}
+  </div>
+
+  {% if item.runs %}
+  <div class="border-top">
+    {{ m.runs_table(item.runs) }}
+  </div>
+  <div class="card-footer small"><a href="/runs?connector={{ c.key }}">All runs of {{ c.label }}</a></div>
+  {% elif item.configured %}
+  <div class="card-footer small text-body-secondary">Never run yet: the first scheduled run comes shortly after the start.</div>
+  {% endif %}
+</section>
+{% endfor %}
+{% endblock %}

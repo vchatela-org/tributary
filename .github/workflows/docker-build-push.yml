@@ -1,0 +1,21 @@
+name: Build and Push Docker Image to Harbor
+
+# The owner's own registry, for their deployment. Release tags only, and
+# only in this repository (a fork has neither the runner nor the secrets).
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  docker-build-push-scan:
+    if: github.repository == 'vchatela-org/tributary'
+    uses: vchatela-org/shared-workflows/.github/workflows/docker-build-push-harbor.yml@v1
+    with:
+      harbor_registry: ${{ vars.HARBOR_REGISTRY }}
+      harbor_project: ${{ vars.HARBOR_PROJECT }}
+      harbor_image: ${{ vars.HARBOR_IMAGE }}
+    secrets:
+      harbor_username: ${{ secrets.HARBOR_USERNAME }}
+      harbor_password: ${{ secrets.HARBOR_PASSWORD }}

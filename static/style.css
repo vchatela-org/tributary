@@ -1,0 +1,28 @@
+.topbar {
+  border-bottom: 1px solid var(--bs-border-color);
+  padding: .75rem 0;
+  background: var(--bs-body-bg);
+}
+.topbar .brand {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--bs-body-color);
+  text-decoration: none;
+}
+.topbar .nav-link { color: var(--bs-secondary-color); }
+.topbar .nav-link.active { color: var(--bs-body-color); font-weight: 600; }
+.run-message { max-width: 48rem; overflow-wrap: anywhere; }
+.table th { font-weight: 600; white-space: nowrap; }
+.card > .border-top .table { margin-bottom: 0; }
+.card > .border-top .table th:first-child,
+.card > .border-top .table td:first-child { padding-left: 1rem; }
+pre.preview {
+  max-height: 70vh;
+  overflow: auto;
+  padding: 1rem;
+  background: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: .5rem;
+  font-size: .8rem;
+}
+.spinner-border-sm { width: .7rem; height: .7rem; border-width: .15em; }

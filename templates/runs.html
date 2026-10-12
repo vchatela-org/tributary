@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Run history{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-baseline gap-3 mb-3">
+  <h1 class="h3 mb-0">Run history{% if current %}: {{ current.label }}{% endif %}</h1>
+  <nav class="small">
+    <a href="/runs" class="{% if not current %}fw-semibold{% endif %}">All</a>
+    {% for c in connectors %} · <a href="/runs?connector={{ c.key }}" class="{% if current and current.key == c.key %}fw-semibold{% endif %}">{{ c.label }}</a>{% endfor %}
+  </nav>
+</div>
+<div class="card">
+  {% if runs %}
+  {{ m.runs_table(runs, show_connector=not current) }}
+  {% else %}
+  <div class="card-body text-body-secondary">No run yet.</div>
+  {% endif %}
+</div>
+{% if pages > 1 %}
+<nav class="mt-3 small">
+  {% set base = "/runs?" ~ ("connector=" ~ current.key ~ "&" if current else "") %}
+  {% if page > 1 %}<a href="{{ base }}page={{ page - 1 }}">Newer</a>{% endif %}
+  <span class="mx-2">Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}<a href="{{ base }}page={{ page + 1 }}">Older</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

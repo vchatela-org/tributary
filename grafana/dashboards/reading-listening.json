@@ -1,0 +1,765 @@
+{
+  "uid": "tributary-reading",
+  "title": "Reading & listening",
+  "description": "Reading and listening sessions from InfluxDB MediaStats: Audiobookshelf synced by Tributary, and any other tracker writing the same schema (e.g. Kindle and Audible from a GDPR-export tool). Proposed by Tributary: copy it and make it yours.",
+  "tags": [
+    "tributary",
+    "reading"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-1y",
+    "to": "now"
+  },
+  "refresh": "",
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "media",
+        "label": "InfluxDB",
+        "type": "datasource",
+        "query": "influxdb",
+        "regex": "/MediaStats/i",
+        "hide": 0
+      },
+      {
+        "name": "tz",
+        "label": "Time zone",
+        "type": "textbox",
+        "query": "Europe/Paris",
+        "current": {
+          "text": "Europe/Paris",
+          "value": "Europe/Paris"
+        },
+        "description": "IANA time zone for days and weeks (and the same as TRIBUTARY_TZ for local hours)."
+      },
+      {
+        "name": "source",
+        "label": "Source",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${media}"
+        },
+        "query": "SHOW TAG VALUES FROM \"reading_session\" WITH KEY = \"source\"",
+        "definition": "SHOW TAG VALUES FROM \"reading_session\" WITH KEY = \"source\"",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "sort": 1,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "kind",
+        "label": "Kind",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${media}"
+        },
+        "query": "SHOW TAG VALUES FROM \"reading_session\" WITH KEY = \"kind\"",
+        "definition": "SHOW TAG VALUES FROM \"reading_session\" WITH KEY = \"kind\"",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "sort": 1,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        }
+      },
+      {
+        "name": "device",
+        "label": "Device",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${media}"
+        },
+        "query": "SHOW TAG VALUES FROM \"reading_session\" WITH KEY = \"device\" WHERE \"source\" =~ /^${source:regex}$/",
+        "definition": "SHOW TAG VALUES FROM \"reading_session\" WITH KEY = \"device\" WHERE \"source\" =~ /^${source:regex}$/",
+        "multi": true,
+        "includeAll": true,
+        "refresh": 2,
+        "sort": 1,
+        "current": {
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "allValue": ".*"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "id": 1,
+      "title": "Reading and listening time",
+      "description": "Time actually read or listened, as recorded by the devices.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${media}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${media}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"minutes\") / 60 FROM \"reading_session\" WHERE $timeFilter AND \"source\" =~ /^${source:regex}$/ AND \"kind\" =~ /^${kind:regex}$/ AND \"device\" =~ /^${device:regex}$/"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 2,
+      "title": "Sessions",
+      "description": "Reading and listening sessions.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${media}"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${media}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"sessions\") FROM \"reading_session\" WHERE $timeFilter AND \"source\" =~ /^${source:regex}$/ AND \"kind\" =~ /^${kind:regex}$/ AND \"device\" =~ /^${device:regex}$/"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 3,
+      "title": "Active days",
+      "description": "Days (in the dashboard's time zone) with at least one session.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${media}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${media}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"m\") FROM (SELECT sum(\"minutes\") AS \"m\" FROM \"reading_session\" WHERE $timeFilter AND \"source\" =~ /^${source:regex}$/ AND \"kind\" =~ /^${kind:regex}$/ AND \"device\" =~ /^${device:regex}$/ GROUP BY time(1d) fill(none) tz('${tz}'))"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "id": 4,
+      "title": "Books finished",
+      "description": "Books marked finished in their tracker.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${media}"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${media}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"book_finished\" WHERE $timeFilter AND \"source\" =~ /^${source:regex}$/ AND \"kind\" =~ /^${kind:regex}$/"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "id": 5,
+      "title": "Time per day, by kind",
+      "description": "Minutes read or listened, stacked by kind (ebook, audiobook, podcast).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${media}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 9
+      },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ebook"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "audiobook"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "podcast"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9c4dcc"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${media}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE $timeFilter AND \"source\" =~ /^${source:regex}$/ AND \"kind\" =~ /^${kind:regex}$/ AND \"device\" =~ /^${device:regex}$/ GROUP BY time($__interval), \"kind\" fill(0) tz('${tz}')",
+          "alias": "$tag_kind"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "id": 6,
+      "title": "Time per week, by source",
+      "description": "Weeks from Monday to Sunday.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${media}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 14,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kindle"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "audible"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#f2a33a"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "audiobookshelf"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${media}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE $timeFilter AND \"source\" =~ /^${source:regex}$/ AND \"kind\" =~ /^${kind:regex}$/ AND \"device\" =~ /^${device:regex}$/ GROUP BY time(1w, 4d), \"source\" fill(0) tz('${tz}')",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "id": 7,
+      "title": "By device",
+      "description": "Hours per device. Sessions without a device (some trackers don't record one) are not shown.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${media}"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 13,
+        "w": 10,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "decimals": 1,
+          "displayName": "${__field.labels.device}",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "left",
+        "text": {
+          "titleSize": 13,
+          "valueSize": 15
+        },
+        "sizing": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${media}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"minutes\") / 60 FROM \"reading_session\" WHERE $timeFilter AND \"source\" =~ /^${source:regex}$/ AND \"kind\" =~ /^${kind:regex}$/ AND \"device\" =~ /^${device:regex}$/ AND \"device\" != '' GROUP BY \"device\"",
+          "alias": "$tag_device"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "id": 8,
+      "title": "Evening reading",
+      "description": "Per evening: minutes read or listened between 20:00 and 03:00 local time (the local_hour field, in TRIBUTARY_TZ), placed at noon of the evening's day. Add a sleep series from your sleep tracker to compare.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${media}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "showPoints": "never",
+            "axisSoftMin": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${media}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE $timeFilter AND (\"local_hour\" >= 20 OR \"local_hour\" < 3) AND \"source\" =~ /^${source:regex}$/ AND \"kind\" =~ /^${kind:regex}$/ AND \"device\" =~ /^${device:regex}$/ GROUP BY time(1d, 12h) fill(0) tz('${tz}')",
+          "alias": "Evening reading"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "id": 9,
+      "title": "Books finished",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${media}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Finished"
+              },
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocalNoDateIfToday"
+              },
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Finished",
+            "desc": true
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${media}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"title\" AS \"Title\", \"kind\" AS \"Kind\", \"source\" AS \"Source\" FROM \"book_finished\" WHERE $timeFilter AND \"source\" =~ /^${source:regex}$/ AND \"kind\" =~ /^${kind:regex}$/"
+        }
+      ]
+    }
+  ]
+}

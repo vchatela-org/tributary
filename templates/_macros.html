@@ -1,0 +1,37 @@
+{% macro status_badge(run) -%}
+{% if run.status == 'ok' %}<span class="badge text-bg-success"><i class="bi bi-check2 me-1"></i>OK</span>
+{% elif run.status == 'error' %}<span class="badge text-bg-danger"><i class="bi bi-x-octagon me-1"></i>Error</span>
+{% else %}<span class="badge text-bg-info"><span class="spinner-border spinner-border-sm me-1"></span>Running</span>
+{% endif %}
+{% if run.dry_run %}<span class="badge text-bg-secondary">Dry run</span>{% endif %}
+{% if run.full %}<span class="badge text-bg-secondary">Full</span>{% endif %}
+{%- endmacro %}
+
+{% macro trigger_label(run) -%}
+{{ {"schedule": "Scheduled", "manual": "Manual", "upload": "Upload"}.get(run.trigger, run.trigger) }}
+{%- endmacro %}
+
+{% macro runs_table(runs, show_connector=False) -%}
+<div class="table-responsive">
+  <table class="table table-sm align-middle mb-0">
+    <thead><tr>
+      <th>Started ({{ tz }})</th>
+      {% if show_connector %}<th>Connector</th>{% endif %}
+      <th>Trigger</th><th>Status</th><th class="text-end">Points</th><th>Duration</th><th>Message</th>
+    </tr></thead>
+    <tbody>
+    {% for run in runs %}
+      <tr>
+        <td class="text-nowrap"><a href="/runs/{{ run.id }}">{{ run.started_at | localtime(True) }}</a></td>
+        {% if show_connector %}<td>{{ run.connector }}</td>{% endif %}
+        <td>{{ trigger_label(run) }}</td>
+        <td class="text-nowrap">{{ status_badge(run) }}</td>
+        <td class="text-end">{{ run.points if run.points is not none else "" }}</td>
+        <td class="text-nowrap">{{ duration(run.started_at, run.finished_at) }}</td>
+        <td class="run-message">{{ run.message or "" }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{%- endmacro %}

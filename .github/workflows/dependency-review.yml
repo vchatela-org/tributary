@@ -1,0 +1,24 @@
+name: Dependency review
+
+# Blocks a pull request that adds a dependency with a known vulnerability.
+# Like CodeQL, it needs GitHub Advanced Security on a private repository:
+# skipped while this one is private.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    name: Dependency review
+    if: github.event.repository.visibility == 'public'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: moderate

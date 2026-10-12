@@ -1,0 +1,52 @@
+name: Tests
+
+on:
+  push:
+    branches: [ 'main' ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7
+        with:
+          # Match the runtime the image ships (see Dockerfile).
+          python-version: '3.14'
+
+      - name: Install test dependencies
+        run: pip install --no-cache-dir -r requirements-dev.txt
+
+      - name: Run tests
+        run: python -m pytest -q
+
+  image:
+    # The image builds, starts without any configuration and answers its
+    # health check (startup must never block).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Build
+        run: docker build -t tributary:ci .
+
+      - name: Start and check health
+        run: |
+          docker run -d --name tributary -p 127.0.0.1:8000:8000 tributary:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/api/health; then exit 0; fi
+            sleep 1
+          done
+          docker logs tributary
+          exit 1
