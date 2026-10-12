@@ -63,21 +63,38 @@ def test_a_finished_book_gone_from_the_library_still_counts(abs_api, abs_connect
     assert finished[2]["count"] == "1i" and "title" not in finished[2]
 
 
-def test_finished_without_finished_at_falls_back_to_the_last_update_once(abs_api, abs_connector):
+def test_an_undated_finished_book_keeps_its_first_time_even_through_a_full_resync(abs_api, abs_connector):
     progress = abs_api.me["mediaProgress"][0]
     progress["finishedAt"] = None
     first = abs_connector.sync(None)
     finished, = by_measurement(lines_of(first), "book_finished")
-    assert finished[3] == epoch(2025, 3, 5, 22, 0, 30)
-    assert first.cursor["undated_finished"] == ["book-dune"]
-    # Reopened later: its last update moves, but it was counted already.
-    progress["lastUpdate"] = ms(2025, 6, 1)
+    assert finished[3] == epoch(2025, 3, 5, 22, 0, 30)  # its last update
+    assert first.cursor["undated_finished"] == {"book-dune": ms(2025, 3, 5, 22, 0, 30)}
+    # Reopened later, then even given a finishedAt: still the first time.
+    progress["lastUpdate"], progress["finishedAt"] = ms(2025, 6, 1), ms(2025, 6, 1)
     second = abs_connector.sync(first.cursor)
-    assert second.points == [] and second.cursor["undated_finished"] == ["book-dune"]
-    # A book with its finishedAt is simply rewritten at the same time.
-    progress["finishedAt"], progress["lastUpdate"] = ms(2025, 3, 5, 22, 0), ms(2025, 6, 2)
-    finished, = by_measurement(lines_of(abs_connector.sync(second.cursor)), "book_finished")
-    assert finished[3] == epoch(2025, 3, 5, 22, 0)
+    finished, = by_measurement(lines_of(second), "book_finished")
+    assert finished[3] == epoch(2025, 3, 5, 22, 0, 30)
+    full = abs_connector.sync(abs_connector.full_cursor(second.cursor))
+    finished, = by_measurement(lines_of(full), "book_finished")
+    assert finished[3] == epoch(2025, 3, 5, 22, 0, 30)
+
+
+def test_books_finished_in_the_same_second_are_always_rewritten_together(abs_api, abs_connector, influx, db):
+    """Marked finished together, they share a point (count=2): rewriting one
+    alone would overwrite it with count=1."""
+    progress = abs_api.me["mediaProgress"]
+    together = ms(2025, 4, 1, 12, 0)
+    progress[1].update(isFinished=True, finishedAt=together + 300, lastUpdate=together + 300)
+    progress[0].update(finishedAt=together, lastUpdate=together + 100)
+    runner.run(db, abs_connector)
+    (tags, fields, ts), = influx.stored("book_finished")
+    assert (ts, fields["count"], fields["title"]) == (epoch(2025, 4, 1, 12, 0), "2i", '"Dune / Started elsewhere"')
+    progress[0]["lastUpdate"] = ms(2025, 5, 1)  # one of them reopened
+    run = runner.run(db, abs_connector)
+    assert "1 finished book(s) new or changed (2 finished books written)" in run.message
+    (tags, fields, ts), = influx.stored("book_finished")
+    assert fields["count"] == "2i"
 
 
 @pytest.mark.parametrize("info, label", [
@@ -94,18 +111,33 @@ def test_device_label(info, label):
 
 # -- Paging and cursor ------------------------------------------------------------------
 
-def test_paging_stops_at_the_first_page_with_nothing_new(abs_api, abs_connector, monkeypatch):
+def test_paging_stops_at_the_first_page_older_than_the_lookback(abs_api, abs_connector, monkeypatch):
     monkeypatch.setattr("app.connectors.audiobookshelf.SESSIONS_PAGE_SIZE", 2)
+    monkeypatch.setattr(abs_connector.settings, "lookback_days", 1)
     first = abs_connector.sync(None)
     assert [p["page"] for p in abs_api.calls_to("/api/me/listening-sessions")] == [0, 1, 2]
 
     abs_api.calls.clear()
     second = abs_connector.sync(first.cursor)
-    # The newest page brings nothing new: older ones are not read, and
-    # neither are the libraries (no title needed).
-    assert [p["page"] for p in abs_api.calls_to("/api/me/listening-sessions")] == [0]
-    assert not abs_api.calls_to("/api/libraries")
+    # Newest first: s4 (Mar 4) and s3 (Mar 3) on page 0, within a day of the
+    # newest update; page 1 (Mar 2, Mar 1) is older: the rest is not read.
+    # Nothing changed, so nothing to write and no title to look up.
+    assert [p["page"] for p in abs_api.calls_to("/api/me/listening-sessions")] == [0, 1]
+    assert not abs_api.calls_to("/api/items/batch/get")
     assert second.points == [] and second.cursor == first.cursor
+
+
+def test_a_session_uploaded_late_with_an_older_update_is_still_read(abs_api, abs_connector):
+    """Listened offline: the mobile app uploads it later, with the device's
+    own update time -- older than the newest one already synced."""
+    first = abs_connector.sync(None)
+    offline = session("s6", "book-dune", ms(2025, 3, 3, 23, 0), 900)
+    assert offline["updatedAt"] < first.cursor["sessions_updated_at"]
+    abs_api.sessions.append(offline)
+    second = abs_connector.sync(first.cursor)
+    reading, = by_measurement(lines_of(second), "reading_session")
+    assert (reading[3], reading[2]["minutes"]) == (epoch(2025, 3, 3, 23, 0), "15.0")
+    assert abs_connector.sync(second.cursor).points == []
 
 
 def test_an_updated_session_is_read_again(abs_api, abs_connector, monkeypatch):
@@ -120,10 +152,28 @@ def test_an_updated_session_is_read_again(abs_api, abs_connector, monkeypatch):
     assert second.cursor["sessions_updated_at"] == s1["updatedAt"]
 
 
-def test_cursor_holds_timestamps_only(abs_api, abs_connector):
+def test_the_cursor_holds_timestamps_and_opaque_ids_only(abs_api, abs_connector):
     cursor = abs_connector.sync(None).cursor
-    assert cursor == {"sessions_updated_at": max(s["updatedAt"] for s in SESSIONS),
-                      "progress_updated_at": max(p["lastUpdate"] for p in ME["mediaProgress"])}
+    newest = max(s["updatedAt"] for s in SESSIONS)
+    assert cursor == {
+        "sessions_updated_at": newest,
+        "progress_updated_at": max(p["lastUpdate"] for p in ME["mediaProgress"]),
+        # Within the lookback window (30 days) of the newest update.
+        "recent_sessions": {s["id"]: s["updatedAt"] for s in SESSIONS if s["updatedAt"] > newest - 30 * 86_400_000},
+    }
+
+
+def test_titles_come_in_one_batch_or_from_the_libraries_when_refused(abs_api, abs_connector):
+    abs_connector.sync(None)
+    batch, = abs_api.calls_to("/api/items/batch/get")
+    assert batch == {"libraryItemIds": ["book-dune", "book-gone", "pod-1"]}
+    assert not abs_api.calls_to("/api/libraries")
+    abs_api.calls.clear()
+    abs_api.batch_status = 403
+    result = abs_connector.sync(None)
+    assert abs_api.calls_to("/api/libraries") and abs_api.calls_to("/api/libraries/lib-books/items")
+    titles = {f["title"] for _m, _t, f, _ts in by_measurement(lines_of(result), "reading_session")}
+    assert titles == {'"Dune"', '"The Podcast"', '"Removed book"'}
 
 
 def test_page_size_is_what_the_api_is_asked_for(abs_api, abs_connector):
@@ -137,7 +187,8 @@ def test_second_run_writes_nothing_new(abs_api, abs_connector, influx, db):
     run = runner.run(db, abs_connector)
     assert run.status == "ok", run.message
     assert run.points == 5 and run.message == (
-        "4 new or updated session(s) (1 empty, skipped), 1 finished book(s): 5 point(s) written (MediaStats 5).")
+        "4 new or updated session(s) (1 empty, skipped), 1 finished book(s) new or changed: "
+        "5 point(s) written (MediaStats 5).")
     writes = len(influx.writes)
     run = runner.run(db, abs_connector)
     assert (run.status, run.points, run.message) == ("ok", 0, "Nothing new.")
@@ -214,6 +265,10 @@ def test_api_calls_send_the_key_and_explain_a_refusal(abs_connector, monkeypatch
         monkeypatch.setattr(abs_connector.settings, "token", SecretStr("good-key"))
         result = abs_connector.sync(None)
         assert len(result.points) == 5
+        assert fake.calls_to("/api/items/batch/get") == [{"libraryItemIds": ["book-dune", "book-gone", "pod-1"]}]
+        # Over HTTP too, a refused batch falls back to the libraries.
+        fake.batch_status = 403
+        assert len(abs_connector.sync(None).points) == 5
         assert fake.calls_to("/api/libraries/lib-books/items")[0] == {"limit": "200", "page": "0", "minified": "1"}
         monkeypatch.setattr(abs_connector.settings, "token", SecretStr("bad-key"))
         with pytest.raises(ConnectorError, match=r"refused the API key \(401\): check TRIBUTARY_ABS_TOKEN"):
@@ -226,6 +281,40 @@ def test_api_calls_send_the_key_and_explain_a_refusal(abs_connector, monkeypatch
     monkeypatch.setattr(abs_connector.settings, "url", "http://127.0.0.1:9/")  # nothing listens there
     with pytest.raises(ConnectorError, match="unreachable"):
         abs_connector.sync(None)
+
+
+def test_a_url_without_scheme_is_explained(abs_connector, monkeypatch, influx, db):
+    from pydantic import SecretStr
+
+    monkeypatch.setattr(abs_connector.settings, "url", "audiobookshelf:80")
+    monkeypatch.setattr(abs_connector.settings, "token", SecretStr("k"))
+    run = runner.run(db, abs_connector)
+    assert run.status == "error" and run.message.startswith("Invalid TRIBUTARY_ABS_URL (audiobookshelf:80)")
+
+
+def test_a_dropped_connection_is_an_error_not_a_crash(abs_connector, monkeypatch):
+    import socket
+    import threading
+
+    from pydantic import SecretStr
+
+    listener = socket.socket()
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(1)
+
+    def hang_up():
+        conn, _ = listener.accept()
+        conn.recv(4096)
+        conn.close()
+
+    threading.Thread(target=hang_up, daemon=True).start()
+    monkeypatch.setattr(abs_connector.settings, "url", f"http://127.0.0.1:{listener.getsockname()[1]}")
+    monkeypatch.setattr(abs_connector.settings, "token", SecretStr("k"))
+    try:
+        with pytest.raises(ConnectorError, match="lost on /api/me|unreachable"):
+            abs_connector._get("/api/me")
+    finally:
+        listener.close()
 
 
 def test_configured_only_with_url_and_key(abs_connector, monkeypatch):

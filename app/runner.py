@@ -88,7 +88,7 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
     rebuild = False
 
     if connector.api_configured():
-        result = connector.sync(None if full else state.get("sync"))
+        result = connector.sync(connector.full_cursor(state.get("sync")) if full else state.get("sync"))
         points.extend(result.points)
         summary.extend(result.summary)
         new_state["sync"] = result.cursor
@@ -119,7 +119,10 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
 
 def _write(connector: Connector, lines: Dict[str, List[str]], rebuild: bool) -> Tuple[Dict[str, int], int, Dict[str, int]]:
     """({database: points written}, points older than the retention,
-    {reason: points refused})."""
+    {reason: points refused}). Nothing to write, nothing to drop: no
+    request at all."""
+    if not lines and not rebuild:
+        return {}, 0, {}
     databases = sorted({m.database for m in connector.measurements} | set(lines))
     if settings.influxdb_create_databases:
         influxdb.create_missing_databases(databases)

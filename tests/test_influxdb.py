@@ -78,6 +78,19 @@ def test_unreachable(abs_api, abs_connector, db, monkeypatch):
     assert run.status == "error" and run.message.startswith("InfluxDB unreachable (http://127.0.0.1:9)")
 
 
+def test_a_url_without_scheme_is_explained(abs_api, abs_connector, db, monkeypatch):
+    monkeypatch.setattr("app.config.settings.influxdb_url", "influxdb:8086")
+    run = runner.run(db, abs_connector)
+    assert run.status == "error" and run.message.startswith("Invalid TRIBUTARY_INFLUXDB_URL (influxdb:8086)")
+
+
+def test_nothing_to_write_means_no_request(abs_api, abs_connector, influx, db):
+    runner.run(db, abs_connector)
+    influx.queries.clear()
+    run = runner.run(db, abs_connector)
+    assert run.message == "Nothing new." and influx.queries == []
+
+
 def test_drop_source_quotes_its_values(influx):
     influxdb.drop_source("BodyStats", 'we"ird', "it's")
     assert influx.queries[-1] == ("BodyStats", "DROP SERIES FROM \"we\\\"ird\" WHERE \"source\" = 'it\\'s'")

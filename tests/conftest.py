@@ -71,6 +71,7 @@ def abs_api(monkeypatch, abs_connector):
     monkeypatch.setattr(abs_connector.settings, "token", SecretStr("the-api-key"))
     fake = FakeAbs()
     monkeypatch.setattr(abs_connector, "_get", fake)
+    monkeypatch.setattr(abs_connector, "_post", fake.post)
     return fake
 
 

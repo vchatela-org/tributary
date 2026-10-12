@@ -103,6 +103,17 @@ def test_cross_site_requests_are_refused(client, abs_api, no_thread):
     assert client.post("/api/connectors/audiobookshelf/run", headers={"sec-fetch-site": "same-origin"}).status_code == 202
 
 
+def test_without_sec_fetch_site_the_origin_must_be_this_host(client, abs_api, no_thread):
+    """Browsers too old for Sec-Fetch-Site still send Origin with a POST."""
+    url = "/api/connectors/audiobookshelf/run"
+    assert client.post(url, headers={"origin": "https://evil.example"}).status_code == 403
+    assert client.post(url, headers={"origin": "null"}).status_code == 403
+    assert client.post(url, headers={"origin": "http://testserver"}).status_code == 202
+    # Behind a proxy, the host the browser used.
+    assert client.post(url, headers={"origin": "https://tributary.example",
+                                     "x-forwarded-host": "tributary.example"}).status_code == 202
+
+
 def test_api_run_unknown_or_unconfigured(client):
     assert client.post("/api/connectors/nope/run").status_code == 404
     assert client.post("/api/connectors/audiobookshelf/run").status_code == 409

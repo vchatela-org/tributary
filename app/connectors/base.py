@@ -14,7 +14,7 @@ and implements one or both inputs:
   - API: `api_configured()` and `sync(cursor) -> SyncResult(points, new cursor)`.
     The cursor is the connector's own JSON-able state (e.g. the newest update
     it has seen), saved after a successful run only, None on the first run
-    or a full one;
+    (and on a full one, but for what `full_cursor` keeps);
   - files: `file_types` (accepted suffixes) and `import_file(path) -> points`,
     for an upload in the UI and, when TRIBUTARY_<KEY>_WATCH_DIR is set, the
     files of a watched folder. With `rebuild_own_source`, a change in the
@@ -96,6 +96,12 @@ class Connector:
 
     def sync(self, cursor: Any) -> SyncResult:
         raise NotImplementedError
+
+    def full_cursor(self, cursor: Any) -> Any:
+        """The cursor a full resync starts from: nothing by default (read
+        everything again). A connector keeps here what must not change
+        between runs, e.g. a time it had to choose for a point."""
+        return None
 
     def import_file(self, path: Path) -> Iterable[Point]:
         raise NotImplementedError

@@ -15,9 +15,19 @@ from app.database import uploads_dir
 def same_origin(request: Request) -> None:
     """Tributary has no login (it runs locally or behind an auth proxy), so
     a page of another site must not be able to start a run in the user's
-    browser. Browsers say where a request comes from in Sec-Fetch-Site; a
-    client that doesn't send it (curl, a script) is not a browser page."""
-    if request.headers.get("sec-fetch-site", "same-origin") not in ("same-origin", "none"):
+    browser. Browsers say where a request comes from in Sec-Fetch-Site; one
+    too old for that still sends Origin with a form POST, which must then
+    be this host. A client sending neither (curl, a script) is not a page."""
+    site = request.headers.get("sec-fetch-site")
+    if site is not None:
+        if site not in ("same-origin", "none"):
+            raise HTTPException(status_code=403, detail="Cross-site request refused")
+        return
+    origin = request.headers.get("origin")
+    if origin is None:
+        return
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+    if origin == "null" or urlparse(origin).netloc.lower() != host.split(",")[0].strip().lower():
         raise HTTPException(status_code=403, detail="Cross-site request refused")
 
 

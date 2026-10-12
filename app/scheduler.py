@@ -29,6 +29,7 @@ _requests: "queue.Queue[Tuple[str, Tuple]]" = queue.Queue()
 _pending: set = set()
 _pending_lock = threading.Lock()
 _thread: Optional[threading.Thread] = None
+_thread_lock = threading.Lock()
 _cleaned = False
 
 
@@ -75,11 +76,13 @@ def _ensure_thread() -> bool:
     """Start the thread unless it runs (an upload to a connector without a
     schedule needs it too). Returns whether it was started now."""
     global _thread
-    if _thread is not None and _thread.is_alive():
-        return False
-    _thread = threading.Thread(target=_loop, name="scheduler", daemon=True)
-    _thread.start()
-    return True
+    # Two requests at once (the server's thread pool) must not start two.
+    with _thread_lock:
+        if _thread is not None and _thread.is_alive():
+            return False
+        _thread = threading.Thread(target=_loop, name="scheduler", daemon=True)
+        _thread.start()
+        return True
 
 
 def close_interrupted_runs(key: Optional[str] = None,
@@ -168,10 +171,11 @@ def _loop() -> None:
 def stop(timeout: float = 5.0) -> None:
     """End the thread after its current run (tests, shutdown)."""
     global _thread
-    if _thread is not None and _thread.is_alive():
+    with _thread_lock:
+        thread, _thread = _thread, None
+    if thread is not None and thread.is_alive():
         _requests.put((None, ()))
-        _thread.join(timeout)
-    _thread = None
+        thread.join(timeout)
 
 
 def has_pending() -> bool:

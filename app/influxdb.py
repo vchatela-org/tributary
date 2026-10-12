@@ -10,11 +10,12 @@ nothing is dropped unless a connector opts into rebuilding its own source
 Databases are created when missing (TRIBUTARY_INFLUXDB_CREATE_DATABASES),
 with year-long shards; an existing database is never altered.
 """
+import http.client
 import json
 import re
 from typing import Dict, List, Optional, Tuple
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
 from app.config import settings
@@ -38,6 +39,9 @@ def is_configured() -> bool:
 
 def _post(path: str, params: Dict[str, str], body: bytes = b"") -> bytes:
     url = settings.influxdb_url.rstrip("/") + path + "?" + urlencode(params)
+    if urlparse(url).scheme not in ("http", "https"):
+        raise InfluxError(f"Invalid TRIBUTARY_INFLUXDB_URL ({settings.influxdb_url}): "
+                          "it must start with http:// or https://.")
     request = Request(url, data=body, method="POST", headers={"Content-Type": "text/plain; charset=utf-8"})
     try:
         with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
@@ -53,6 +57,8 @@ def _post(path: str, params: Dict[str, str], body: bytes = b"") -> bytes:
         raise InfluxError(f"InfluxDB unreachable ({settings.influxdb_url}): {exc.reason}") from exc
     except TimeoutError as exc:
         raise InfluxError(f"InfluxDB did not answer ({settings.influxdb_url})") from exc
+    except (http.client.HTTPException, OSError) as exc:
+        raise InfluxError(f"Connection to InfluxDB lost on {path}: {type(exc).__name__} {exc}".rstrip()) from exc
 
 
 def query(statement: str, database: Optional[str] = None) -> Dict:

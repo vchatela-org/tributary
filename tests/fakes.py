@@ -215,6 +215,22 @@ class FakeAbs:
         self.items, self.me, self.token = copy.deepcopy(items), copy.deepcopy(me), token
         self.calls: List[Tuple[str, Dict]] = []
         self.server: Optional[HTTPServer] = None
+        # Answer POST /api/items/batch/get with this status instead (e.g.
+        # 403: one of the items is no longer the user's to open).
+        self.batch_status: Optional[int] = None
+
+    def post(self, path, body):
+        """POST path -> payload; a refusal raises the connector's ApiError,
+        as its _request would."""
+        self.calls.append((path, dict(body)))
+        if path == "/api/items/batch/get":
+            if self.batch_status:
+                from app.connectors.audiobookshelf import ApiError
+
+                raise ApiError(f"refused ({self.batch_status})", self.batch_status)
+            wanted = set(body["libraryItemIds"])
+            return {"libraryItems": copy.deepcopy([i for i in self.items if i["id"] in wanted])}
+        raise LookupError(path)
 
     def __call__(self, path, params=None):
         params = dict(params or {})
@@ -262,6 +278,29 @@ class FakeAbs:
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
+
+            def do_POST(self):  # noqa: N802
+                if self.headers.get("Authorization") != f"Bearer {outer.token}":
+                    self.send_response(401)
+                    self.end_headers()
+                    return
+                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+                if outer.batch_status:
+                    self.send_response(outer.batch_status)
+                    self.end_headers()
+                    return
+                try:
+                    payload = outer.post(urlparse(self.path).path, body)
+                except LookupError:
+                    self.send_response(404)
+                    self.end_headers()
+                    return
+                data = json.dumps(payload).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
 
             def log_message(self, *args):
                 pass
