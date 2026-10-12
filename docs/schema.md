@@ -15,15 +15,18 @@ what the connectors declare (`app/schema.py`, each connector's
   domain's database holds every tracker of that domain.
 - **A `source` tag on every point**, naming the tracker
   (`audiobookshelf`, `kindle`, `renpho`...). Dashboards filter and colour by
-  it; nothing ever merges two sources into one series. (One exception,
-  `body_thresholds`: it rates a person, not a tracker's reading.)
+  it; nothing ever merges two sources into one series. (Exceptions:
+  `body_thresholds`, which rates a person, not a tracker's reading; and
+  `TodoistStats`, the layout of the job its connector replaced, Todoist
+  being that database's only writer.)
 - **One writer per source.** A source with an API and a richer export goes
   entirely through the same connector (both fill the same series and must
   be merged in one place). That's also what lets a connector rebuild its
   own source safely: no other tool writes `source=<it>`.
 - **A `user` tag** naming the person (`TRIBUTARY_INFLUXDB_USER`, or set per
   account by a connector that syncs several people). Left out when not
-  configured.
+  configured, and on `TodoistStats` (the job it was ported from wrote
+  none).
 - **Field types are fixed per measurement.** InfluxDB 1.x rejects a write
   whose field type differs from what the shard already holds, so a field
   is always written with the type in the tables below, by every tool:
@@ -48,8 +51,10 @@ what the connectors declare (`app/schema.py`, each connector's
   rewrite) when a folder of exports is its source of truth.
 - **Privacy.** InfluxDB 1.x often runs without authentication. Numbers and
   low-cardinality tags only; the only text fields are book or show titles
-  (`title`). No message, search, URL, address, email, IP or free-form
-  note, ever. A test fails on any other text field.
+  (`title`), and Todoist's task text (`content`, `labels`) when you ask for
+  it (`TRIBUTARY_TODOIST_TASK_TEXT`). No message, search, URL, address,
+  email, IP or free-form note otherwise. A test fails on any other text
+  field.
 - **Databases** are created by Tributary when missing, `WITH SHARD DURATION
   52w` (the default weekly shards make hundreds of tiny shards for a few
   years of history). An existing database is never altered.
@@ -99,6 +104,34 @@ Body composition: weigh-ins of smart scales. No *local time*.
   between the levels, `<metric>_min` / `_max` the scale of a gauge. Tagged
   `user` only, stamped when written (when they change, and at least
   weekly): read the latest.
+
+### `TodoistStats`
+
+Tasks done in Todoist. No *local time*. This layout is the one of the sync
+job the Todoist connector replaced, kept as it was so that its history and
+dashboards carry on: no `source` and no `user` tag, a `task_id` tag (so a
+completion rewritten overwrites itself), project names as tags.
+
+| Measurement | Tags | Fields | Written by |
+|---|---|---|---|
+| `todoist_task_completed` | `task_id`, `project`, `section`, `priority` (`p1`...`p4`), `recurring`, `subtask` (no `source`, no `user`) | `count` (int), `lead_time_hours` (float), `postponed_count` (int), `duration_minutes` (int), `late_days` (int), `content` (str), `labels` (str) | Tributary: `todoist` |
+| `todoist_completion` | `task_id`, `project` (no `source`, no `user`) | `count` (int), `content` (str) | Tributary: `todoist` |
+| `todoist_karma` | none (no `source`, no `user`) | `karma` (float) | Tributary: `todoist` |
+| `todoist_stats` | none (no `source`, no `user`) | `karma` (float), `completed_count` (int), `daily_goal` (int), `weekly_goal` (int), `current_daily_streak` (int), `max_daily_streak` (int), `current_weekly_streak` (int), `max_weekly_streak` (int) | Tributary: `todoist` |
+
+- `todoist_task_completed`: one point per completed task, at its
+  completion, `count` = 1. Recurring tasks never appear (completing one
+  only moves its due date). `lead_time_hours` from creation to completion,
+  `late_days` the completion's local date minus the due date (negative:
+  early; one-off tasks only). `recurring` and `subtask` are `true` /
+  `false`.
+- `todoist_completion`: one point per completion, recurring tasks included:
+  count completions here.
+- `todoist_karma`: the daily karma average, at local midnight.
+- `todoist_stats`: one point per day, at local midnight, the day's last
+  sync: karma, lifetime completions, goals and streaks.
+- `content` (the task's name) and `labels` (comma-joined) only with
+  `TRIBUTARY_TODOIST_TASK_TEXT`.
 
 ## Adding a measurement
 

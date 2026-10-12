@@ -19,7 +19,7 @@ many sources.
 - **Append-only and idempotent:** a point rewritten overwrites itself;
   nothing a source later forgets is dropped.
 - **Private by default:** numbers and a few tags leave, titles as the only
-  text; secrets stay in the environment.
+  text (task names too, if you ask); secrets stay in the environment.
 
 ## Connectors
 
@@ -27,6 +27,7 @@ many sources.
 |---|---|---|
 | Audiobookshelf | listening sessions (audiobooks, podcasts) and finished books → `MediaStats` | [docs/connectors/audiobookshelf.md](docs/connectors/audiobookshelf.md) |
 | Renpho | smart-scale weigh-ins (weight, body fat, muscle, water...) of one or several people, rated with the app's levels → `BodyStats` | [docs/connectors/renpho.md](docs/connectors/renpho.md) |
+| Todoist | completed tasks and every completion (recurring ones included), karma and streaks → `TodoistStats` | [docs/connectors/todoist.md](docs/connectors/todoist.md) |
 
 A connector is written only for a source no maintained tool covers: Garmin,
 for instance, is [garmin-grafana](docs/compatible-tools.md)'s.

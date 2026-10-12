@@ -4,6 +4,7 @@
 |---|---|---|---|
 | [Audiobookshelf](audiobookshelf.md) | `audiobookshelf` | API, hourly | `MediaStats`: `reading_session`, `book_finished` |
 | [Renpho](renpho.md) | `renpho` | API, daily, one account per person | `BodyStats`: `body_composition`, `body_levels`, `body_thresholds` |
+| [Todoist](todoist.md) | `todoist` | API, daily | `TodoistStats`: `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` |
 
 ## Before writing one
 
