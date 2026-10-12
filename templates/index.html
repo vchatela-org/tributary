@@ -27,7 +27,7 @@
         </h2>
         <p class="text-body-secondary mb-1">{{ c.description }}</p>
         {% if not item.configured and c.required_env %}
-        <p class="small mb-1">Set {% for name in c.required_env %}<code>{{ name }}</code>{% if not loop.last %}, {% endif %}{% endfor %} to sync it on a schedule.</p>
+        <p class="small mb-1">Set {% for name in c.required_env %}<code>{{ name }}</code>{% if not loop.last %}, {% endif %}{% endfor %} to run it.</p>
         {% endif %}
         <p class="small text-body-secondary mb-0">Writes
           {% for ms in c.measurements %}<code>{{ ms.database }}.{{ ms.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %},

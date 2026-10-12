@@ -5,6 +5,7 @@
 | [Audiobookshelf](audiobookshelf.md) | `audiobookshelf` | API, hourly | `MediaStats`: `reading_session`, `book_finished` |
 | [Renpho](renpho.md) | `renpho` | API, daily, one account per person | `BodyStats`: `body_composition`, `body_levels`, `body_thresholds` |
 | [Todoist](todoist.md) | `todoist` | API, daily | `TodoistStats`: `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` |
+| [MyTherapy](mytherapy.md) | `mytherapy` | export file, uploaded in the UI | `BodyStats`: `medication` |
 
 ## Before writing one
 
@@ -38,10 +39,14 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
   `import_file(path) -> points`. It serves both the upload form and, when
   `TRIBUTARY_<KEY>_WATCH_DIR` is set, the files of a watched folder (new or
   changed ones at each run).
-- `rebuild_own_source = True` for a folder that is the source of truth: any
-  change in it drops the connector's own series
-  (`DROP SERIES FROM <measurement> WHERE "source" = '<key>'`) and rewrites
-  them from every file. Safe only because nothing else writes that source.
+- `rebuild_own_source = True` when a file holds the connector's whole history
+  (an export): importing it drops the connector's own series
+  (`DROP SERIES FROM <measurement> WHERE "source" = '<key>'`) and rewrites it
+  from the file, rather than adding to it or overwriting point by point -- a
+  record the file no longer has is one the source no longer knows. Same for a
+  folder that is the source of truth, where a change in it rebuilds the
+  series. Safe only because nothing else writes that source, and a connector
+  raises rather than let a rebuild write nothing back.
 
 Points are `Point(measurement, time, tags, fields)`, time in UTC. The core
 adds `source` (unless the measurement is declared `tagged_source=False`),

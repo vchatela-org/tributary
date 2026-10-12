@@ -15,8 +15,10 @@ import itertools
 import json
 import re
 import threading
+import zipfile
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, unquote, urlparse
 
@@ -619,6 +621,35 @@ class FakeTodoist:
 
     def close(self):
         self.server.shutdown()
+
+
+# ────────────────────────────────────────────────
+# MyTherapy (its export file, built by hand)
+# ────────────────────────────────────────────────
+
+MYTHERAPY_COLUMNS = "actual_date,scheduled_date,type,name,value,unit,status,note"
+# Invented aliases and names: the real mapping is the owner's (privacy),
+# and the app's aliases are deliberately vague (see docs/connectors/mytherapy.md).
+MYTHERAPY_NAMES = {"First": "Alpha med", "Second": "Beta med"}
+MYTHERAPY_NOTE = "taken with breakfast"  # ggignore
+
+
+def mytherapy_row(name="First", scheduled="2026-03-01 12:00:00", actual=None, value="2",
+                  unit="pill(s)", status="confirmed", kind="drug", note=""):
+    """One row of "MyTherapy Archive.csv": a scheduled dose, or a reminder."""
+    fields = (actual if actual is not None else scheduled, scheduled, kind, name, value, unit, status, note)
+    return ",".join(f'"{field}"' if "," in field else field for field in fields)
+
+
+def write_mytherapy_export(path, rows, zipped=False):
+    """An export: the CSV itself, or the zip the app saves it in."""
+    text = "\n".join([MYTHERAPY_COLUMNS, *rows]) + "\n"
+    if zipped:
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("MyTherapy Archive.csv", text)
+    else:
+        Path(path).write_text(text, encoding="utf-8")
+    return Path(path)
 
 
 if __name__ == "__main__":
