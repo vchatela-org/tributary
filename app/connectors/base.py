@@ -20,14 +20,9 @@ and implements one or both inputs:
     as failed;
   - files: `file_types` (accepted suffixes) and `import_file(path) -> points`,
     for an upload in the UI and, when TRIBUTARY_<KEY>_WATCH_DIR is set, the
-    files of a watched folder (all of them at once through `import_files`;
-    a hidden file is not one: a NAS writes its own sidecars next to the
-    exports). With `rebuild_own_source`, a change in the folder drops the
-    connector's own series and rewrites them from every file in it (the
-    folder is then the source of truth); such a connector sets
-    `accepts_uploads = False` (one file alone can't be merged with the
-    others) and is asked for the folder even when it holds no file at all,
-    so that it can refuse rather than let the series be emptied.
+    files of a watched folder. With `rebuild_own_source`, a change in the
+    folder drops the connector's own series and rewrites them from every
+    file in it (the folder is then the source of truth).
 """
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -76,11 +71,6 @@ class Connector:
     # Environment variables the API input needs, for the UI's hint.
     required_env: ClassVar[Tuple[str, ...]] = ()
     file_types: ClassVar[Tuple[str, ...]] = ()
-    # Whether the UI offers an upload of a single file. A connector whose
-    # watched folder is its source of truth (rebuild_own_source) sets this
-    # False: one file can't be merged with the others, and rebuilding its
-    # series from it alone would drop the rest.
-    accepts_uploads: ClassVar[bool] = True
     rebuild_own_source: ClassVar[bool] = False
 
     def __init__(self) -> None:
@@ -101,15 +91,11 @@ class Connector:
 
     @property
     def accepts_files(self) -> bool:
-        """Whether an upload of one file makes sense: the UI's form, and
-        POST /api/connectors/{key}/upload."""
-        return bool(self.file_types) and self.accepts_uploads
+        return bool(self.file_types)
 
     @property
     def watch_dir(self) -> Optional[Path]:
-        """The folder read at each run (`file_types` says which files), or
-        None when the connector has none."""
-        return Path(self.settings.watch_dir) if self.file_types and self.settings.watch_dir else None
+        return Path(self.settings.watch_dir) if self.accepts_files and self.settings.watch_dir else None
 
     def is_configured(self) -> bool:
         """Whether it runs on a schedule: its API is set up, or it watches a
@@ -127,23 +113,6 @@ class Connector:
 
     def import_file(self, path: Path) -> Iterable[Point]:
         raise NotImplementedError
-
-    def import_files(self, paths: Iterable[Path]) -> Iterable[Point]:
-        """The files of the watched folder, as one input. A connector whose
-        exports supersede one another merges them here (each file replaces
-        what the older ones said over its own range); by default each file is
-        imported on its own. `paths` is empty when the folder holds no file
-        the connector accepts: one whose folder is its source of truth raises
-        rather than let the core drop its series with nothing to write
-        back."""
-        for path in paths:
-            try:
-                found = list(self.import_file(path))
-            except ConnectorError as exc:
-                raise ConnectorError(f"{path.name}: {exc}") from None
-            except (OSError, ValueError, KeyError) as exc:
-                raise ConnectorError(f"{path.name}: unreadable ({type(exc).__name__}: {exc}).") from None
-            yield from found
 
     # -- Schedule ------------------------------------------------------------
 

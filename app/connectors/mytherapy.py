@@ -1,28 +1,21 @@
-"""MyTherapy (medication reminders): the scheduled doses of a folder of
-exports, into BodyStats..medication.
+"""MyTherapy (medication reminders): the doses of an uploaded export, into
+BodyStats..medication.
 
 Ported from a daily import job, writing exactly its series (same
-measurement, tags, fields, types and times), so a run rewrites that history
-in place and never duplicates it (docs/porting.md). source=mytherapy had
-that job as its only writer.
+measurement, tags, fields, types and times), so an import rewrites that
+history in place and never duplicates it (docs/porting.md). source=mytherapy
+had that job as its only writer.
 
-MyTherapy has no API: the app exports "MyTherapy Archive.csv" (or a zip
-holding it), the user saves the exports to a folder (a NAS share, mounted
-read-only), and the connector reads them. The folder is the source of truth:
-any change in it (a file added, replaced or removed) drops the connector's
-own series (DROP SERIES FROM medication WHERE "source" = 'mytherapy') and
-rewrites it from every export in it -- `rebuild_own_source`, safe because
-nothing else writes source=mytherapy. A run with no new export changes
-nothing. A folder with no export **fails the run** instead of dropping the
-series with nothing to write back, as the job did; so does an export holding
-no dose.
+MyTherapy has no API, and its export holds the whole history: the app writes
+"MyTherapy Archive.csv" (or a zip holding it), the user imports it in the UI
+(*Import file*, *Dry run* first), and the connector rebuilds the series from
+it (`rebuild_own_source`: the imported file replaces what
+source=mytherapy held, as the job's own run did, rather than adding to it or
+overwriting point by point -- a dose the export no longer has is one the app
+doesn't know any more). An import that holds no dose fails rather than leave
+the series empty, as the job refused to as well.
 
-The exports are applied oldest first, each replacing what the older ones said
-over its own date range (their last scheduled dose), as the job did: a dose
-that went from unanswered to taken, or one deleted in the app, follows the
-newest export.
-
-A record is a scheduled dose:
+A dose:
   medication  at the dose's scheduled time, local (TRIBUTARY_TZ: a 12:00
               dose stays 12:00 across the DST changes), tags med = the name
               TRIBUTARY_MYTHERAPY_NAMES gives its alias, status = taken /
@@ -30,24 +23,22 @@ A record is a scheduled dose:
               rejected). Fields: taken (1 when the dose was taken),
               app_status (the app's own word), dose and unit when the export
               carries them ("pill(s)" -> "pills"), and delay_min for a taken
-              dose (scheduled time to the moment it was answered, in
-              minutes; negative: answered early).
-Two doses of one medication and status scheduled in the same second are
-written a second apart, as the job wrote them (it bumped the second one).
+              dose (scheduled time to the moment it was answered, in minutes;
+              negative: answered early).
 
 Of the export's columns, `note` is not written: the job wrote it, but no
-export ever carried one, so its series never held one (docs/schema.md;
-free-form text stays out of InfluxDB). Rows of type `measurement` (weight
-reminders: a scale already records weight) are skipped, as the job skipped
-them, and so are doses scheduled before TRIBUTARY_MYTHERAPY_START_DATE (the
-job's overlap with Medisafe, which covers the same doses until then). An
-alias missing from TRIBUTARY_MYTHERAPY_NAMES fails the run, listing the
-aliases: add them and run again. So do an unknown type or status, and a file
-that isn't an export (named in the message). Nothing is ever kept from an
-export but the doses: no name, no note, no id.
+import of these series ever carried one (docs/schema.md; free-form text stays
+out of InfluxDB). Rows of type `measurement` (weight reminders: a scale
+already records weight) are skipped, as the job skipped them, and so are
+doses scheduled before TRIBUTARY_MYTHERAPY_START_DATE (the job's overlap with
+another import, which covered the same doses until then). An alias missing
+from TRIBUTARY_MYTHERAPY_NAMES fails the import, listing the aliases: add
+them and import again. So do an unknown type or status, and a file that isn't
+an export (named in the message). Nothing is ever kept from an export but the
+doses: no alias, no note, no id.
 
-The job ran at 07:30 Europe/Paris; a Tributary connector runs every
-TRIBUTARY_MYTHERAPY_INTERVAL_MINUTES (a day by default) from its own start.
+The job read the exports from a NAS share and ran every morning; this
+connector takes the file in the UI instead, when the app has exported one.
 """
 import collections
 import csv
@@ -56,7 +47,7 @@ import json
 import zipfile
 from datetime import date, datetime, time
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional
 from zoneinfo import ZoneInfo
 
 from pydantic_settings import SettingsConfigDict
@@ -86,19 +77,17 @@ MEDICATION = Measurement(
 class MyTherapySettings(ConnectorSettings):
     model_config = SettingsConfigDict(env_prefix=PREFIX, env_file=".env", extra="ignore")
 
-    # A dose carries its own time and every run rewrites the whole series:
-    # once a day is plenty.
-    interval_minutes: int = 1440
-    # The exports' alias -> the name stored in the `med` tag, JSON:
+    # The export's alias -> the name stored in the `med` tag, JSON:
     # {"<alias>": "<name>"}. The mapping is personal (real medication names
     # stay out of MyTherapy, and out of this repository): it comes from the
-    # environment. Read at each run, so a mistake fails the runs, not the
-    # start.
+    # environment. Read at each import, so a mistake fails the import, not
+    # the start.
     names: Optional[str] = None
     # Doses scheduled before this date are not imported (YYYY-MM-DD): the
     # job's overlap with another import, which covered the same doses until
-    # then. Unset or empty: every dose the exports hold. A string, read at
-    # each run like `names`, so an empty value never stops the app starting.
+    # then. Unset or empty: every dose the export holds. A string, read at
+    # each import like `names`, so an empty value never stops the app
+    # starting.
     start_date: Optional[str] = None
 
 
@@ -128,7 +117,7 @@ def parse_start_date(raw: Optional[str]) -> Optional[date]:
 
 
 def local_epoch(raw: str, tz: ZoneInfo) -> int:
-    """An export time, to the second: the exports are local ("2026-08-14
+    """An export time, to the second: the export's times are local ("2026-08-14
     12:00:00", with no offset to read, though one would be honoured), and a
     12:00 dose stays 12:00 across the DST changes, unlike Medisafe's UTC."""
     try:
@@ -164,44 +153,20 @@ def read_export(path: Path) -> List[Dict[str, str]]:
     return [{name: (value or "") for name, value in row.items() if name is not None} for row in reader]
 
 
-# One dose: its scheduled time, the export it came from, and its row.
-Dose = Tuple[int, str, Dict[str, str]]
-
-
-def merge(exports: List[Tuple[Path, List[Dict[str, str]]]], tz: ZoneInfo) -> List[Dose]:
-    """The exports applied oldest first -- by their last scheduled dose, then
-    by their file, as the job ordered them --, each replacing the doses inside
-    its own date range. A dose keeps the file it came from, so that a failure
-    can name it."""
-    dated = []
-    for path, rows in exports:
-        if not rows:
-            continue
-        doses = [(local_epoch(row["scheduled_date"], tz), path.name, row) for row in rows]
-        dated.append((max(dose[0] for dose in doses), path.stat().st_mtime, str(path), doses))
-    dated.sort(key=lambda export: export[:3])
-    merged: List[Dose] = []
-    for _last, _mtime, _path, doses in dated:
-        first = min(dose[0] for dose in doses)
-        last = max(dose[0] for dose in doses)
-        merged = [dose for dose in merged if not first <= dose[0] <= last]
-        merged += doses
-    return merged
-
-
-def dose_points(doses: List[Dose], names: Dict[str, str], start: Optional[date], tz: ZoneInfo) -> List[Point]:
-    """The doses of the merged exports, as the job turned them into points."""
+def dose_points(rows: List[Dict[str, str]], names: Dict[str, str], start: Optional[date], tz: ZoneInfo
+                ) -> List[Point]:
+    """The doses of an export, as the job turned them into points."""
     points: List[Point] = []
     seen = set()
     unmapped: collections.Counter = collections.Counter()
     start_epoch = int(datetime.combine(start, time(), tzinfo=tz).timestamp()) if start else None
-    for scheduled, filename, row in doses:
-        where = f"in {filename}, for the dose of {row['scheduled_date']!r}"
+    for row in rows:
+        where = f"for the dose of {row['scheduled_date']!r}"
         if row["type"] == "measurement":
             continue  # a weight reminder: a scale records weight
         if row["type"] != "drug":
             raise ConnectorError(f"unknown type {row['type']!r} {where}.")
-        ts = scheduled
+        scheduled = ts = local_epoch(row["scheduled_date"], tz)
         if start_epoch is not None and ts < start_epoch:
             continue
         alias = row["name"].strip()
@@ -234,7 +199,7 @@ def dose_points(doses: List[Dose], names: Dict[str, str], start: Optional[date],
 
     if unmapped:
         raise ConnectorError(
-            f"aliases missing from {PREFIX}NAMES, add them and run again: "
+            f"aliases missing from {PREFIX}NAMES, add them and import again: "
             + ", ".join(f"{alias!r} ({count} dose(s))" for alias, count in sorted(unmapped.items())))
     return points
 
@@ -242,40 +207,23 @@ def dose_points(doses: List[Dose], names: Dict[str, str], start: Optional[date],
 class MyTherapyConnector(Connector):
     key = SOURCE
     label = "MyTherapy"
-    description = ("Scheduled doses (taken, missed, skipped) of the MyTherapy exports in a folder, "
-                   "rebuilt from it at each run.")
+    description = ("The scheduled doses (taken, missed, skipped) of a MyTherapy export, imported in the UI: "
+                   "its whole history, per the mapping of TRIBUTARY_MYTHERAPY_NAMES.")
     icon = "bi-capsule"
     settings_class = MyTherapySettings
     measurements = (MEDICATION,)
-    required_env = (f"{PREFIX}WATCH_DIR", f"{PREFIX}NAMES")
+    required_env = (f"{PREFIX}NAMES",)
     file_types = (".zip", ".csv")
-    # The folder is the source of truth: a single upload can't be merged with
-    # the exports around it, and rebuilding the series from it alone would
-    # drop the rest.
-    accepts_uploads = False
+    # The export is the app's whole history: importing it replaces the series,
+    # as the job's own run did. A dose the app no longer has is one the export
+    # no longer has either.
     rebuild_own_source = True
 
-    def import_files(self, paths: Iterable[Path]) -> Iterable[Point]:
-        tz = ZoneInfo(app_settings.tz)
-        if not paths:
-            raise ConnectorError("The watched folder holds no MyTherapy export (*.zip, *.csv): "
-                                 "nothing to write back, so its series is left as it is.")
-        exports = []
-        for path in sorted(paths):
-            try:
-                rows = read_export(path)
-            except ConnectorError as exc:
-                raise ConnectorError(f"{path.name}: {exc}") from None
-            if not rows:
-                continue  # an empty export: nothing of it
-            exports.append((path, rows))
-        if not exports:
-            raise ConnectorError("The watched folder's exports are empty: nothing to write back, "
-                                 "so the series is left as it is.")
+    def import_file(self, path: Path) -> Iterable[Point]:
         settings = self.settings
-        points = dose_points(merge(exports, tz), parse_names(settings.names),
-                              parse_start_date(settings.start_date), tz)
+        points = dose_points(read_export(path), parse_names(settings.names),
+                             parse_start_date(settings.start_date), ZoneInfo(app_settings.tz))
         if not points:
-            raise ConnectorError("The watched folder's exports hold no dose to import: nothing to write "
-                                 "back, so the series is left as it is.")
+            raise ConnectorError("This export holds no dose to import: nothing to write back, "
+                                 "so the series is left as it is.")
         return points

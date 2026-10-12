@@ -140,21 +140,22 @@ def test_no_todoist_token_profile_or_task_text_is_kept(todoist_api, todoist_conn
             assert private not in text, (where, private)
 
 
-def test_no_mytherapy_alias_or_note_is_kept(mytherapy_connector, influx, db, monkeypatch, caplog):
+def test_no_mytherapy_alias_or_note_is_kept(mytherapy_connector, influx, db, monkeypatch, caplog, tmp_path):
     """The dose's alias and the export's `note` column never leave; the `med`
     tag holds the name TRIBUTARY_MYTHERAPY_NAMES gives the alias, as the job
     wrote it (and as the dashboard reads it)."""
-    from pathlib import Path
-
     from app.config import settings
 
     caplog.set_level(logging.DEBUG)
     monkeypatch.setattr(settings, "influxdb_user", "alice")
-    write_mytherapy_export(Path(mytherapy_connector.settings.watch_dir) / "MyTherapy Archive.csv",
-                           [mytherapy_row(name="First", note=MYTHERAPY_NOTE),
-                            mytherapy_row(name="Second", scheduled="2026-03-02 20:00:00")])
-    runner.run(db, mytherapy_connector, dry_run=True)
-    runner.run(db, mytherapy_connector)
+    export = write_mytherapy_export(tmp_path / "MyTherapy Archive.csv",
+                                    [mytherapy_row(name="First", note=MYTHERAPY_NOTE),
+                                     mytherapy_row(name="Second", scheduled="2026-03-02 20:00:00")])
+    runner.run(db, mytherapy_connector, dry_run=True, file=str(export), filename=export.name, trigger="upload")
+    export = write_mytherapy_export(tmp_path / "MyTherapy Archive.csv",
+                                    [mytherapy_row(name="First", note=MYTHERAPY_NOTE),
+                                     mytherapy_row(name="Second", scheduled="2026-03-02 20:00:00")])
+    runner.run(db, mytherapy_connector, file=str(export), filename=export.name, trigger="upload")
 
     seen = {**_everything_seen(influx), "logs": caplog.text}
     for where, text in seen.items():

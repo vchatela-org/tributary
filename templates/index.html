@@ -27,7 +27,7 @@
         </h2>
         <p class="text-body-secondary mb-1">{{ c.description }}</p>
         {% if not item.configured and c.required_env %}
-        <p class="small mb-1">Set {% for name in c.required_env %}<code>{{ name }}</code>{% if not loop.last %}, {% endif %}{% endfor %} to sync it on a schedule.</p>
+        <p class="small mb-1">Set {% for name in c.required_env %}<code>{{ name }}</code>{% if not loop.last %}, {% endif %}{% endfor %} to run it.</p>
         {% endif %}
         <p class="small text-body-secondary mb-0">Writes
           {% for ms in c.measurements %}<code>{{ ms.database }}.{{ ms.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %},
@@ -62,12 +62,6 @@
       <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-upload me-1"></i>Import file</button>
       {% if c.watch_dir %}<span class="small text-body-secondary">Also watching <code>{{ c.watch_dir }}</code>.</span>{% endif %}
     </form>
-    {% endif %}
-
-    {% if c.watch_dir and not c.accepts_files %}
-    <p class="small text-body-secondary mt-3 mb-0"><i class="bi bi-folder2-open me-1"></i>Watching
-      <code>{{ c.watch_dir }}</code>{% if c.rebuild_own_source %}: the folder is the source of truth, so each run
-      rebuilds its series from the exports it holds{% endif %}.</p>
     {% endif %}
   </div>
 

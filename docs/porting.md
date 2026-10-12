@@ -84,15 +84,6 @@ point is the job's, key and values:
   of what it wrote instead).
 - Same calls to the source where it matters: the Renpho connector uses the
   same client library, at the same version, as the job.
-- **A job that reads a folder of exports** has that folder as its source of
-  truth: the connector declares `rebuild_own_source` (its own series is
-  dropped and rewritten from the folder at each change, as the [contract](connectors/README.md)
-  says) and `accepts_uploads = False` (one file alone can't be merged with the
-  others). When the exports supersede one another -- a newer one replacing
-  what the older ones said over its own date range -- the connector merges
-  them in `import_files`, which the core calls with the whole folder at once.
-  A run that finds no export must fail rather than let the core drop the
-  series with nothing to write back.
 - Tests pin the exact line of a typical record, written by hand from the
   job's code.
 

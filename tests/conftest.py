@@ -130,15 +130,15 @@ def todoist_connector():
 
 
 @pytest.fixture()
-def mytherapy_connector(monkeypatch, tmp_path):
-    """MyTherapy watching an empty folder, with a mapping (invented aliases)."""
+def mytherapy_connector(monkeypatch):
+    """MyTherapy with a mapping (invented aliases): it takes an export upload."""
     import json
 
     from app.connectors import mytherapy
 
     connector = connectors.get("mytherapy")
-    monkeypatch.setattr(connector, "settings", mytherapy.MyTherapySettings(
-        watch_dir=str(tmp_path), names=json.dumps(MYTHERAPY_NAMES)))
+    monkeypatch.setattr(connector, "settings",
+                        mytherapy.MyTherapySettings(names=json.dumps(MYTHERAPY_NAMES)))
     return connector
 
 

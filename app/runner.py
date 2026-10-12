@@ -53,16 +53,13 @@ def save_cursor(db: Session, key: str, value: Dict[str, Any]) -> None:
 # ────────────────────────────────────────────────
 
 def _folder_files(connector: Connector) -> Dict[str, Tuple[int, int]]:
-    """The watched folder's files a connector accepts: name -> (size, mtime).
-    A hidden file is not one: a NAS share writes its own next to the exports
-    (`._export.csv` AppleDouble files, `.DS_Store`), which are not exports and
-    must not fail every run."""
+    """The watched folder's files a connector accepts: name -> (size, mtime)."""
     folder = connector.watch_dir
     if not folder.is_dir():
         raise ConnectorError(f"Watched folder not found: {folder}.")
     files = {}
     for path in sorted(folder.iterdir()):
-        if path.is_file() and not path.name.startswith(".") and path.name.lower().endswith(connector.file_types):
+        if path.is_file() and path.name.lower().endswith(connector.file_types):
             stat = path.stat()
             files[path.name] = (stat.st_size, stat.st_mtime_ns)
     return files
@@ -77,18 +74,6 @@ def _import(connector: Connector, path: Path, label: str) -> List[Point]:
         raise ConnectorError(f"{label}: unreadable ({type(exc).__name__}: {exc}).") from None
 
 
-def _import_folder(connector: Connector, paths: List[Path]) -> List[Point]:
-    """The watched folder's files as one input: a connector whose exports
-    supersede one another merges them (Connector.import_files); the label of
-    a file it can't read is the connector's to add."""
-    try:
-        return list(connector.import_files(paths))
-    except ConnectorError:
-        raise
-    except (OSError, ValueError, KeyError) as exc:
-        raise ConnectorError(f"Unreadable files in {connector.watch_dir} ({type(exc).__name__}: {exc}).") from None
-
-
 def collect(connector: Connector, state: Dict[str, Any], full: bool = False, file: Optional[str] = None,
             filename: Optional[str] = None
             ) -> Tuple[List[Point], List[str], Optional[Dict[str, Any]], bool, List[str]]:
@@ -98,7 +83,12 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
     if file:
         label = filename or Path(file).name
         points = _import(connector, Path(file), label)
-        return points, [f"Imported {label}"], None, False, []
+        # `rebuild_own_source`: an uploaded file that holds a connector's whole
+        # history (an export) replaces its series rather than adding to it or
+        # overwriting point by point -- a dose the export no longer has is one
+        # the source no longer knows. The connector raises before this when the
+        # file holds nothing to write back, so the series is never left empty.
+        return points, [f"Imported {label}"], None, connector.rebuild_own_source, []
 
     if not connector.is_configured():
         raise ConnectorError(f"Not configured: set {', '.join(connector.required_env) or 'its settings'}.")
@@ -128,12 +118,8 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
                 summary.append(f"{len(files)} file(s) re-read from the watched folder, own series rebuilt")
         elif changed:
             summary.append(f"{len(changed)} new or changed file(s) in the watched folder")
-        if changed or rebuild or (connector.rebuild_own_source and not files):
-            # A rebuild connector is asked for its folder even when it holds no
-            # file at all (nothing changed, and nothing to write back): one
-            # whose folder is its source of truth refuses there rather than let
-            # the run report "Nothing new." over a folder it can't read.
-            points.extend(_import_folder(connector, [connector.watch_dir / name for name in changed]))
+        for name in changed:
+            points.extend(_import(connector, connector.watch_dir / name, name))
         new_state["files"] = {name: list(sig) for name, sig in files.items()}
 
     return points, summary, new_state, rebuild, errors
@@ -226,7 +212,8 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
             record.stats_json = json.dumps(written)
             if total or rebuild:
                 record.message = f"{what}{record.points} point(s) written" + (
-                    f" ({_by_database(written)})" if written else "") + "."
+                    f" ({_by_database(written)})" if written else "") + (
+                    ", after dropping its own series" if rebuild else "") + "."
             else:
                 record.message = "Nothing new." if not summary else f"{what}nothing to write."
             if expired:
