@@ -1,0 +1,48 @@
+# Tributary + InfluxDB 1.x + Grafana, with the datasources and proposed
+# dashboards provisioned. Copy .env.example to .env and set the connectors
+# you use, then: docker compose up -d
+#
+# Tributary has no login: its port is bound to this machine only. To reach
+# it from elsewhere, put an authenticating reverse proxy in front
+# (docs/deployment.md).
+services:
+  tributary:
+    image: ghcr.io/vchatela-org/tributary:latest
+    build: .
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      TRIBUTARY_INFLUXDB_URL: http://influxdb:8086
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - tributary-data:/app/data
+    depends_on:
+      - influxdb
+
+  influxdb:
+    image: influxdb:1.11.8
+    restart: unless-stopped
+    environment:
+      INFLUXDB_REPORTING_DISABLED: "true"
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards/tributary:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - influxdb
+
+volumes:
+  tributary-data:
+  influxdb-data:
+  grafana-data:

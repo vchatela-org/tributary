@@ -1,0 +1,66 @@
+name: CodeQL
+
+# Code scanning is free for public repositories only (a private one needs
+# GitHub Advanced Security): while the repository is private, the analysis
+# is skipped, not failed, and it starts on its own once it is public.
+
+on:
+  push:
+    branches: [ 'main' ]
+  pull_request:
+    branches: [ 'main' ]
+  schedule:
+    # Weekly re-scan so newly published queries reach existing code.
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  visibility:
+    name: Repository visibility
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      public: ${{ steps.check.outputs.public }}
+    steps:
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "public=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.visibility == "public"')" >> "$GITHUB_OUTPUT"
+
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    needs: visibility
+    if: needs.visibility.outputs.public == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ python, actions ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          queries: security-extended
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: '/language:${{ matrix.language }}'

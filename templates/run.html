@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Run {{ run.id }}{% endblock %}
+{% block content %}
+<p class="small mb-2"><a href="/runs?connector={{ run.connector }}"><i class="bi bi-arrow-left me-1"></i>{{ connector.label if connector else run.connector }} runs</a></p>
+<h1 class="h3 mb-3">Run {{ run.id }} {{ m.status_badge(run) }}</h1>
+<dl class="row">
+  <dt class="col-sm-2">Connector</dt><dd class="col-sm-10">{{ connector.label if connector else run.connector }}</dd>
+  <dt class="col-sm-2">Trigger</dt><dd class="col-sm-10">{{ m.trigger_label(run) }}</dd>
+  <dt class="col-sm-2">Started</dt><dd class="col-sm-10">{{ run.started_at | localtime(True) }} ({{ tz }})</dd>
+  <dt class="col-sm-2">Duration</dt><dd class="col-sm-10">{{ duration(run.started_at, run.finished_at) or "–" }}</dd>
+  <dt class="col-sm-2">Points</dt><dd class="col-sm-10">{{ run.points if run.points is not none else "–" }}{% if run.dry_run %} (would be written){% endif %}</dd>
+  <dt class="col-sm-2">Message</dt><dd class="col-sm-10 run-message">{{ run.message or "–" }}</dd>
+</dl>
+{% if run.dry_run and run.preview is not none %}
+<h2 class="h5">Line protocol</h2>
+<p class="small text-body-secondary">What this run would have written, one <code># database</code> line before each database's points. Nothing was written.</p>
+<pre class="preview">{{ run.preview or "(nothing)" }}</pre>
+{% endif %}
+{% endblock %}

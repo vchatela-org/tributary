@@ -1,0 +1,14 @@
+# Paths not scanned by scripts/privacy-scan.sh. Keep this list short:
+# every entry is a hole in the control.
+
+# The deny-list holds the patterns by definition.
+.github/privacy-denylist.txt
+.privacyignore
+
+# Vendored, minified third-party files.
+static/bootstrap.min.css
+static/bootstrap-icons.min.css
+static/fonts/
+
+# A copyright notice names its holder: the one place the owner's name belongs.
+LICENSE

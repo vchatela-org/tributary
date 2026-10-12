@@ -1,0 +1,40 @@
+# Privacy deny-list: patterns that must never appear in this repository.
+#
+# This repository is public: it ships a product, never its owner's data.
+# CI (.github/workflows/privacy.yml) fails on a match, in the working tree
+# and in the whole history; run ./scripts/privacy-scan.sh locally too.
+#
+# This file is itself public, so it holds PATTERNS (identifier shapes), not
+# secrets. The owner's own vocabulary (names, hostnames, serial numbers)
+# goes in .github/privacy-denylist.local.txt, gitignored, which CI gets from
+# the PRIVACY_DENYLIST_LOCAL repository secret.
+#
+# Format: one extended regex per line, matched case-insensitively. Blank
+# lines and lines starting with # are ignored. Paths in .privacyignore are
+# not scanned.
+
+# --- Personal identifiers ----------------------------------------------------
+# Emails at the big providers (tests use example.com, which is reserved).
+[A-Za-z0-9._%+-]+@(gmail|googlemail|outlook|hotmail|live|yahoo|icloud|me|proton|protonmail)\.[a-z]{2,}
+# Phone numbers in international form.
+\+[0-9]{2}\s?[0-9]{9,}
+
+# --- Real data from a source ------------------------------------------------
+# Audiobookshelf ids are UUIDs: one in the code or the tests was copied from
+# a real server. Fixtures use readable ids ("book-dune", "s1").
+[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
+# API keys and tokens in the shapes Audiobookshelf issues (JWT).
+eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}
+
+# --- Infrastructure details --------------------------------------------------
+# Private addresses (tests use the documentation range 203.0.113.0/24).
+\b(10|192\.168)\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\b
+\b172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}\b
+# Internal hostnames, in host position only (a bare "\.local\b" also
+# matches file names like privacy-denylist.local.txt).
+(https?://|@|[[:space:]])[a-z0-9-]+\.(local|lan|internal|home\.arpa)([:/[:space:]]|$)
+# Kubernetes in-cluster service names of a real deployment.
+\.svc\.cluster\.local
+# Secret-store paths.
+(vault|secret)/(data|kv|apps)/
+kubeconfig
