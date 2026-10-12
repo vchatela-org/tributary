@@ -39,8 +39,9 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
   them from every file. Safe only because nothing else writes that source.
 
 Points are `Point(measurement, time, tags, fields)`, time in UTC. The core
-adds `source`, `user` (unless the point sets its own, for a connector
-syncing several people), and for measurements with `local_time` the
+adds `source`, `user` (unless the point sets its own: a value for a
+connector syncing several people, `None` for none at all, e.g. a port of an
+old job that wrote no `user` tag), and for measurements with `local_time` the
 `time_precision` tag and `local_hour` / `local_weekday` fields. It refuses
 an undeclared tag or field, and merges points sharing a key within a run.
 

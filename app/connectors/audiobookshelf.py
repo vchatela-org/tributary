@@ -13,7 +13,8 @@ API (checked against Audiobookshelf 2.37), auth `Authorization: Bearer <API key>
 Privacy: /api/me also returns the user's old non-expiring token and email,
 and a session's deviceInfo carries an IP address. None of it is kept: each
 response is reduced to the few values a point needs as soon as it is read,
-and nothing of the payloads is stored -- the cursor holds two timestamps.
+and nothing of the payloads is stored -- the cursor holds two timestamps
+(and the library ids of the few books finished without a date).
 
 Mapping:
   reading_session  one per session, at its start. minutes = timeListening
@@ -25,7 +26,8 @@ Mapping:
                    title = the book's current library title, or the show
                    for a podcast episode.
   book_finished    one per finished book (mediaProgress.isFinished, never
-                   for an episode), at finishedAt, else lastUpdate.
+                   for an episode), at finishedAt, else lastUpdate -- then
+                   once only, as lastUpdate moves with any later progress.
 Times are epoch milliseconds, UTC.
 """
 import json
@@ -122,9 +124,13 @@ def _finished_books(me: Dict) -> List[Dict]:
             continue
         if progress.get("mediaItemType") not in (None, "book") or not progress.get("libraryItemId"):
             continue
+        finished_at = _ms(progress.get("finishedAt"))
         books.append({
             "libraryItemId": progress["libraryItemId"],
-            "time": _ms(progress.get("finishedAt")) or _ms(progress.get("lastUpdate")),
+            "time": finished_at or _ms(progress.get("lastUpdate")),
+            # Without finishedAt the time is the last update, which moves:
+            # such a book is written once only (see sync's cursor).
+            "undated": finished_at is None,
             "lastUpdate": _number(progress.get("lastUpdate")),
         })
     return books
@@ -218,7 +224,11 @@ class AudiobookshelfConnector(Connector):
         sessions = self._sessions_since(sessions_since)
         sessions_seen = max([s["updatedAt"] for s in sessions] + [sessions_since])
         listened = [s for s in sessions if s["seconds"] > 0 and _ms(s["startedAt"])]
-        finished = [p for p in progress if p["lastUpdate"] > progress_since and p["time"]]
+        # Books finished without a finishedAt, already written at their
+        # then last update: written again, they would count twice.
+        counted = set(cursor.get("undated_finished") or [])
+        finished = [p for p in progress if p["lastUpdate"] > progress_since and p["time"]
+                    and not (p["undated"] and p["libraryItemId"] in counted)]
 
         wanted = {s["libraryItemId"] for s in listened if s["libraryItemId"]} | {p["libraryItemId"] for p in finished}
         titles = self._titles(wanted) if wanted else {}
@@ -242,6 +252,8 @@ class AudiobookshelfConnector(Connector):
                            + (f" ({len(sessions) - len(listened)} empty, skipped)" if len(sessions) > len(listened) else ""))
         if finished:
             summary.append(f"{len(finished)} finished book(s)")
-        return SyncResult(points=points, summary=summary, cursor={
-            "sessions_updated_at": sessions_seen, "progress_updated_at": newest_progress,
-        })
+        cursor = {"sessions_updated_at": sessions_seen, "progress_updated_at": newest_progress}
+        undated = sorted(counted | {p["libraryItemId"] for p in finished if p["undated"]})
+        if undated:
+            cursor["undated_finished"] = undated
+        return SyncResult(points=points, summary=summary, cursor=cursor)

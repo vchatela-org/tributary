@@ -36,7 +36,11 @@ what the connectors declare (`app/schema.py`, each connector's
 - **Same key, same point.** A point is keyed by measurement + tags + time
   (to the second), and writing the same key overwrites it. Points that
   share a key within a run are merged first: numbers summed, texts joined
-  with ` / `.
+  with ` / `. A run only sends what changed, so the time of a point must
+  not move between runs (a session's start, not its last update), and two
+  records sharing a key across runs (same device, same second) would keep
+  only the last one's values: choose tags and times that make that
+  practically impossible.
 - **Append only.** Nothing is dropped by default: a session a source later
   forgets stays in InfluxDB. A connector may opt into rebuilding its own
   source (`DROP SERIES FROM <measurement> WHERE "source" = '<it>'`, then

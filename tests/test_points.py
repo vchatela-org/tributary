@@ -97,6 +97,13 @@ def test_a_connector_may_set_the_user_per_point():
     assert parse(line)[1]["user"] == "second"
 
 
+def test_a_connector_may_write_no_user_tag():
+    """A port reproducing an old job that wrote none, whatever TRIBUTARY_INFLUXDB_USER says."""
+    line, = encode([Point(BOOK_FINISHED, at(2025, 1, 1), {"kind": "audiobook", "user": None},
+                          {"count": 1})], source="x", user="first")["MediaStats"]
+    assert "user" not in parse(line)[1]
+
+
 def test_day_precision_has_no_local_hour():
     line, = encode([Point(BOOK_FINISHED, datetime(2025, 3, 5), {"kind": "audiobook"}, {"count": 1},
                           day_precision=True)], source="x")["MediaStats"]

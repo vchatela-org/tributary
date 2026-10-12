@@ -63,10 +63,21 @@ def test_a_finished_book_gone_from_the_library_still_counts(abs_api, abs_connect
     assert finished[2]["count"] == "1i" and "title" not in finished[2]
 
 
-def test_finished_without_finished_at_falls_back_to_the_last_update(abs_api, abs_connector):
-    abs_api.me["mediaProgress"][0]["finishedAt"] = None
-    finished, = by_measurement(lines_of(abs_connector.sync(None)), "book_finished")
+def test_finished_without_finished_at_falls_back_to_the_last_update_once(abs_api, abs_connector):
+    progress = abs_api.me["mediaProgress"][0]
+    progress["finishedAt"] = None
+    first = abs_connector.sync(None)
+    finished, = by_measurement(lines_of(first), "book_finished")
     assert finished[3] == epoch(2025, 3, 5, 22, 0, 30)
+    assert first.cursor["undated_finished"] == ["book-dune"]
+    # Reopened later: its last update moves, but it was counted already.
+    progress["lastUpdate"] = ms(2025, 6, 1)
+    second = abs_connector.sync(first.cursor)
+    assert second.points == [] and second.cursor["undated_finished"] == ["book-dune"]
+    # A book with its finishedAt is simply rewritten at the same time.
+    progress["finishedAt"], progress["lastUpdate"] = ms(2025, 3, 5, 22, 0), ms(2025, 6, 2)
+    finished, = by_measurement(lines_of(abs_connector.sync(second.cursor)), "book_finished")
+    assert finished[3] == epoch(2025, 3, 5, 22, 0)
 
 
 @pytest.mark.parametrize("info, label", [

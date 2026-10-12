@@ -41,8 +41,10 @@ when set, `user`.
   podcast episode (never the episode's). A book no longer in any library
   keeps the title its session recorded.
 - A book is finished when its progress says so (never an episode), at
-  `finishedAt`, else its last update. A finished book no longer in any
-  library still counts, without a title.
+  `finishedAt`, else its last update; a book without `finishedAt` is then
+  written once only (its last update moves whenever it is reopened, and
+  would count it again). A finished book no longer in any library still
+  counts, without a title.
 
 ## How it syncs
 
@@ -65,5 +67,5 @@ when set, `user`.
 token, and every session's device info carries an IP address. Tributary
 keeps none of it: each answer is reduced to the few values a point needs as
 soon as it is read, the payloads are never stored, and the cursor is two
-timestamps. The API key lives in the environment only, never in a log, the
+timestamps (plus the library ids of books finished without a date). The API key lives in the environment only, never in a log, the
 database or an API answer. Tests check all of this.
