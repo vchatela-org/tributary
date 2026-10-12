@@ -1,0 +1,12 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+# The owner's own privacy vocabulary (see .github/privacy-denylist.txt)
+.github/privacy-denylist.local.txt
