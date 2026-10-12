@@ -1,5 +1,5 @@
-"""Test doubles: a fake InfluxDB 1.x, a fake Audiobookshelf server and a fake
-Renpho cloud, real HTTP servers in a thread (the code under test speaks HTTP
+"""Test doubles: a fake InfluxDB 1.x, a fake Audiobookshelf server, a fake
+Renpho cloud and a fake Todoist API, real HTTP servers in a thread (the code under test speaks HTTP
 to them).
 
 The Audiobookshelf one also runs on its own, to try Tributary end to end
@@ -15,7 +15,7 @@ import itertools
 import json
 import re
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, unquote, urlparse
@@ -439,6 +439,185 @@ class FakeRenpho:
 
     def close(self):
         self._release.set()
+        self.server.shutdown()
+
+
+
+# ────────────────────────────────────────────────
+# Todoist
+# ────────────────────────────────────────────────
+
+# Synthetic token and profile (the "# ggignore" marks tell secret scanners so).
+TODOIST_TOKEN = "todoist-test-token"  # ggignore
+TODOIST_SECRETS = (TODOIST_TOKEN, "user-api-token-of-dana", "dana@example.com", "Dana Example")  # ggignore
+
+TODOIST_PROJECTS = [{"id": "p-inbox", "name": "Inbox"}, {"id": "p-home", "name": "Home"}]
+TODOIST_ARCHIVED = [{"id": "p-old", "name": "Old project"}]
+TODOIST_SECTIONS = [{"id": "s-errands", "name": "Errands", "project_id": "p-home"}]
+
+
+def todoist_task(task_id, completed_at, project_id="p-inbox", **extra):
+    """A completed task as /tasks/completed/by_completion_date returns it."""
+    task = {"id": task_id, "content": f"Task {task_id}", "description": "a private note", "project_id": project_id,
+            "section_id": None, "parent_id": None, "priority": 1, "labels": [], "due": None, "duration": None,
+            "added_at": None, "completed_at": completed_at, "postponed_count": 0, "user_id": "u-dana"}
+    task.update(extra)
+    return task
+
+
+TODOIST_TASKS = [
+    todoist_task("t-milk", "2026-10-01T18:30:15.123456Z", "p-home", content="Buy milk, eggs", section_id="s-errands",
+                 priority=4, labels=["shop", "errand"], added_at="2026-09-30T10:00:00.000000Z",
+                 due={"date": "2026-10-01", "is_recurring": False}, duration={"amount": 30, "unit": "minute"},
+                 postponed_count=1),
+    # Archived project, sub-task, 5 days late, a duration in days.
+    todoist_task("t-report", "2025-06-15T07:45:00Z", "p-old", content='Write "Q3" report', parent_id="t-parent",
+                 added_at="2025-03-01T09:00:00Z", due={"date": "2025-06-10T17:00:00", "is_recurring": False},
+                 duration={"amount": 2, "unit": "day"}),
+    # A recurring task completed for good: no late_days.
+    todoist_task("t-water", "2026-10-02T06:00:00Z", "p-home", priority=2,
+                 due={"date": "2026-10-02", "is_recurring": True}),
+    # A project deleted since, named by the activity log; one known nowhere.
+    todoist_task("t-gone", "2026-02-01T12:00:00Z", "p-gone", priority=3, added_at="2026-02-01T13:00:00Z"),
+    todoist_task("t-lost", "2026-02-02T12:00:00Z", "p-lost"),
+    # Not completions: no time, no id.
+    todoist_task("t-open", None),
+    todoist_task("", "2026-02-03T12:00:00Z"),
+]
+
+
+def todoist_event(task_id, event_date, project_id="p-inbox", content=None, project_name=None):
+    """An `item:completed` event of /activities, annotated."""
+    extra = {"content": content or f"Task {task_id}", "client": "TodoistForAndroid"}
+    if project_name:
+        extra["parent_project_name"] = project_name
+    return {"id": f"e-{task_id}-{event_date}", "object_type": "item", "object_id": task_id,
+            "event_type": "completed", "event_date": event_date, "parent_project_id": project_id,
+            "parent_item_id": None, "initiator_id": None, "extra_data": extra}
+
+
+TODOIST_EVENTS = [
+    todoist_event("t-milk", "2026-10-01T18:30:15.000000Z", "p-home", "Buy milk, eggs", "Home"),
+    # A recurring task: one event per completion.
+    todoist_event("t-plants", "2026-10-03T07:00:00Z", "p-home", "Water the plants", "Home"),
+    todoist_event("t-plants", "2026-10-10T07:00:00Z", "p-home", "Water the plants", "Home"),
+    todoist_event("t-gone", "2026-02-01T12:00:00Z", "p-gone", "Old chore", "Gone project"),
+    todoist_event("t-lost", "2026-02-02T12:00:00Z", "p-lost"),
+    # On a 90-day window boundary of a full run (joined_at + 90 days): the
+    # API returns it with both windows.
+    todoist_event("t-edge", "2025-04-10T08:00:00Z"),
+    {"object_id": "t-undated", "event_date": None, "extra_data": {}},
+]
+
+TODOIST_STATS = {
+    "karma": 1234.5, "completed_count": 42, "karma_trend": "up",
+    "karma_graph_data": [{"date": "2026-10-04", "karma_avg": 1200}, {"date": "2026-10-05", "karma_avg": 1210.5},
+                         {"date": "not a date", "karma_avg": 1}],
+    "days_items": [{"date": "2026-10-05", "total_completed": 3}],
+    "goals": {"daily_goal": 5, "weekly_goal": 25, "karma_disabled": 0,
+              "current_daily_streak": {"count": 3, "start": "2026-10-03", "end": "2026-10-05"},
+              "max_daily_streak": {"count": 12, "start": "2026-01-01", "end": "2026-01-12"},
+              "current_weekly_streak": {"count": 2}, "max_weekly_streak": {"count": 9}},
+}
+
+
+def _todoist_time(raw):
+    return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+
+
+class FakeTodoist:
+    """The Todoist API v1 as the connector calls it: a bearer token, lists
+    paged by `page_size` (next_cursor), completed tasks and activity events
+    filtered by their dates (bounds included, as the API: an item on a
+    window's boundary comes with both windows), windows over 3 months
+    refused. `fail[path] = [(code, headers), ...]` answers those first.
+    Records every call as (path, params)."""
+
+    def __init__(self, page_size=2):
+        self.token = TODOIST_TOKEN
+        self.page_size = page_size
+        self.tasks = copy.deepcopy(TODOIST_TASKS)
+        self.events = copy.deepcopy(TODOIST_EVENTS)
+        self.stats = copy.deepcopy(TODOIST_STATS)
+        self.calls: List[Tuple[str, Dict[str, str]]] = []
+        self.user_agents: set = set()
+        self.fail: Dict[str, List[Tuple[int, Dict[str, str]]]] = {}
+        outer = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802
+                url = urlparse(self.path)
+                path = url.path.removeprefix("/api/v1")
+                params = {k: v[0] for k, v in parse_qs(url.query).items()}
+                outer.calls.append((path, params))
+                outer.user_agents.add(self.headers.get("User-Agent"))
+                if self.headers.get("Authorization") != f"Bearer {outer.token}":
+                    return self._send(401, {"error": "Unauthorized"})
+                if outer.fail.get(path):
+                    code, headers = outer.fail[path].pop(0)
+                    return self._send(code, {"error": "failed"}, headers)
+                answer = outer.answer(path, params)
+                if answer is None:
+                    return self._send(400, {"error": f"bad request on {path}"})
+                self._send(200, answer)
+
+            def _send(self, code, payload, headers=None):
+                data = json.dumps(payload).encode()
+                self.send_response(code)
+                for name, value in (headers or {}).items():
+                    self.send_header(name, value)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def log_message(self, *args):
+                pass
+
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server.daemon_threads = True
+        threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True).start()
+        self.url = f"http://127.0.0.1:{self.server.server_port}/api/v1"
+
+    def _page(self, items, key, params):
+        start = int(params.get("cursor") or 0)
+        size = min(int(params.get("limit") or 50), self.page_size)
+        end = start + size
+        return {key: items[start:end], "next_cursor": str(end) if end < len(items) else None}
+
+    def _between(self, items, field, lower, upper):
+        lower, upper = _todoist_time(lower), _todoist_time(upper)
+        if upper - lower > timedelta(days=92):
+            return None
+        return [i for i in items if i.get(field) and lower <= _todoist_time(i[field]) <= upper]
+
+    def answer(self, path, params):
+        if path == "/user":
+            return {"id": "u-dana", "email": "dana@example.com", "full_name": "Dana Example",
+                    "token": "user-api-token-of-dana", "joined_at": "2025-01-10T08:00:00.000000Z",
+                    "tz_info": {"timezone": "Europe/Paris"}}
+        if path == "/projects":
+            return self._page(TODOIST_PROJECTS, "results", params)
+        if path == "/projects/archived":
+            return self._page(TODOIST_ARCHIVED, "results", params)
+        if path == "/sections":
+            return self._page(TODOIST_SECTIONS, "results", params)
+        if path == "/tasks/completed/by_completion_date":
+            items = self._between(self.tasks, "completed_at", params["since"], params["until"])
+            return None if items is None else self._page(items, "items", params)
+        if path == "/activities":
+            if params.get("object_event_types") != '["item:completed"]':
+                return None
+            items = self._between(self.events, "event_date", params["date_from"], params["date_to"])
+            return None if items is None else self._page(items, "results", params)
+        if path == "/tasks/completed/stats":
+            return self.stats
+        return None
+
+    def paths(self):
+        return [path for path, _params in self.calls]
+
+    def close(self):
         self.server.shutdown()
 
 

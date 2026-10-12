@@ -27,9 +27,11 @@ def all_connectors() -> List[Connector]:
 def _register_builtin() -> None:
     from app.connectors.audiobookshelf import AudiobookshelfConnector
     from app.connectors.renpho import RenphoConnector
+    from app.connectors.todoist import TodoistConnector
 
     register(AudiobookshelfConnector())
     register(RenphoConnector())
+    register(TodoistConnector())
 
 
 _register_builtin()

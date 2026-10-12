@@ -19,7 +19,9 @@ isn't on its short allow-list.
 Points are keyed by measurement + tags + second: InfluxDB overwrites a
 point with the same key, so points of one run that share a key are merged
 first, numbers summed and texts joined (two sessions started in the same
-second on the same device must add up, not replace each other).
+second on the same device must add up, not replace each other) -- or, for
+a measurement declared `last_wins`, the later point's fields winning, as
+consecutive writes would.
 
 Times are UTC (naive datetimes are read as UTC). Measurements declared with
 `local_time` also get local_hour / local_weekday (in TRIBUTARY_TZ: InfluxQL
@@ -54,6 +56,14 @@ class Measurement:
     # The `source` tag: on every tracker's reading; not on what rates a
     # person rather than a reading (body_thresholds).
     tagged_source: bool = True
+    # The `user` tag: unless a job ported as is wrote none (TodoistStats).
+    tagged_user: bool = True
+    # Points sharing a key within a run: the later one's fields win, instead
+    # of numbers summed and texts joined.
+    last_wins: bool = False
+    # Text fields are cut to this length; None keeps them whole (a port of
+    # a job that wrote them whole, from a source that bounds them).
+    text_max: Optional[int] = TEXT_MAX
 
     @property
     def field_types(self) -> Dict[str, type]:
@@ -61,7 +71,8 @@ class Measurement:
 
     @property
     def tag_keys(self) -> Tuple[str, ...]:
-        common = COMMON_TAGS if self.tagged_source else tuple(t for t in COMMON_TAGS if t != "source")
+        common = tuple(t for t in COMMON_TAGS if (t != "source" or self.tagged_source)
+                       and (t != "user" or self.tagged_user))
         return common + self.tags + (("time_precision",) if self.local_time else ())
 
 
@@ -93,19 +104,19 @@ def _escape_key(value: str) -> str:
     return text.replace("\\", "\\\\").replace(",", r"\,").replace("=", r"\=").replace(" ", r"\ ")
 
 
-def _format_field(name: str, value: Any, kind: type) -> str:
+def _format_field(name: str, value: Any, kind: type, text_max: Optional[int] = TEXT_MAX) -> str:
     if kind is int:
         return f"{_escape_key(name)}={int(value)}i"
     if kind is float:
         return f"{_escape_key(name)}={float(value)!r}"
     if kind is str:
-        text = str(value)[:TEXT_MAX].replace("\r", " ").replace("\n", " ").replace("\\", "\\\\").replace('"', '\\"')
+        text = str(value)[:text_max].replace("\r", " ").replace("\n", " ").replace("\\", "\\\\").replace('"', '\\"')
         return f'{_escape_key(name)}="{text}"'
     raise ValueError(f"unsupported field type {kind!r} for {name}")
 
 
 def format_line(measurement: str, tags: Mapping[str, Optional[str]], fields: Mapping[str, Any],
-                types: Mapping[str, type], epoch: int) -> str:
+                types: Mapping[str, type], epoch: int, text_max: Optional[int] = TEXT_MAX) -> str:
     """One point. Tags sorted (what InfluxDB recommends), empty ones left
     out (InfluxDB refuses an empty tag value); every field must be declared."""
     tag_part = "".join(f",{_escape_key(k)}={_escape_key(v)}" for k, v in sorted(tags.items()) if v not in (None, ""))
@@ -113,7 +124,7 @@ def format_line(measurement: str, tags: Mapping[str, Optional[str]], fields: Map
     for name, value in sorted(fields.items()):
         if name not in types:
             raise ValueError(f"field {name!r} of {measurement} is not declared")
-        parts.append(_format_field(name, value, types[name]))
+        parts.append(_format_field(name, value, types[name], text_max))
     if not parts:
         raise ValueError(f"a point of {measurement} has no field")
     return f"{_escape_key(measurement)}{tag_part} {','.join(parts)} {epoch}"
@@ -151,7 +162,8 @@ def encode(points: Iterable[Point], source: str, user: Optional[str] = None,
         if unknown:
             raise ValueError(f"tag(s) {sorted(unknown)} of {m.name} not declared")
         epoch = epoch_seconds(point.time)
-        tags = {"source": source if m.tagged_source else None, "user": user, **point.tags}
+        tags = {"source": source if m.tagged_source else None, "user": user if m.tagged_user else None,
+                **point.tags}
         if m.local_time:
             tags["time_precision"] = "day" if point.day_precision else "second"
         tags = {k: str(v) for k, v in tags.items() if v not in (None, "")}
@@ -167,7 +179,12 @@ def encode(points: Iterable[Point], source: str, user: Optional[str] = None,
             if not _usable(value):
                 continue
             if kind is str:
-                acc["texts"].setdefault(name, set()).add(str(value))
+                texts = acc["texts"].setdefault(name, set())
+                if m.last_wins:
+                    texts.clear()
+                texts.add(str(value))
+            elif m.last_wins:
+                acc["numbers"][name] = value
             else:
                 acc["numbers"][name] = acc["numbers"].get(name, 0) + value
 
@@ -181,6 +198,7 @@ def encode(points: Iterable[Point], source: str, user: Optional[str] = None,
         if not fields:
             continue  # nothing but empty values: no point to write
         fields.update(acc["local"])
-        out.setdefault(m.database, []).append(format_line(m.name, acc["tags"], fields, m.field_types, acc["epoch"]))
+        out.setdefault(m.database, []).append(format_line(m.name, acc["tags"], fields, m.field_types, acc["epoch"],
+                                                          m.text_max))
     return out
 
