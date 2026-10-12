@@ -50,8 +50,9 @@ Then the job's code, for what the data can't tell:
 - **What happens to two records with the same key**: written one after the
   other, the later one's fields win. Tributary's core *sums* the numbers of
   points sharing a key within a run (two reading sessions in the same
-  second must add up), so a connector whose records replace each other must
-  merge them itself, later one winning.
+  second must add up), so a port whose records replace each other declares
+  its measurements `last_wins=True` (Todoist), or merges them itself
+  (Renpho).
 - **How much history each run rewrites** (the whole history, a window of
   days...), and its schedule.
 - **Its configuration**: accounts, the `user` tag of each, optional
@@ -66,7 +67,8 @@ point is the job's, key and values:
 - **Tags**: the same keys and values, nothing more, nothing less. A point
   sets its own `user` (one account per person), or `None` when the job
   wrote none; a measurement without a `source` tag is declared
-  `tagged_source=False`.
+  `tagged_source=False`, one never carrying a `user` tag
+  `tagged_user=False`.
 - **Fields**: the same names, every one declared with the type the database
   holds; values formatted the same (Python floats print the same digits
   InfluxDB stores).

@@ -540,6 +540,7 @@ class FakeTodoist:
         self.events = copy.deepcopy(TODOIST_EVENTS)
         self.stats = copy.deepcopy(TODOIST_STATS)
         self.calls: List[Tuple[str, Dict[str, str]]] = []
+        self.user_agents: set = set()
         self.fail: Dict[str, List[Tuple[int, Dict[str, str]]]] = {}
         outer = self
 
@@ -549,6 +550,7 @@ class FakeTodoist:
                 path = url.path.removeprefix("/api/v1")
                 params = {k: v[0] for k, v in parse_qs(url.query).items()}
                 outer.calls.append((path, params))
+                outer.user_agents.add(self.headers.get("User-Agent"))
                 if self.headers.get("Authorization") != f"Bearer {outer.token}":
                     return self._send(401, {"error": "Unauthorized"})
                 if outer.fail.get(path):

@@ -68,7 +68,7 @@ export only hold active tasks, not completed ones or archived projects.
 - Nothing is ever dropped: a completion undone or deleted in Todoist stays
   in InfluxDB.
 - Rate limits (429) and server errors are retried three times, waiting up
-  to a minute.
+  to a minute. A redirect is refused: the token would follow it.
 
 ## Privacy
 

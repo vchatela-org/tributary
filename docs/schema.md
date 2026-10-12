@@ -40,7 +40,8 @@ what the connectors declare (`app/schema.py`, each connector's
 - **Same key, same point.** A point is keyed by measurement + tags + time
   (to the second), and writing the same key overwrites it. Points that
   share a key within a run are merged first: numbers summed, texts joined
-  with ` / `. A run only sends what changed, so the time of a point must
+  with ` / ` (on `TodoistStats`, the later point's fields win instead, as
+  the job it was ported from wrote them). A run only sends what changed, so the time of a point must
   not move between runs (a session's start, not its last update), and two
   records sharing a key across runs (same device, same second) would keep
   only the last one's values: choose tags and times that make that
@@ -131,7 +132,8 @@ completion rewritten overwrites itself), project names as tags.
 - `todoist_stats`: one point per day, at local midnight, the day's last
   sync: karma, lifetime completions, goals and streaks.
 - `content` (the task's name) and `labels` (comma-joined) only with
-  `TRIBUTARY_TODOIST_TASK_TEXT`.
+  `TRIBUTARY_TODOIST_TASK_TEXT`, whole (other texts are cut to 250
+  characters).
 
 ## Adding a measurement
 

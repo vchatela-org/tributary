@@ -97,11 +97,31 @@ def test_the_task_text_is_left_out_unless_asked(todoist_api, todoist_connector):
 
 
 def test_records_sharing_a_key_are_merged_the_later_one_winning():
-    out = todoist._Merged()
-    todoist.event_points([todoist_event("t-a", "2026-01-01T10:00:00Z", content="first"),
-                          todoist_event("t-a", "2026-01-01T10:00:00.900Z", content="second")], {}, True, out)
-    assert encode(out.list(), "todoist")["TodoistStats"] == [
+    events = [todoist_event("t-a", "2026-01-01T10:00:00Z", content="first"),
+              todoist_event("t-a", "2026-01-01T10:00:00.900Z", content="second")]
+    assert encode(todoist.event_points(events, {}, True), "todoist")["TodoistStats"] == [
         'todoist_completion,project=(unknown),task_id=t-a content="second",count=1i 1767261600']
+
+
+def test_task_text_is_written_whole(todoist_api, todoist_connector, with_text):
+    """As the job: the core's cut of long texts would rewrite its history shorter."""
+    todoist_api.tasks[0]["content"] = "x" * 600
+    milk = [line for line in lines_of(todoist_connector.sync(None)) if "task_id=t-milk" in line
+            and line.startswith("todoist_task_completed")]
+    assert parse(milk[0])[2]["content"] == f'"{"x" * 600}"'
+
+
+def test_a_malformed_event_is_skipped_not_fatal(todoist_api, todoist_connector, with_text):
+    todoist_api.events.append({**todoist_event("t-odd", "2026-10-04T08:00:00Z"), "extra_data": ["odd"]})
+    done = of(lines_of(todoist_connector.sync(None)), "todoist_completion")
+    assert [line for line in done if "task_id=t-odd" in line] == [
+        "todoist_completion,project=Inbox,task_id=t-odd count=1i 1791100800"]  # no text to write
+
+
+def test_the_summary_counts_points_not_records(todoist_api, todoist_connector):
+    result = todoist_connector.sync(None)
+    # 7 events, one undated, t-edge returned twice: 6 completions.
+    assert result.summary == ["5 completed task(s) and 6 completion(s) since 2025-01-10"]
 
 
 def test_no_source_and_no_user_tag_even_with_a_user_configured(todoist_api, todoist_connector, influx, db,
@@ -199,6 +219,38 @@ def test_an_unreachable_api(todoist_api, todoist_connector, monkeypatch):
     with pytest.raises(ConnectorError, match="Todoist unreachable"):
         todoist_connector.sync(None)
     assert todoist_api.slept == [2, 4, 8]
+
+
+def test_a_forbidden_endpoint_is_named(todoist_api, todoist_connector):
+    todoist_api.fail["/activities"] = [(403, {})]
+    with pytest.raises(ConnectorError, match="Todoist refused /activities \\(403\\)"):
+        todoist_connector.sync(None)
+
+
+def test_a_redirect_is_refused_never_followed_with_the_token(todoist_api, todoist_connector):
+    from tests.fakes import FakeTodoist
+
+    elsewhere = FakeTodoist()
+    try:
+        todoist_api.fail["/user"] = [(302, {"Location": elsewhere.url + "/user"})]
+        with pytest.raises(ConnectorError, match="Todoist answered 302 on /user"):
+            todoist_connector.sync(None)
+        assert elsewhere.calls == []
+    finally:
+        elsewhere.close()
+
+
+def test_requests_name_tributary(todoist_api, todoist_connector):
+    from app.__version__ import __version__
+
+    todoist_connector.sync(None)
+    assert todoist_api.user_agents == {f"Tributary/{__version__}"}
+
+
+def test_a_paging_loop_fails_the_run(todoist_api, todoist_connector, monkeypatch):
+    monkeypatch.setattr(todoist_api, "_page", lambda items, key, params: {key: items[:1], "next_cursor": "again"})
+    with pytest.raises(ConnectorError, match="paged /projects in a loop"):
+        todoist_connector.sync(None)
 
 
 def test_configured_only_with_a_token(todoist_connector, monkeypatch):

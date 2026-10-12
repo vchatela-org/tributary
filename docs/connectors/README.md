@@ -46,12 +46,14 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
 Points are `Point(measurement, time, tags, fields)`, time in UTC. The core
 adds `source` (unless the measurement is declared `tagged_source=False`),
 `user` (unless the point sets its own: a value for a connector syncing
-several people, `None` for none at all, e.g. a port of an old job that
-wrote no `user` tag), and for measurements with `local_time` the
-`time_precision` tag and `local_hour` / `local_weekday` fields. It refuses
-an undeclared tag or field, and merges points sharing a key within a run by
-summing their numbers: a source whose records may share a key and replace
-each other (the later one wins) merges them itself.
+several people, `None` for none at all; or the measurement is declared
+`tagged_user=False`, e.g. a port of an old job that wrote no `user` tag),
+and for measurements with `local_time` the `time_precision` tag and
+`local_hour` / `local_weekday` fields. It refuses an undeclared tag or
+field, cuts texts to 250 characters (`text_max`), and merges points sharing
+a key within a run by summing their numbers: a source whose records may
+share a key and replace each other declares `last_wins=True` (the later
+one's fields win).
 
 Porting a job that already writes into InfluxDB? Follow
 [porting a feed](../porting.md): same series, proved equal before the
