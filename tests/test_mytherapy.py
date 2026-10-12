@@ -101,11 +101,16 @@ def test_a_later_export_replaces_what_the_earlier_one_said(connector, influx, db
 
 
 def test_two_doses_of_one_medication_in_the_same_second_are_a_second_apart(connector, influx, db, tmp_path):
-    """The job bumped the second one: two points, the same key otherwise."""
-    write_mytherapy_export(tmp_path / "export.csv", [mytherapy_row(), mytherapy_row()])
+    """The job bumped the second one: two points, the same key otherwise. The
+    delay stays the row's own (the job computed it from the row's scheduled
+    time, not from the bumped one): the second dose was not answered a minute
+    early."""
+    late = mytherapy_row(actual="2026-03-01 12:04:00")
+    write_mytherapy_export(tmp_path / "export.csv", [late, late])
     runner.run(db, connector)
-    assert [ts for _tags, _fields, ts in influx.stored("medication")] == [
-        epoch(2026, 3, 1, 11, 0), epoch(2026, 3, 1, 11, 0) + 1]
+    points = influx.stored("medication")
+    assert [ts for _tags, _fields, ts in points] == [epoch(2026, 3, 1, 11, 0), epoch(2026, 3, 1, 11, 0) + 1]
+    assert [fields["delay_min"] for _tags, fields, _ts in points] == ["4i", "4i"]
 
 
 def test_a_dose_without_a_value_or_unit_and_an_untaken_dose(connector, influx, db, tmp_path):

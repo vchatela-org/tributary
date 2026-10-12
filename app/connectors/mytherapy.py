@@ -197,7 +197,7 @@ def dose_points(rows: List[Dict[str, str]], names: Dict[str, str], start: Option
             continue  # a weight reminder: a scale records weight
         if row["type"] != "drug":
             raise ConnectorError(f"unknown type {row['type']!r} {where}.")
-        ts = local_epoch(row["scheduled_date"], tz)
+        scheduled = ts = local_epoch(row["scheduled_date"], tz)
         if start_epoch is not None and ts < start_epoch:
             continue
         alias = row["name"].strip()
@@ -223,7 +223,9 @@ def dose_points(rows: List[Dict[str, str]], names: Dict[str, str], start: Option
         if row["unit"].strip():
             fields["unit"] = row["unit"].strip().replace("(s)", "s")
         if status == "taken":
-            fields["delay_min"] = (local_epoch(row["actual_date"], tz) - ts) // 60
+            # From the dose's own scheduled time, not the bumped one: the job
+            # computed the delay before deciding where to write the point.
+            fields["delay_min"] = (local_epoch(row["actual_date"], tz) - scheduled) // 60
         points.append(Point(MEDICATION, datetime.fromtimestamp(ts, tz), {"med": med, "status": status}, fields))
 
     if unmapped:
