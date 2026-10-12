@@ -6,7 +6,10 @@ uploaded file), turn it into line protocol (app/points.py), then write it
 The cursor only moves after a run that wrote everything: a failed run, or
 one InfluxDB refused points of (a field type conflict), is read again by
 the next run. Rewriting is harmless: a point with the same key overwrites
-itself with the same values.
+itself with the same values. A connector made of independent parts (several
+accounts) may report some as failed (SyncResult.errors): the others are
+written and the cursor saved -- the connector kept the failed parts' cursor
+as it was -- and the run shows as failed.
 """
 import json
 import logging
@@ -72,18 +75,21 @@ def _import(connector: Connector, path: Path, label: str) -> List[Point]:
 
 
 def collect(connector: Connector, state: Dict[str, Any], full: bool = False, file: Optional[str] = None,
-            filename: Optional[str] = None) -> Tuple[List[Point], List[str], Optional[Dict[str, Any]], bool]:
+            filename: Optional[str] = None
+            ) -> Tuple[List[Point], List[str], Optional[Dict[str, Any]], bool, List[str]]:
     """(points, summary, new cursor state -- None to keep it as is --,
-    whether to drop the connector's own series before writing)."""
+    whether to drop the connector's own series before writing, the parts of
+    the source that failed)."""
     if file:
         label = filename or Path(file).name
         points = _import(connector, Path(file), label)
-        return points, [f"Imported {label}"], None, False
+        return points, [f"Imported {label}"], None, False, []
 
     if not connector.is_configured():
         raise ConnectorError(f"Not configured: set {', '.join(connector.required_env) or 'its settings'}.")
     points: List[Point] = []
     summary: List[str] = []
+    errors: List[str] = []
     new_state = dict(state)
     rebuild = False
 
@@ -91,6 +97,7 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
         result = connector.sync(connector.full_cursor(state.get("sync")) if full else state.get("sync"))
         points.extend(result.points)
         summary.extend(result.summary)
+        errors.extend(result.errors)
         new_state["sync"] = result.cursor
 
     if connector.watch_dir is not None:
@@ -110,7 +117,7 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
             points.extend(_import(connector, connector.watch_dir / name, name))
         new_state["files"] = {name: list(sig) for name, sig in files.items()}
 
-    return points, summary, new_state, rebuild
+    return points, summary, new_state, rebuild, errors
 
 
 # ────────────────────────────────────────────────
@@ -176,10 +183,11 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
         if not dry_run and not influxdb.is_configured():
             raise ConnectorError("InfluxDB is not configured: set TRIBUTARY_INFLUXDB_URL (a dry run works without).")
         state = load_cursor(db, connector.key)
-        points, summary, new_state, rebuild = collect(connector, state, full, file, filename)
+        points, summary, new_state, rebuild, errors = collect(connector, state, full, file, filename)
         lines = encode(points, connector.source, settings.influxdb_user, settings.tz)
         total = sum(len(v) for v in lines.values())
         what = (", ".join(summary) + ": ") if summary else ""
+        failed = (" Failed: " + "; ".join(e.rstrip(". ") for e in errors) + ".") if errors else ""
 
         if dry_run:
             record.preview = _preview(lines)
@@ -191,7 +199,8 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
                                   + (", after dropping its own series" if rebuild else "") + ".")
             else:
                 record.message = "Dry run. Nothing new." if not summary else f"Dry run. {what}nothing to write."
-            record.status = "ok"
+            record.message += failed
+            record.status = "error" if errors else "ok"
         else:
             written, expired, refused = _write(connector, lines, rebuild)
             record.points = sum(written.values())
@@ -205,7 +214,8 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
                 record.message += f" {expired} older than their database's retention, skipped."
             for reason, dropped in refused.items():
                 record.message += f" {dropped} refused ({reason})."
-            record.status = "error" if refused else "ok"
+            record.message += failed
+            record.status = "error" if refused or errors else "ok"
             if not refused and new_state is not None:
                 save_cursor(db, connector.key, new_state)
     except (ConnectorError, InfluxError) as exc:

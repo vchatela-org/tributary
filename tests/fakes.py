@@ -1,5 +1,6 @@
-"""Test doubles: a fake InfluxDB 1.x and a fake Audiobookshelf server, both
-real HTTP servers in a thread (the code under test speaks HTTP to them).
+"""Test doubles: a fake InfluxDB 1.x, a fake Audiobookshelf server and a fake
+Renpho cloud, real HTTP servers in a thread (the code under test speaks HTTP
+to them).
 
 The Audiobookshelf one also runs on its own, to try Tributary end to end
 without a real server:
@@ -10,6 +11,7 @@ then TRIBUTARY_ABS_URL=http://<host>:13378 and TRIBUTARY_ABS_TOKEN=demo-key.
 """
 import argparse
 import copy
+import itertools
 import json
 import re
 import threading
@@ -312,6 +314,132 @@ class FakeAbs:
     def close(self):
         if self.server:
             self.server.shutdown()
+
+
+# ────────────────────────────────────────────────
+# Renpho
+# ────────────────────────────────────────────────
+
+# Synthetic credentials (the "# ggignore" marks tell secret scanners so).
+RENPHO_SECRETS = ("alice@example.com", "alice-password", "bob@example.com", "bob-password",  # ggignore
+                  "renpho-token-", "1990-01-01", "Alice Liddell")
+
+
+_record_ids = itertools.count(1)
+
+
+def weigh_in(ts, user_id=100001, scale="ES-CS20M", **values):
+    """A record as renpho-api returns it: Renpho's metric names, 0 for an
+    unmeasured metric, ids and device details the connector must not keep.
+    Row ids are unique: renpho-api drops a second record with the same."""
+    record = {"id": next(_record_ids), "timeStamp": ts, "scaleName": scale, "bUserId": user_id, "userId": user_id,
+              "mac": "AA:BB:CC:DD:EE:FF", "internalModel": "0106", "timeZone": "Europe/Paris",
+              "height": 170.5, "gender": 1, "localCreatedAt": "2025-09-16 07:20:00",
+              "weight": 0, "bmi": 0, "bodyfat": 0, "water": 0, "muscle": 0, "bone": 0, "bmr": 0, "visfat": 0,
+              "subfat": 0, "protein": 0, "bodyage": 0, "sinew": 0, "fatFreeWeight": 0, "heartRate": 0,
+              "cardiacIndex": 0, "bodyShape": 0}
+    if scale is None:
+        del record["scaleName"]
+    record.update(values)
+    return record
+
+
+ALICE_RECORDS = [
+    # Newest first, as the API: the newer scale reports no name.
+    weigh_in(1_758_000_000, scale=None, weight=78.4, bmi=24.1, bodyfat=18.2, visfat=6, bmr=1617),
+    # Milliseconds, as some tables have them.
+    weigh_in(1_757_000_000_123, weight=79.0, bmi=24.5, bodyfat=19.0, water=55.5, visfat=7, bmr=1600),
+    # Not a weigh-in: no time, or nothing measured.
+    weigh_in(None, weight=80.0),
+    weigh_in(1_756_000_000),
+]
+
+BOB_RECORDS = [weigh_in(1_758_100_000, user_id=100002, weight=65.2, bmi=21.0)]
+
+# Boundaries for alice only (synthetic numbers).
+THRESHOLDS = {"alice": {"weight_kg": [60.0, 80.0, 95.0], "bmi": [18.5, 25.0, 30.0],
+                        "body_fat_pct": [6.0, 13.0, 17.0, 25.0], "visceral_fat": [6, 11, 15],
+                        "bmr_kcal": [1617]}}
+
+
+class FakeRenpho:
+    """Renpho's cloud as renpho-api calls it: encrypted JSON bodies, a token
+    after login, the scales' tables paged. `accounts` maps an email to
+    (password, user id, records). `hang` makes every call wait (until
+    close); `echo_email` puts the email in the refusal message."""
+
+    def __init__(self, accounts=None):
+        from renpho.crypto import aes_decrypt, encrypt_request
+
+        self._decrypt, self._encrypt = aes_decrypt, encrypt_request
+        self.accounts = accounts if accounts is not None else copy.deepcopy({
+            "alice@example.com": ("alice-password", 100001, ALICE_RECORDS),
+            "bob@example.com": ("bob-password", 100002, BOB_RECORDS),
+        })
+        self.tokens: Dict[str, str] = {}
+        self.calls: List[str] = []
+        self.hang = False
+        self._release = threading.Event()
+        self.echo_email = False
+        outer = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):  # noqa: N802
+                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+                path = urlparse(self.path).path.lstrip("/")
+                outer.calls.append(path)
+                if outer.hang:
+                    outer._release.wait(30)
+                    return
+                payload = outer.answer(path, body, self.headers)
+                data = json.dumps(payload).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def log_message(self, *args):
+                pass
+
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server.daemon_threads = True
+        threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True).start()
+        self.url = f"http://127.0.0.1:{self.server.server_port}"
+
+    def _ok(self, data):
+        return {"code": 101, "msg": "success", "data": None if data is None else self._encrypt(data)["encryptData"]}
+
+    def answer(self, path, body, headers):
+        # device/count sends an empty body first (encrypted empty bytes).
+        request = json.loads(self._decrypt(body["encryptData"]) or "{}") if body.get("encryptData") else {}
+        if path == "renpho-aggregation/user/login":
+            login = request.get("login") or {}
+            account = self.accounts.get(login.get("email"))
+            if account is None or account[0] != login.get("password"):
+                message = f"Account {login.get('email')} or password error" if self.echo_email else "password error"
+                return {"code": 50001, "msg": message, "data": None}
+            token = f"renpho-token-{account[1]}"
+            self.tokens[token] = login["email"]
+            # The profile the login returns: never kept.
+            return self._ok({"login": {"token": token, "id": account[1], "email": login["email"],
+                                       "accountName": "Alice Liddell", "birthday": "1990-01-01", "height": 170}})
+        email = self.tokens.get(headers.get("token"))
+        if email is None:
+            return {"code": 40001, "msg": "token invalid", "data": None}
+        _password, user_id, records = self.accounts[email]
+        if path == "renpho-aggregation/device/count":
+            return self._ok({"scale": [{"tableName": f"measurements_info_{user_id % 24}", "count": len(records),
+                                        "userIds": [user_id]}]})
+        if path == "RenphoHealth/scale/queryBodyCompositionMeasureData":
+            size, page = request["pageSize"], request["pageNum"]
+            chunk = records[(page - 1) * size:page * size]
+            return self._ok(chunk or None)
+        return {"code": 404, "msg": f"unknown {path}", "data": None}
+
+    def close(self):
+        self._release.set()
+        self.server.shutdown()
 
 
 if __name__ == "__main__":

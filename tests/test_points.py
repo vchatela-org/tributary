@@ -118,6 +118,16 @@ def test_measurements_without_local_time_get_neither_tag_nor_fields():
     assert line == f"body_composition,source=scale,user=me weight=70.1 {epoch(2025, 1, 1, 7, 0)}"
 
 
+def test_a_measurement_may_carry_no_source_tag():
+    """What rates a person rather than a tracker's reading (body_thresholds)."""
+    bounds = Measurement("BodyStats", "body_thresholds", tags=(), fields={"bmi_t1": float}, tagged_source=False)
+    assert bounds.tag_keys == ("user",)
+    line, = encode([Point(bounds, at(2025, 1, 1), {"user": "me"}, {"bmi_t1": 18.5})], source="scale")["BodyStats"]
+    assert line == f"body_thresholds,user=me bmi_t1=18.5 {epoch(2025, 1, 1)}"
+    with pytest.raises(ValueError, match="tag"):
+        encode([Point(bounds, at(2025, 1, 1), {"source": "scale"}, {"bmi_t1": 18.5})], source="scale")
+
+
 def test_undeclared_tags_and_fields_are_refused():
     with pytest.raises(ValueError, match="tag"):
         encode([Point(READING_SESSION, at(2025, 1, 1), {"ip": "x"}, {"minutes": 1.0})], source="x")

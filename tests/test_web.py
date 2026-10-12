@@ -55,6 +55,7 @@ def test_integrations_page_lists_connectors_and_what_they_need(client):
     assert "Audiobookshelf" in page and "Not configured" in page
     assert "<code>TRIBUTARY_ABS_URL</code>" in page and "InfluxDB not configured" in page
     assert 'action="/connectors/audiobookshelf/run"' not in page
+    assert "Renpho" in page and "<code>TRIBUTARY_RENPHO_PASSWORD</code>" in page
 
 
 def test_a_configured_connector_has_its_buttons_and_runs(client, abs_api, abs_connector, db):

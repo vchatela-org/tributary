@@ -51,6 +51,9 @@ class Measurement:
     fields: Mapping[str, type]
     # local_hour / local_weekday fields and a time_precision tag.
     local_time: bool = False
+    # The `source` tag: on every tracker's reading; not on what rates a
+    # person rather than a reading (body_thresholds).
+    tagged_source: bool = True
 
     @property
     def field_types(self) -> Dict[str, type]:
@@ -58,7 +61,8 @@ class Measurement:
 
     @property
     def tag_keys(self) -> Tuple[str, ...]:
-        return COMMON_TAGS + self.tags + (("time_precision",) if self.local_time else ())
+        common = COMMON_TAGS if self.tagged_source else tuple(t for t in COMMON_TAGS if t != "source")
+        return common + self.tags + (("time_precision",) if self.local_time else ())
 
 
 @dataclass
@@ -147,7 +151,7 @@ def encode(points: Iterable[Point], source: str, user: Optional[str] = None,
         if unknown:
             raise ValueError(f"tag(s) {sorted(unknown)} of {m.name} not declared")
         epoch = epoch_seconds(point.time)
-        tags = {"source": source, "user": user, **point.tags}
+        tags = {"source": source if m.tagged_source else None, "user": user, **point.tags}
         if m.local_time:
             tags["time_precision"] = "day" if point.day_precision else "second"
         tags = {k: str(v) for k, v in tags.items() if v not in (None, "")}

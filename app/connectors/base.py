@@ -14,7 +14,10 @@ and implements one or both inputs:
   - API: `api_configured()` and `sync(cursor) -> SyncResult(points, new cursor)`.
     The cursor is the connector's own JSON-able state (e.g. the newest update
     it has seen), saved after a successful run only, None on the first run
-    (and on a full one, but for what `full_cursor` keeps);
+    (and on a full one, but for what `full_cursor` keeps). A source made of
+    independent parts (several accounts) may report the parts that failed
+    in `errors` instead of raising: the others are written and the run shows
+    as failed;
   - files: `file_types` (accepted suffixes) and `import_file(path) -> points`,
     for an upload in the UI and, when TRIBUTARY_<KEY>_WATCH_DIR is set, the
     files of a watched folder. With `rebuild_own_source`, a change in the
@@ -51,6 +54,11 @@ class SyncResult:
     cursor: Any = None
     # What the run read, for the run's message ("3 new sessions").
     summary: List[str] = field(default_factory=list)
+    # Parts of the source that failed (one account of several), for the
+    # run's message: the points of the others are still written and the
+    # cursor saved, so the connector keeps the failed parts' cursor as it
+    # was (the next run reads them again). Never put a secret in it.
+    errors: List[str] = field(default_factory=list)
 
 
 class Connector:
