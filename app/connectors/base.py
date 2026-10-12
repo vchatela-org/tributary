@@ -20,11 +20,14 @@ and implements one or both inputs:
     as failed;
   - files: `file_types` (accepted suffixes) and `import_file(path) -> points`,
     for an upload in the UI and, when TRIBUTARY_<KEY>_WATCH_DIR is set, the
-    files of a watched folder (all of them at once through `import_files`).
-    With `rebuild_own_source`, a change in the folder drops the connector's
-    own series and rewrites them from every file in it (the folder is then
-    the source of truth); such a connector sets `accepts_uploads = False`:
-    one file alone can't be merged with the others.
+    files of a watched folder (all of them at once through `import_files`;
+    a hidden file is not one: a NAS writes its own sidecars next to the
+    exports). With `rebuild_own_source`, a change in the folder drops the
+    connector's own series and rewrites them from every file in it (the
+    folder is then the source of truth); such a connector sets
+    `accepts_uploads = False` (one file alone can't be merged with the
+    others) and is asked for the folder even when it holds no file at all,
+    so that it can refuse rather than let the series be emptied.
 """
 from dataclasses import dataclass, field
 from pathlib import Path

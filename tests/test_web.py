@@ -171,6 +171,21 @@ def test_watched_folder_imports_new_and_changed_files_only(influx, db, tmp_path)
         connectors.unregister("csvsteps")
 
 
+def test_a_hidden_file_in_the_watched_folder_is_not_read(influx, db, tmp_path):
+    """A NAS share writes its own files next to the exports (`._export.csv`
+    AppleDouble sidecars, `.DS_Store`): not exports, and never an error."""
+    connector = connectors.register(CsvSteps(watch_dir=str(tmp_path)))
+    try:
+        (tmp_path / "a.csv").write_text("2025-01-01,100\n")
+        (tmp_path / "._a.csv").write_bytes(b"\x00\x01\x02binary sidecar")
+        (tmp_path / ".DS_Store").write_bytes(b"\x00\x01\x02")
+        run = runner.run(db, connector)
+        assert run.status == "ok" and run.points == 1
+        assert run.message == "1 new or changed file(s) in the watched folder: 1 point(s) written (ActivityStats 1)."
+    finally:
+        connectors.unregister("csvsteps")
+
+
 def test_a_bad_file_in_the_watched_folder_names_the_file(influx, db, tmp_path):
     """The folder is read as one input (Connector.import_files): a file it
     can't read is named, and the connector's series is left alone."""

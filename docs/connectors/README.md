@@ -40,13 +40,17 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
   `TRIBUTARY_<KEY>_WATCH_DIR` is set, the files of a watched folder (new or
   changed ones at each run; all of them at once through
   `import_files(paths)`, which a connector whose exports supersede one
-  another overrides to merge them).
+  another overrides to merge them). A hidden file is never read: a share
+  writes its own sidecars next to the exports (`._export.csv`, `.DS_Store`).
 - `rebuild_own_source = True` for a folder that is the source of truth: any
   change in it drops the connector's own series
-  (`DROP SERIES FROM <measurement> WHERE "source" = '<key>'`) and rewrites
-  them from every file. Safe only because nothing else writes that source.
-  Such a connector also sets `accepts_uploads = False`: one file alone can't
-  be merged with the others, and rebuilding from it would drop the rest.
+  (`DROP SERIES FROM <measurement> WHERE "source" = '<key>'`, every `user`
+  tag of it) and rewrites them from every file. Safe only because nothing
+  else writes that source. Such a connector also sets
+  `accepts_uploads = False` (one file alone can't be merged with the others,
+  and rebuilding from it would drop the rest) and is asked for the folder
+  even when it holds no file, so that it can refuse rather than let the
+  series be emptied.
 
 Points are `Point(measurement, time, tags, fields)`, time in UTC. The core
 adds `source` (unless the measurement is declared `tagged_source=False`),

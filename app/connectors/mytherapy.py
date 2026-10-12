@@ -159,45 +159,49 @@ def read_export(path: Path) -> List[Dict[str, str]]:
     reader = csv.DictReader(io.StringIO(text, newline=""))
     if reader.fieldnames != list(COLUMNS):
         raise ConnectorError(f"not a MyTherapy export: columns {reader.fieldnames}.")
-    rows = []
-    for number, row in enumerate(reader, start=2):
-        if None in row:  # more columns than the header: a broken row
-            raise ConnectorError(f"row {number} has more columns than the header.")
-        rows.append({name: (value or "") for name, value in row.items()})
-    return rows
+    # A row with more columns than the header (a stray comma) is read for the
+    # ones it has, as the job read it.
+    return [{name: (value or "") for name, value in row.items() if name is not None} for row in reader]
 
 
-def merge(exports: List[Tuple[Path, List[Dict[str, str]]]], tz: ZoneInfo) -> List[Dict[str, str]]:
-    """The exports applied oldest first (by their last scheduled dose), each
-    replacing the rows inside its own date range."""
-    ordered = []
+# One dose: its scheduled time, the export it came from, and its row.
+Dose = Tuple[int, str, Dict[str, str]]
+
+
+def merge(exports: List[Tuple[Path, List[Dict[str, str]]]], tz: ZoneInfo) -> List[Dose]:
+    """The exports applied oldest first -- by their last scheduled dose, then
+    by their file, as the job ordered them --, each replacing the doses inside
+    its own date range. A dose keeps the file it came from, so that a failure
+    can name it."""
+    dated = []
     for path, rows in exports:
         if not rows:
             continue
-        times = [local_epoch(row["scheduled_date"], tz) for row in rows]
-        ordered.append((max(times), path.stat().st_mtime, str(path), min(times), rows))
-    ordered.sort(key=lambda export: export[:4])
-    merged: List[Dict[str, str]] = []
-    for last, _mtime, _path, first, rows in ordered:
-        merged = [row for row in merged if not first <= local_epoch(row["scheduled_date"], tz) <= last]
-        merged += rows
+        doses = [(local_epoch(row["scheduled_date"], tz), path.name, row) for row in rows]
+        dated.append((max(dose[0] for dose in doses), path.stat().st_mtime, str(path), doses))
+    dated.sort(key=lambda export: export[:3])
+    merged: List[Dose] = []
+    for _last, _mtime, _path, doses in dated:
+        first = min(dose[0] for dose in doses)
+        last = max(dose[0] for dose in doses)
+        merged = [dose for dose in merged if not first <= dose[0] <= last]
+        merged += doses
     return merged
 
 
-def dose_points(rows: List[Dict[str, str]], names: Dict[str, str], start: Optional[date], tz: ZoneInfo
-                ) -> List[Point]:
+def dose_points(doses: List[Dose], names: Dict[str, str], start: Optional[date], tz: ZoneInfo) -> List[Point]:
     """The doses of the merged exports, as the job turned them into points."""
     points: List[Point] = []
     seen = set()
     unmapped: collections.Counter = collections.Counter()
     start_epoch = int(datetime.combine(start, time(), tzinfo=tz).timestamp()) if start else None
-    for row in rows:
-        where = f"for the dose of {row['scheduled_date']!r}"
+    for scheduled, filename, row in doses:
+        where = f"in {filename}, for the dose of {row['scheduled_date']!r}"
         if row["type"] == "measurement":
             continue  # a weight reminder: a scale records weight
         if row["type"] != "drug":
             raise ConnectorError(f"unknown type {row['type']!r} {where}.")
-        scheduled = ts = local_epoch(row["scheduled_date"], tz)
+        ts = scheduled
         if start_epoch is not None and ts < start_epoch:
             continue
         alias = row["name"].strip()

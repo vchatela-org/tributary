@@ -61,12 +61,16 @@ follows the newest export.
   you answer late, or delete in the app, has to follow the newest export.
   *Full resync* reads it again, which changes nothing here.
 - A change in the folder (a file added, replaced or removed) drops
-  `source=mytherapy` from `medication` (`DROP SERIES`) and rewrites the series
-  from every export. Safe: nothing else writes that source. Nothing a dose is
-  missing afterwards is kept: the folder has the final say.
+  `source=mytherapy` from `medication` (`DROP SERIES`, every `user` tag of
+  it: one writer per source) and rewrites the series from every export. Safe:
+  nothing else writes that source. Nothing a dose is missing afterwards is
+  kept: the folder has the final say.
 - A folder with **no export** (or exports holding no dose) fails the run
-  rather than leave the series empty: an unmounted share must not wipe the
-  history. Nothing is dropped in that case.
+  rather than leave the series empty, on a first run too: a `WATCH_DIR`
+  pointing at the wrong folder, or a share that didn't mount, must not look
+  like a source with nothing new, and must never wipe the history. Nothing is
+  dropped in that case. The NAS's own sidecars (`._MyTherapy Archive.csv`,
+  `@eaDir`, `#recycle`) are not exports: hidden files are ignored.
 - There is no upload form: one file alone can't be merged with the exports
   around it, and the series is rebuilt from the folder. Save the export to the
   folder instead.
@@ -93,7 +97,9 @@ and did not duplicate it (`docs/porting.md`). Left out, and why:
 
 - the note column (above);
 - `type=measurement` rows (weight reminders: a scale already records weight);
-- the job's option to import doses it deliberately skipped: its start date is
-  `TRIBUTARY_MYTHERAPY_START_DATE` (the job held it as a constant, the day its
-  overlap with another import ended) -- unset, every dose the exports hold is
-  imported.
+- the job's cut-off date: **set `TRIBUTARY_MYTHERAPY_START_DATE`** to the day
+  the overlap with the other import ended, exactly as the job had it (it held
+  the date as a constant). Unset, every dose the exports hold is imported --
+  including the range that import already wrote, in the same measurement under
+  its own `source`: a dashboard summing doses across sources would count them
+  twice.

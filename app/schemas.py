@@ -38,6 +38,10 @@ class ConnectorOut(BaseModel):
     description: str
     configured: bool
     schedule: Optional[str] = None
+    # Whether it takes an upload of one file (the UI's form, POST
+    # /api/connectors/{key}/upload). A connector that reads a folder without
+    # taking uploads still lists file_types: those are the files it accepts
+    # there.
     accepts_files: bool
     file_types: List[str]
     required_env: List[str]

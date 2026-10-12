@@ -160,11 +160,30 @@ def test_an_export_holding_no_dose_is_refused_too(connector, influx, db, tmp_pat
     assert not [query for _db, query in influx.queries if query.startswith("DROP")]
 
 
+def test_an_empty_folder_fails_the_first_run_too(connector, influx, db, tmp_path):
+    """A folder with nothing in it is a folder that isn't there, not a source
+    with no dose: the run says so instead of reporting "Nothing new." over it
+    for ever."""
+    run = runner.run(db, connector)
+    assert run.status == "error" and "holds no MyTherapy export" in run.message
+    # The NAS's own sidecar is not an export either.
+    (tmp_path / "._MyTherapy Archive.csv").write_bytes(b"\x00\x01\x02")
+    assert runner.run(db, connector).status == "error"
+
+
 def test_a_file_that_is_not_an_export_names_the_file(connector, influx, db, tmp_path):
     (tmp_path / "shopping.csv").write_text("item,price\nmilk,1.20\n", encoding="utf-8")
     run = runner.run(db, connector)
     assert run.status == "error"
     assert run.message == "shopping.csv: not a MyTherapy export: columns ['item', 'price']."
+
+
+def test_a_row_with_more_columns_than_the_header_is_still_read(connector, influx, db, tmp_path):
+    """A stray comma is not worth failing every export in the folder over: the
+    job read the row for the columns it had."""
+    write_mytherapy_export(tmp_path / "export.csv", [mytherapy_row() + ","])
+    run = runner.run(db, connector)
+    assert run.status == "ok" and run.points == 1
 
 
 @pytest.mark.parametrize("row, message", [
@@ -174,11 +193,13 @@ def test_a_file_that_is_not_an_export_names_the_file(connector, influx, db, tmp_
 ])
 def test_what_the_job_refused_to_guess_fails_the_run(connector, influx, db, tmp_path, row, message):
     """An unknown type, an unknown status and an alias with no name to map it
-    to: the job failed the run, and so does the connector. Nothing is dropped
-    or written."""
+    to: the job failed the run, and so does the connector, naming the export
+    it read. Nothing is dropped or written."""
     write_mytherapy_export(tmp_path / "export.csv", [row])
     run = runner.run(db, connector)
     assert run.status == "error" and message in run.message
+    if "aliases missing" not in message:  # the alias list names the aliases, not the file
+        assert "in export.csv, for the dose of" in run.message
     assert influx.stored("medication") == []
     assert not [query for _db, query in influx.queries if query.startswith("DROP")]
 

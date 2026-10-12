@@ -53,13 +53,16 @@ def save_cursor(db: Session, key: str, value: Dict[str, Any]) -> None:
 # ────────────────────────────────────────────────
 
 def _folder_files(connector: Connector) -> Dict[str, Tuple[int, int]]:
-    """The watched folder's files a connector accepts: name -> (size, mtime)."""
+    """The watched folder's files a connector accepts: name -> (size, mtime).
+    A hidden file is not one: a NAS share writes its own next to the exports
+    (`._export.csv` AppleDouble files, `.DS_Store`), which are not exports and
+    must not fail every run."""
     folder = connector.watch_dir
     if not folder.is_dir():
         raise ConnectorError(f"Watched folder not found: {folder}.")
     files = {}
     for path in sorted(folder.iterdir()):
-        if path.is_file() and path.name.lower().endswith(connector.file_types):
+        if path.is_file() and not path.name.startswith(".") and path.name.lower().endswith(connector.file_types):
             stat = path.stat()
             files[path.name] = (stat.st_size, stat.st_mtime_ns)
     return files
@@ -125,10 +128,11 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
                 summary.append(f"{len(files)} file(s) re-read from the watched folder, own series rebuilt")
         elif changed:
             summary.append(f"{len(changed)} new or changed file(s) in the watched folder")
-        if changed or rebuild:
-            # A rebuild connector is called even with no file left: one whose
-            # folder is its source of truth refuses to drop its series rather
-            # than let it be emptied.
+        if changed or rebuild or (connector.rebuild_own_source and not files):
+            # A rebuild connector is asked for its folder even when it holds no
+            # file at all (nothing changed, and nothing to write back): one
+            # whose folder is its source of truth refuses there rather than let
+            # the run report "Nothing new." over a folder it can't read.
             points.extend(_import_folder(connector, [connector.watch_dir / name for name in changed]))
         new_state["files"] = {name: list(sig) for name, sig in files.items()}
 
