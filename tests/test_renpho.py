@@ -25,7 +25,7 @@ NEWEST = ("body_composition,source=renpho,user=alice,user_id=100001 "
 
 
 def lines_of(result, user=None):
-    return encode(result.points, "renpho", user)["BodyStats"]
+    return encode(result.points, "renpho", user).get("BodyStats", [])
 
 
 def by_measurement(lines, measurement):
@@ -153,6 +153,20 @@ def test_bad_thresholds_are_explained(raw, message):
         parse_thresholds(raw)
 
 
+def test_huge_boundaries_are_explained():
+    with pytest.raises(ConnectorError, match="list of numbers"):
+        parse_thresholds('{"a": {"bmr_kcal": [1' + "0" * 400 + ']}}')
+
+
+def test_boundaries_for_no_account_fail_the_run(renpho_cloud, renpho_connector, influx, db, monkeypatch):
+    """A typo in a user name would otherwise leave the levels frozen, silently."""
+    set_thresholds(monkeypatch, renpho_connector, {"Alice": THRESHOLDS["alice"]})
+    run = runner.run(db, renpho_connector)
+    assert run.status == "error" and run.message == (
+        "TRIBUTARY_RENPHO_THRESHOLDS names no account: 'Alice' (the accounts' users: 'alice').")
+    assert influx.writes == []
+
+
 def test_bad_thresholds_fail_the_run_and_write_nothing(renpho_cloud, renpho_connector, influx, db, monkeypatch):
     monkeypatch.setattr(renpho_connector.settings, "thresholds", '{"alice": {"bmi": [1]}}')
     run = runner.run(db, renpho_connector)
@@ -191,6 +205,24 @@ def test_new_boundaries_rewrite_the_levels_they_change(renpho_cloud, renpho_conn
     assert runner.run(db, renpho_connector).message.startswith("alice: 1 new or changed weigh-in(s)")
 
 
+def test_boundaries_are_rewritten_at_least_weekly_as_the_job_did(renpho_cloud, renpho_connector):
+    """A dashboard reading the latest within its time range, or a retention
+    policy, must always find them."""
+    def thresholds(result):
+        return by_measurement(lines_of(result), "body_thresholds")
+
+    first = renpho_connector.sync(None)
+    assert thresholds(first) and not thresholds(renpho_connector.sync(first.cursor))
+    six_days_later = json.loads(json.dumps(first.cursor))
+    six_days_later["thresholds"]["alice"]["written"] -= 6 * 86_400
+    assert not thresholds(renpho_connector.sync(six_days_later))
+    a_week_later = json.loads(json.dumps(first.cursor))
+    a_week_later["thresholds"]["alice"]["written"] -= 7 * 86_400
+    result = renpho_connector.sync(a_week_later)
+    assert len(thresholds(result)) == 1 and result.summary == ["alice: level boundaries"]
+    assert result.cursor["thresholds"]["alice"]["written"] > a_week_later["thresholds"]["alice"]["written"]
+
+
 def test_a_full_resync_overwrites_instead_of_duplicating(renpho_cloud, renpho_connector, influx, db):
     runner.run(db, renpho_connector)
     before = influx.stored("body_composition") + influx.stored("body_levels")
@@ -206,7 +238,8 @@ def test_the_cursor_holds_digests_only(renpho_cloud, renpho_connector, influx, d
     runner.run(db, renpho_connector)
     cursor = json.loads(db.get(Cursor, "renpho").value_json)["sync"]
     assert set(cursor) == {"weigh_ins", "thresholds"}
-    assert len(cursor["weigh_ins"]["alice"]) == 2 and len(cursor["thresholds"]["alice"]) == 16
+    assert len(cursor["weigh_ins"]["alice"]) == 2 and all(len(d) == 16 for d in cursor["weigh_ins"]["alice"])
+    assert set(cursor["thresholds"]["alice"]) == {"digest", "written"}
     text = json.dumps(cursor)
     for value in ("78.4", "1758000000", "100001", "ES-CS20M", "alice@example.com"):
         assert value not in text
@@ -241,6 +274,7 @@ def test_the_first_account_defaults_to_the_influxdb_user(renpho_cloud, renpho_co
     assert by_measurement(lines_of(renpho_connector.sync(None)), "body_thresholds")
     # No name at all: no user tag, and no boundaries to look up.
     monkeypatch.setattr("app.config.settings.influxdb_user", None)
+    monkeypatch.setattr(renpho_connector.settings, "thresholds", None)
     lines = lines_of(renpho_connector.sync(None))
     assert all("user" not in parse(line)[1] for line in lines)
     assert not by_measurement(lines, "body_levels")
@@ -299,12 +333,21 @@ def test_several_accounts_need_the_first_named(bob, renpho_connector, monkeypatc
 def test_numbered_accounts_come_from_the_environment_then_the_env_file(tmp_path, monkeypatch):
     env_file = tmp_path / ".env"
     env_file.write_text("TRIBUTARY_RENPHO_EMAIL_2=file@example.com\ntributary_renpho_user_2=from-file\n"
-                        "TRIBUTARY_RENPHO_PASSWORD_2=\nOTHER_2=x\n")
+                        "TRIBUTARY_RENPHO_PASSWORD_2=\nTRIBUTARY_RENPHO_EMAIL_3=file@example.com\nOTHER_2=x\n")
     monkeypatch.setenv("TRIBUTARY_RENPHO_EMAIL_2", "env@example.com")
     monkeypatch.setenv("TRIBUTARY_RENPHO_PASSWORD_2", "from-env")  # ggignore
+    monkeypatch.setenv("TRIBUTARY_RENPHO_EMAIL_3", "")  # set empty: unsets the file's
     assert numbered_env(str(env_file)) == {"TRIBUTARY_RENPHO_EMAIL_2": "env@example.com",
                                            "TRIBUTARY_RENPHO_PASSWORD_2": "from-env",  # ggignore
                                            "TRIBUTARY_RENPHO_USER_2": "from-file"}
+
+
+def test_emails_lose_stray_whitespace(bob, renpho_connector, monkeypatch):
+    """A newline at the end of a secret would otherwise fail every login."""
+    monkeypatch.setattr(renpho_connector.settings, "email", " alice@example.com\n")
+    renpho_connector.settings.numbered["TRIBUTARY_RENPHO_EMAIL_2"] = "bob@example.com\r\n"
+    result = renpho_connector.sync(None)
+    assert not result.errors and {parse(line)[1].get("user") for line in lines_of(result)} == {"alice", "bob"}
 
 
 def test_settings_come_from_the_environment(monkeypatch):
@@ -348,6 +391,27 @@ def test_a_refusal_never_quotes_the_credentials(renpho_cloud, renpho_connector):
     assert str(error.value) == "Renpho refused the login of alice (code 50001: Account *** or password error)."
 
 
+def test_the_client_has_a_timeout_and_its_session_is_closed(renpho_cloud, renpho_connector, monkeypatch):
+    """renpho-api sets no timeout of its own: without one, a hung call would
+    hold the scheduler (every connector) forever."""
+    import requests
+
+    from app.connectors.renpho import TIMEOUT_SECONDS, _Session
+
+    closed, timeouts = [], []
+    request = requests.Session.request
+
+    def recording(self, method, url, *args, **kwargs):
+        timeouts.append(kwargs.get("timeout"))
+        return request(self, method, url, *args, **kwargs)
+
+    monkeypatch.setattr(requests.Session, "request", recording)
+    monkeypatch.setattr(_Session, "close", lambda self: closed.append(self))
+    renpho_connector.sync(None)
+    assert timeouts and set(timeouts) == {TIMEOUT_SECONDS}
+    assert len(closed) == 1
+
+
 def test_a_hung_call_times_out(renpho_cloud, renpho_connector, monkeypatch):
     monkeypatch.setattr("app.connectors.renpho.TIMEOUT_SECONDS", 0.3)
     renpho_cloud.hang = True
@@ -363,6 +427,6 @@ def test_unreachable_and_unexpected_answers_are_errors_not_crashes(renpho_cloud,
     with pytest.raises(ConnectorError, match="Renpho refused the login of alice"):
         renpho_connector.sync(None)
     monkeypatch.setattr(renpho_connector, "_client", lambda account: type(
-        "Broken", (), {"get_all_measurements": lambda self: {"not": "a list"}})())
+        "Broken", (), {"get_all_measurements": lambda self: {"not": "a list"}, "_session": None})())
     with pytest.raises(ConnectorError, match=r"Unexpected answer from Renpho \(alice\)"):
         renpho_connector.sync(None)

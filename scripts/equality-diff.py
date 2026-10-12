@@ -30,15 +30,31 @@ import re
 import sys
 from collections import Counter, defaultdict
 
-INFLUX_TYPES = {"float": float, "integer": int, "string": str, "boolean": bool}
+# Field types as SHOW FIELD KEYS names them.
+INTEGERS = ("integer", "unsigned")
 
 
 def _unescape(text):
     return re.sub(r"\\(.)", r"\1", text)
 
 
+def _split_line(line):
+    """(head, fields, time). The head (measurement and tags) has no quoting:
+    it ends at the first unescaped space. The time is the last token."""
+    escaped = False
+    for index, char in enumerate(line):
+        if escaped:
+            escaped = False
+        elif char == "\\":
+            escaped = True
+        elif char == " ":
+            fields, _sep, time = line[index + 1:].rpartition(" ")
+            return line[:index], fields, time
+    return line, "", ""
+
+
 def _split(text, sep):
-    """Split on `sep` outside quotes and escapes."""
+    """Split field values on `sep`, outside quoted strings and escapes."""
     parts, current, quoted, escaped = [], [], False, False
     for char in text:
         if escaped:
@@ -60,14 +76,16 @@ def _split(text, sep):
 
 
 def _value(raw):
-    """A line-protocol field value -> (python value, type)."""
+    """A line-protocol field value -> (python value, its SHOW FIELD KEYS type)."""
     if raw.startswith('"'):
-        return _unescape(raw[1:-1]), str
+        return _unescape(raw[1:-1]), "string"
     if raw.endswith("i"):
-        return int(raw[:-1]), int
+        return int(raw[:-1]), "integer"
+    if raw.endswith("u"):
+        return int(raw[:-1]), "unsigned"
     if raw in ("t", "T", "true", "True", "TRUE", "f", "F", "false", "False", "FALSE"):
-        return raw[0] in "tT", bool
-    return float(raw), float
+        return raw[0] in "tT", "boolean"
+    return float(raw), "float"
 
 
 def parse_lines(path):
@@ -78,16 +96,18 @@ def parse_lines(path):
             line = line.rstrip("\n")
             if not line.strip() or line.startswith("#"):
                 continue
-            parts = _split(line, " ")
-            if len(parts) != 3:
+            head, fields, time = _split_line(line)
+            if not fields or not time.isdigit():
                 raise SystemExit(f"{path}:{number}: not a line of line protocol with a time")
-            head, fields, time = parts
             measurement, *tags = re.split(r"(?<!\\),", head)
             tag_set = frozenset(tuple(_unescape(x) for x in re.split(r"(?<!\\)=", t, maxsplit=1)) for t in tags)
             values = {}
             for item in _split(fields, ","):
                 name, raw = re.split(r"(?<!\\)=", item, maxsplit=1)
-                values[_unescape(name)] = _value(raw)
+                try:
+                    values[_unescape(name)] = _value(raw)
+                except ValueError:
+                    raise SystemExit(f"{path}:{number}: unreadable value of field {_unescape(name)!r}") from None
             points[(_unescape(measurement), tag_set, int(time))] = values
     return points
 
@@ -120,22 +140,26 @@ def parse_influx(path):
 
 
 def parse_types(path):
-    """{(measurement, field): type} from SHOW FIELD KEYS."""
+    """{(measurement, field): type name} from SHOW FIELD KEYS."""
     types = {}
     with open(path, encoding="utf-8") as handle:
         document = json.load(handle)
     for result in document.get("results") or []:
         for series in result.get("series") or []:
             for name, kind in series.get("values") or []:
-                types[(series["name"], name)] = INFLUX_TYPES.get(kind)
+                types[(series["name"], name)] = kind
     return types
 
 
 def _same(stored, written):
     value, kind = written
-    if kind is float:
+    if kind == "float":
         return isinstance(stored, (int, float)) and not isinstance(stored, bool) and float(stored) == value
-    return stored == value and type(stored) is kind
+    if kind in INTEGERS:
+        return isinstance(stored, int) and not isinstance(stored, bool) and stored == value
+    if kind == "boolean":
+        return stored is value
+    return stored == value
 
 
 def _latest(points, measurement):
@@ -193,10 +217,10 @@ def compare(written, stored, types=None, since=None, latest=(), show_values=Fals
         for (measurement, _tags, _time), fields in written.items():
             for name, (_value, kind) in fields.items():
                 held = types.get((measurement, name))
-                if held is not None and held is not kind:
-                    wrong[measurement].add(f"{name} ({kind.__name__}, InfluxDB holds {held.__name__})")
-                elif held is None:
+                if held is None:
                     wrong[measurement].add(f"{name} (new field: no type in InfluxDB yet)")
+                elif held != kind:
+                    wrong[measurement].add(f"{name} ({kind}, InfluxDB holds {held})")
         for measurement, problems in sorted(wrong.items()):
             print(f"{measurement}: field types differ: {', '.join(sorted(problems))}")
             equal = False

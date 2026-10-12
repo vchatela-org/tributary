@@ -63,7 +63,7 @@ def test_missing_and_extra_points_and_tags(tmp_path, capsys):
 
 def test_a_type_change_is_a_difference(tmp_path, capsys):
     code, out = run(tmp_path, capsys, *stored(weight_type="integer"))
-    assert code == 1 and "weight_kg (float, InfluxDB holds int)" in out
+    assert code == 1 and "weight_kg (float, InfluxDB holds integer)" in out
 
 
 def test_since_and_latest(tmp_path, capsys):
@@ -73,8 +73,19 @@ def test_since_and_latest(tmp_path, capsys):
     assert code == 0 and "body_composition: 1 point(s) in the dry run, 1 in InfluxDB" in out
 
 
-@pytest.mark.parametrize("line", ['m,t=a\\ b f="x y",g=1i 10', 'm f=t 10', 'm f=1e+06 10'])
-def test_line_protocol_parsing(tmp_path, line):
+@pytest.mark.parametrize("line, tags, fields", [
+    ('m,t=a\\ b f="x y",g=1i 10', {("t", "a b")}, {"f": ("x y", "string"), "g": (1, "integer")}),
+    ('m,scale=12"\\ Pro f=t,u=3u 10', {("scale", '12" Pro')}, {"f": (True, "boolean"), "u": (3, "unsigned")}),
+    ('m f=1e+06,s="a, b=c" 10', set(), {"f": (1e6, "float"), "s": ("a, b=c", "string")}),
+])
+def test_line_protocol_parsing(tmp_path, line, tags, fields):
+    """Quotes are literal in a tag value, delimit a string field's."""
     (tmp_path / "l.lp").write_text(line + "\n")
-    (key, fields), = equality_diff.parse_lines(str(tmp_path / "l.lp")).items()
-    assert key[2] == 10 and all(kind in (str, int, bool, float) for _v, kind in fields.values())
+    (key, values), = equality_diff.parse_lines(str(tmp_path / "l.lp")).items()
+    assert key == ("m", frozenset(tags), 10) and values == fields
+
+
+def test_an_unreadable_line_is_explained(tmp_path):
+    (tmp_path / "l.lp").write_text("m f=12x 10\n")
+    with pytest.raises(SystemExit, match="unreadable value of field 'f'"):
+        equality_diff.parse_lines(str(tmp_path / "l.lp"))

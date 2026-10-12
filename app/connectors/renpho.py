@@ -36,14 +36,18 @@ Mapping (a record is a weigh-in):
   body_thresholds   the boundaries themselves, tagged `user` only (no
                     `source`: they rate a person, not a tracker's reading),
                     at the run's time: <metric>_t1.._tN and <metric>_min /
-                    _max (a gauge's scale). Written when they change, and on
-                    a first or full run; a dashboard reads the latest.
+                    _max (a gauge's scale). Written when they change, on a
+                    first or full run, and at least once a week, as the job
+                    did (a dashboard reading the latest within its time
+                    range, or a retention policy, would otherwise lose them).
 
 Cursor: per account, a short digest of each weigh-in written (its time,
 tags, values and levels); a run writes the weigh-ins whose digest is new
--- a new weigh-in, one assigned late in the app, every one when the
-boundaries change -- and nothing when nothing changed. Per user, a digest
-of the boundaries. No value, email or token is kept.
+-- a new weigh-in, one assigned late in the app, every one whose level
+new boundaries move -- and nothing when nothing changed. Per user, a digest
+of the boundaries and when they were last written. No value, email or token
+is kept. Append only, as the job was: a point is never deleted, and a
+rewrite keeps the fields it lacks (InfluxDB merges them).
 """
 import bisect
 import hashlib
@@ -70,6 +74,8 @@ from app.schema import BODY_COMPOSITION
 PREFIX = "TRIBUTARY_RENPHO_"
 TIMEOUT_SECONDS = 30
 MAX_ACCOUNTS = 9
+# body_thresholds is rewritten at least this often, as the weekly job did.
+THRESHOLDS_REFRESH_SECONDS = 7 * 86_400
 
 # Renpho's metric -> the field it is written as. Field names follow the
 # Renpho API, not always the app: bone_pct is the bone mass in kg,
@@ -121,8 +127,8 @@ _NUMBERED = re.compile(rf"^{PREFIX}(EMAIL|PASSWORD|USER)_(\d+)$", re.IGNORECASE)
 
 def numbered_env(env_file: str = ".env") -> Dict[str, str]:
     """TRIBUTARY_RENPHO_{EMAIL,PASSWORD,USER}_<n>, from the environment, else
-    from the .env file (like every other setting), names upper-cased. Empty
-    values count as unset."""
+    from the .env file (like every other setting), names upper-cased. The
+    environment wins, even empty; an empty value counts as unset."""
     found: Dict[str, str] = {}
     sources = []
     if Path(env_file).is_file():
@@ -130,9 +136,9 @@ def numbered_env(env_file: str = ".env") -> Dict[str, str]:
     sources.append(os.environ)  # last: the environment wins
     for source in sources:
         for name, value in source.items():
-            if value and _NUMBERED.match(name):
-                found[name.upper()] = value
-    return found
+            if _NUMBERED.match(name):
+                found[name.upper()] = value or ""
+    return {name: value for name, value in found.items() if value}
 
 
 class RenphoSettings(ConnectorSettings):
@@ -300,8 +306,12 @@ def parse_thresholds(raw: Optional[str]) -> Dict[str, Dict[str, Tuple[float, ...
             if metric not in LEVELS:
                 raise ConnectorError(f"{name}: {user}.{metric} is not a rated metric "
                                      f"({', '.join(LEVELS)}).")
-            if not isinstance(limits, list) or not all(
-                    isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) for x in limits):
+            try:
+                numbers = isinstance(limits, list) and all(
+                    isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) for x in limits)
+            except OverflowError:  # an integer too large for a float
+                numbers = False
+            if not numbers:
                 raise ConnectorError(f"{name}: {user}.{metric} must be a list of numbers.")
             if len(limits) != LEVELS[metric] - 1:
                 raise ConnectorError(f"{name}: {user}.{metric} has {LEVELS[metric]} levels, so "
@@ -358,7 +368,9 @@ class RenphoConnector(Connector):
         mistake raises, naming the variables (never their values)."""
         s = self.settings
         first_user = (s.user or "").strip() or (app_settings.influxdb_user or "").strip()
-        accounts = [Account(1, s.email or "", s.password.get_secret_value() if s.password else "", first_user)]
+        # Emails without stray whitespace (a newline in a secret); passwords as given.
+        accounts = [Account(1, (s.email or "").strip(), s.password.get_secret_value() if s.password else "",
+                            first_user)]
         env = s.numbered
         problems: List[str] = []
         numbers = sorted({int(m.group(2)) for name in env if (m := _NUMBERED.match(name))})
@@ -371,7 +383,7 @@ class RenphoConnector(Connector):
             if missing:
                 problems.append(f"{', '.join(missing)} missing")
             else:
-                accounts.append(Account(n, env[names[0]], env[names[1]], env[names[2]].strip()))
+                accounts.append(Account(n, env[names[0]].strip(), env[names[1]], env[names[2]].strip()))
         if len(accounts) > 1:
             if not accounts[0].user:
                 problems.append(f"{PREFIX}USER (or TRIBUTARY_INFLUXDB_USER) must name the first account "
@@ -385,6 +397,7 @@ class RenphoConnector(Connector):
 
     def _client(self, account: Account) -> RenphoClient:
         client = RenphoClient(account.email, account.password)
+        client._session.close()
         client._session = _Session()
         return client
 
@@ -392,8 +405,9 @@ class RenphoConnector(Connector):
         """Every record of the account's scales. Nothing else of the answers
         (the login's profile, email, token) outlives the call."""
         label = account.label
+        client = self._client(account)
         try:
-            records = self._client(account).get_all_measurements()
+            records = client.get_all_measurements()
         except RenphoAPIError as exc:
             what = f"the login of {label}" if exc.context == "Login" else f"{_scrub(exc.context, account)} ({label})"
             raise ConnectorError(f"Renpho refused {what} (code {_scrub(exc.code, account)}: "
@@ -407,6 +421,10 @@ class RenphoConnector(Connector):
             raise ConnectorError(f"Renpho unreachable ({label}): {type(exc).__name__}.") from None
         except (requests.RequestException, ValueError, KeyError, TypeError, AttributeError) as exc:
             raise ConnectorError(f"Unexpected answer from Renpho ({label}): {type(exc).__name__}.") from None
+        finally:
+            session = getattr(client, "_session", None)
+            if session is not None:
+                session.close()
         if not isinstance(records, list):
             raise ConnectorError(f"Unexpected answer from Renpho ({label}).")
         return records
@@ -419,13 +437,18 @@ class RenphoConnector(Connector):
         known_bounds = cursor.get("thresholds") if isinstance(cursor.get("thresholds"), dict) else {}
         accounts = self.accounts()
         thresholds = parse_thresholds(self.settings.thresholds)
+        users = [a.user for a in accounts if a.user]
+        strangers = sorted(set(thresholds) - set(users))
+        if strangers:
+            raise ConnectorError(f"{PREFIX}THRESHOLDS names no account: {', '.join(map(repr, strangers))} "
+                                 f"(the accounts' users: {', '.join(map(repr, users)) or 'none'}).")
         now = datetime.now(timezone.utc)
 
         points: List[Point] = []
         summary: List[str] = []
         errors: List[str] = []
         new_weigh_ins: Dict[str, List[str]] = {}
-        new_bounds: Dict[str, str] = {}
+        new_bounds: Dict[str, Dict[str, Any]] = {}
         for account in accounts:
             key = account.user
             try:
@@ -462,10 +485,13 @@ class RenphoConnector(Connector):
 
             if bounds:
                 digest = _digest(bounds)
-                new_bounds[key] = digest
-                if known_bounds.get(key) != digest:
+                last = known_bounds.get(key) if isinstance(known_bounds.get(key), dict) else {}
+                written_at = last.get("written") if isinstance(last.get("written"), (int, float)) else 0
+                if last.get("digest") != digest or now.timestamp() - written_at >= THRESHOLDS_REFRESH_SECONDS:
                     points.append(Point(BODY_THRESHOLDS, now, {"user": account.user}, threshold_fields(bounds)))
                     summary.append(f"{account.label}: level boundaries")
+                    written_at = int(now.timestamp())
+                new_bounds[key] = {"digest": digest, "written": written_at}
 
         if errors and len(errors) == len(accounts):
             raise ConnectorError(" ".join(errors))

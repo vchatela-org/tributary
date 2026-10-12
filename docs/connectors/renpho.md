@@ -34,7 +34,7 @@ A change on Renpho's side can break it until that client follows.
 |---|---|---|---|---|
 | `body_composition` | weigh-in | the weigh-in's | `source=renpho`, `user`, `scale`, `user_id` | a float per metric measured: `weight_kg`, `bmi`, `body_fat_pct`, `body_water_pct`, `muscle_pct`, `bone_pct`, `bmr_kcal`, `visceral_fat`, `subcutaneous_fat_pct`, `protein_pct`, `body_age`, `lean_body_mass_kg`, `fat_free_weight_kg`, `heart_rate_bpm`, `cardiac_index`, `body_shape` |
 | `body_levels` | weigh-in, for a person with boundaries | the weigh-in's | the weigh-in's | per rated metric, its level (float, 0 = the lowest) |
-| `body_thresholds` | person with boundaries, when they change | the run's | `user` only | `<metric>_t1`...`_tN` (the boundaries), `<metric>_min` / `_max` (a gauge's scale) |
+| `body_thresholds` | person with boundaries, when they change and at least weekly | the run's | `user` only | `<metric>_t1`...`_tN` (the boundaries), `<metric>_min` / `_max` (a gauge's scale) |
 
 - Renpho reports a metric the scale didn't measure as 0: Tributary leaves
   it out rather than write a false zero. A record without a time or any
@@ -71,27 +71,34 @@ The keys are `user` tags. A metric has one boundary fewer than its levels:
 | `body_age`, `bmr_kcal` | 2 | 1 |
 
 A value on a boundary gets the upper level. A person or metric left out
-gets no level. A mistake in the variable fails the runs (with what is
-wrong), not Tributary's start.
+gets no level. A mistake in the variable (including a name that is no
+account's `user`) fails the runs, with what is wrong, not Tributary's
+start.
 
 When the boundaries change, the next run writes them (`body_thresholds`)
-and rewrites the level of every weigh-in it changes. A dashboard reads the
-latest boundaries of a person with `ORDER BY time DESC LIMIT 1` and no time
-filter.
+and rewrites the level of every weigh-in it moves. They are also written
+again at least once a week, so a dashboard reading the latest boundaries
+within its time range (or a retention policy) always finds a point; a
+dashboard can as well read them with `ORDER BY time DESC LIMIT 1` and no
+time filter.
 
 ## How it syncs
 
 - Each run logs in to every account and reads its whole history: Renpho
   has no "since", and a few hundred weigh-ins take a second or two. It
-  writes the weigh-ins that are new or changed: a new one, one assigned to
-  the person later in the app (with its own, older time), one whose level
-  moved. Nothing when nothing changed.
+  writes the weigh-ins that are new or changed: a new one, an unrecognised
+  one the person claims later in the app (with its own, older time), one
+  whose level moved. Nothing when nothing changed.
 - An account that fails (a changed password...) doesn't stop the others:
   their weigh-ins are written and the run shows the failure; the failed
   account is read again at the next run.
 - *Full resync* rewrites every weigh-in and the boundaries: harmless, the
   same points overwrite themselves.
-- Nothing is ever dropped: a weigh-in deleted in the app stays in InfluxDB.
+- Nothing is ever dropped: a weigh-in deleted in the app stays in InfluxDB,
+  one moved from a person to another stays under the first too, and a
+  rewritten point keeps a field it no longer has (InfluxDB merges them: the
+  level of a metric whose boundaries you removed, say). Clean those by hand
+  if they matter.
 - Not synced (yet): the Renpho smart tape measure's girths, and the weigh-ins
   of another Renpho user id read with an account's login.
 

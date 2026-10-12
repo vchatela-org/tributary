@@ -97,8 +97,8 @@ Body composition: weigh-ins of smart scales. No *local time*.
   people given boundaries.
 - `body_thresholds`: those boundaries, per person: `<metric>_t1`...`_tN`
   between the levels, `<metric>_min` / `_max` the scale of a gauge. Tagged
-  `user` only, stamped when written: read the latest
-  (`ORDER BY time DESC LIMIT 1`, no time filter).
+  `user` only, stamped when written (when they change, and at least
+  weekly): read the latest.
 
 ## Adding a measurement
 
