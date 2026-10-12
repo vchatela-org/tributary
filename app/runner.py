@@ -74,6 +74,18 @@ def _import(connector: Connector, path: Path, label: str) -> List[Point]:
         raise ConnectorError(f"{label}: unreadable ({type(exc).__name__}: {exc}).") from None
 
 
+def _import_folder(connector: Connector, paths: List[Path]) -> List[Point]:
+    """The watched folder's files as one input: a connector whose exports
+    supersede one another merges them (Connector.import_files); the label of
+    a file it can't read is the connector's to add."""
+    try:
+        return list(connector.import_files(paths))
+    except ConnectorError:
+        raise
+    except (OSError, ValueError, KeyError) as exc:
+        raise ConnectorError(f"Unreadable files in {connector.watch_dir} ({type(exc).__name__}: {exc}).") from None
+
+
 def collect(connector: Connector, state: Dict[str, Any], full: bool = False, file: Optional[str] = None,
             filename: Optional[str] = None
             ) -> Tuple[List[Point], List[str], Optional[Dict[str, Any]], bool, List[str]]:
@@ -113,8 +125,11 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
                 summary.append(f"{len(files)} file(s) re-read from the watched folder, own series rebuilt")
         elif changed:
             summary.append(f"{len(changed)} new or changed file(s) in the watched folder")
-        for name in changed:
-            points.extend(_import(connector, connector.watch_dir / name, name))
+        if changed or rebuild:
+            # A rebuild connector is called even with no file left: one whose
+            # folder is its source of truth refuses to drop its series rather
+            # than let it be emptied.
+            points.extend(_import_folder(connector, [connector.watch_dir / name for name in changed]))
         new_state["files"] = {name: list(sig) for name, sig in files.items()}
 
     return points, summary, new_state, rebuild, errors

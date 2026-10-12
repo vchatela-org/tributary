@@ -5,6 +5,7 @@
 | [Audiobookshelf](audiobookshelf.md) | `audiobookshelf` | API, hourly | `MediaStats`: `reading_session`, `book_finished` |
 | [Renpho](renpho.md) | `renpho` | API, daily, one account per person | `BodyStats`: `body_composition`, `body_levels`, `body_thresholds` |
 | [Todoist](todoist.md) | `todoist` | API, daily | `TodoistStats`: `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` |
+| [MyTherapy](mytherapy.md) | `mytherapy` | export files in a watched folder, daily | `BodyStats`: `medication` |
 
 ## Before writing one
 
@@ -37,11 +38,15 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
 - A file input: `file_types` (e.g. `(".zip",)`) and
   `import_file(path) -> points`. It serves both the upload form and, when
   `TRIBUTARY_<KEY>_WATCH_DIR` is set, the files of a watched folder (new or
-  changed ones at each run).
+  changed ones at each run; all of them at once through
+  `import_files(paths)`, which a connector whose exports supersede one
+  another overrides to merge them).
 - `rebuild_own_source = True` for a folder that is the source of truth: any
   change in it drops the connector's own series
   (`DROP SERIES FROM <measurement> WHERE "source" = '<key>'`) and rewrites
   them from every file. Safe only because nothing else writes that source.
+  Such a connector also sets `accepts_uploads = False`: one file alone can't
+  be merged with the others, and rebuilding from it would drop the rest.
 
 Points are `Point(measurement, time, tags, fields)`, time in UTC. The core
 adds `source` (unless the measurement is declared `tagged_source=False`),

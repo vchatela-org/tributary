@@ -171,6 +171,20 @@ def test_watched_folder_imports_new_and_changed_files_only(influx, db, tmp_path)
         connectors.unregister("csvsteps")
 
 
+def test_a_bad_file_in_the_watched_folder_names_the_file(influx, db, tmp_path):
+    """The folder is read as one input (Connector.import_files): a file it
+    can't read is named, and the connector's series is left alone."""
+    connector = connectors.register(CsvSteps(watch_dir=str(tmp_path)))
+    try:
+        (tmp_path / "a.csv").write_text("2025-01-01,100\n")
+        (tmp_path / "bad.csv").write_text("boom\n")
+        run = runner.run(db, connector)
+        assert run.status == "error" and run.message == "bad.csv: not a steps export"
+        assert not [q for _db, q in influx.queries if q.startswith("DROP")]
+    finally:
+        connectors.unregister("csvsteps")
+
+
 def test_rebuild_own_source_drops_only_its_own_series(influx, db, tmp_path):
     connector = connectors.register(CsvSteps(watch_dir=str(tmp_path), rebuild=True))
     try:

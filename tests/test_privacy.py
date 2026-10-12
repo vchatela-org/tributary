@@ -10,11 +10,17 @@ from fastapi.testclient import TestClient
 from app import connectors, runner
 from app.database import engine
 from app.main import app
-from tests.fakes import BOB_RECORDS, RENPHO_SECRETS, SECRETS, TODOIST_SECRETS, TODOIST_TASKS
+from tests.fakes import (BOB_RECORDS, MYTHERAPY_NOTE, RENPHO_SECRETS, SECRETS, TODOIST_SECRETS,
+                         TODOIST_TASKS, mytherapy_row, write_mytherapy_export)
 
 # (database, measurement, field): the only text fields allowed out. A new
 # one is a privacy decision: add it here on purpose, with docs/schema.md.
-ALLOWED_TEXT = {("MediaStats", "reading_session", "title"), ("MediaStats", "book_finished", "title")}
+ALLOWED_TEXT = {("MediaStats", "reading_session", "title"), ("MediaStats", "book_finished", "title"),
+                # MyTherapy: the app's own word for a dose and its unit
+                # ("confirmed", "pills"): a bounded vocabulary, not free text.
+                # The export's `note` column, free text, is left out (the job
+                # wrote it; no export ever carried one).
+                ("BodyStats", "medication", "app_status"), ("BodyStats", "medication", "unit")}
 # Todoist's task text: only with TRIBUTARY_TODOIST_TASK_TEXT (the job it
 # replaced wrote it, and its dashboard lists the completions).
 OPT_IN_TEXT = {("TodoistStats", "todoist_task_completed", "content"),
@@ -132,3 +138,26 @@ def test_no_todoist_token_profile_or_task_text_is_kept(todoist_api, todoist_conn
     for where, text in seen.items():
         for private in TODOIST_SECRETS + ("a private note",):
             assert private not in text, (where, private)
+
+
+def test_no_mytherapy_alias_or_note_is_kept(mytherapy_connector, influx, db, monkeypatch, caplog):
+    """The dose's alias and the export's `note` column never leave; the `med`
+    tag holds the name TRIBUTARY_MYTHERAPY_NAMES gives the alias, as the job
+    wrote it (and as the dashboard reads it)."""
+    from pathlib import Path
+
+    from app.config import settings
+
+    caplog.set_level(logging.DEBUG)
+    monkeypatch.setattr(settings, "influxdb_user", "alice")
+    write_mytherapy_export(Path(mytherapy_connector.settings.watch_dir) / "MyTherapy Archive.csv",
+                           [mytherapy_row(name="First", note=MYTHERAPY_NOTE),
+                            mytherapy_row(name="Second", scheduled="2026-03-02 20:00:00")])
+    runner.run(db, mytherapy_connector, dry_run=True)
+    runner.run(db, mytherapy_connector)
+
+    seen = {**_everything_seen(influx), "logs": caplog.text}
+    for where, text in seen.items():
+        for private in ("First", "Second", MYTHERAPY_NOTE, "Actual", "scheduled_date"):
+            assert private not in text, (where, private)
+    assert "med=Alpha\\ med" in seen["influxdb"] and "med=Beta\\ med" in seen["influxdb"]
