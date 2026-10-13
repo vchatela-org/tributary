@@ -1,0 +1,18 @@
+# Extends gitleaks' default rules; the one entry is a documented false positive.
+#
+# The deny-list scan is .github/privacy-denylist.txt; gitleaks runs beside it for
+# credentials (.github/workflows/privacy.yml). The only finding it makes on this
+# repository is a *placeholder* in the env-var template: the literal `<KEY>` in
+# `TRIBUTARY_<KEY>_INTERVAL_MINUTES` before a value reads as a generic API key.
+# The line was reworded in the tree (the placeholder stands alone now), but the
+# commits before it are still scanned, so the pattern is allowed by name, never
+# the file: a real secret in the template would still be caught.
+title = "Tributary"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "The one template line that reads as a key: a placeholder with a sample value, never a credential."
+regexTarget = "line"
+regexes = ['''TRIBUTARY_<KEY>_INTERVAL_MINUTES=1440''']
