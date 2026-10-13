@@ -10,6 +10,9 @@ A connector declares:
     a log or a repr; never stored, never returned by the API;
   - `measurements`: what it writes, with the declared field types
     (app/schema.py for the shared ones);
+  - `category`: the section of app/categories.CATEGORIES it is shown under;
+  - `default_schedule`: the cron it runs on unless the UI or the environment
+    says otherwise (None: no schedule, an upload-only source);
 and implements one or both inputs:
   - API: `api_configured()` and `sync(cursor) -> SyncResult(points, new cursor)`.
     The cursor is the connector's own JSON-able state (e.g. the newest update
@@ -46,8 +49,14 @@ class ConnectorError(Exception):
 class ConnectorSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # Minutes between two scheduled runs.
-    interval_minutes: int = 60
+    # When it runs: a 5-field cron expression in TRIBUTARY_TZ
+    # (TRIBUTARY_<KEY>_SCHEDULE). Unset by default: the connector's own
+    # `default_schedule` applies, or the value saved in the UI.
+    schedule: Optional[str] = None
+    # Deprecated: minutes between two runs, counted from the start, kept so an
+    # existing deployment keeps working (app/schedule.py maps it to a cron).
+    # None here, so that "not set" is distinguishable from the default.
+    interval_minutes: Optional[int] = None
     # File connectors: a folder whose new or changed files are imported at
     # each scheduled run (mount it read-only).
     watch_dir: Optional[str] = None
@@ -96,6 +105,14 @@ class Connector:
     label: ClassVar[str]
     description: ClassVar[str] = ""
     icon: ClassVar[str] = "bi-plug"
+    # One of app.categories.CATEGORIES: the section the UI and the README show
+    # it under. A test fails when it is missing or unknown.
+    category: ClassVar[str] = ""
+    # The 5-field cron it runs on when nothing overrides it, in TRIBUTARY_TZ.
+    # None: no schedule at all (an upload-only source: the user imports a file
+    # when they have one). Not hourly: a source is read when it has something
+    # new, and the UI sets a different time per connector so runs never overlap.
+    default_schedule: ClassVar[Optional[str]] = None
     settings_class: ClassVar[Type[ConnectorSettings]] = ConnectorSettings
     measurements: ClassVar[Tuple[Measurement, ...]] = ()
     # Environment variables the API input needs, for the UI's hint.
@@ -118,6 +135,14 @@ class Connector:
 
     def api_configured(self) -> bool:
         return False
+
+    @property
+    def has_api(self) -> bool:
+        """Whether this source reads an API at all (a subclass overrode
+        `api_configured`). An upload-only source has none: it is imported into,
+        so "not configured" would be misleading for it -- there is nothing to
+        configure."""
+        return type(self).api_configured is not Connector.api_configured
 
     @property
     def accepts_files(self) -> bool:
@@ -151,16 +176,13 @@ class Connector:
         return filename
 
     # -- Schedule ------------------------------------------------------------
+    # When it runs is app/schedule.py's job now: a cron expression, resolved in
+    # this order -- the value saved in the UI, TRIBUTARY_<KEY>_SCHEDULE, the
+    # deprecated TRIBUTARY_<KEY>_INTERVAL_MINUTES, then `default_schedule`.
 
-    def interval_seconds(self) -> float:
-        return max(1, self.settings.interval_minutes) * 60.0
-
-    def schedule_label(self) -> str:
-        minutes = max(1, self.settings.interval_minutes)
-        if minutes % 1440 == 0:
-            every = "day" if minutes == 1440 else f"{minutes // 1440} days"
-        elif minutes % 60 == 0:
-            every = "hour" if minutes == 60 else f"{minutes // 60} hours"
-        else:
-            every = f"{minutes} min"
-        return f"every {every}"
+    def import_fingerprint(self) -> Dict[str, Any]:
+        """What of this connector's own settings an import reads: a change
+        invalidates a checked (dry-run) upload rather than letting it apply a
+        diff the user never saw (app/runner.py). Empty when nothing but the
+        file decides what is written."""
+        return {}

@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from app import schedule
 from app import runner
 from app.connectors.base import ConnectorError
 from app.connectors.renpho import (
@@ -355,8 +356,11 @@ def test_settings_come_from_the_environment(monkeypatch):
     monkeypatch.setenv("TRIBUTARY_RENPHO_PASSWORD", "from-env")  # ggignore
     monkeypatch.setenv("TRIBUTARY_RENPHO_PASSWORD_2", "second-from-env")  # ggignore
     loaded = RenphoSettings()
+    # interval_minutes is deprecated and left unset: it is distinguishable from
+    # "60", so it does not outrank the connector's own default schedule.
     assert (loaded.email, loaded.password.get_secret_value(), loaded.interval_minutes) == (
-        "a@example.com", "from-env", 1440)
+        "a@example.com", "from-env", None)
+    assert loaded.schedule is None
     assert loaded.numbered["TRIBUTARY_RENPHO_PASSWORD_2"] == "second-from-env"
     for text in (repr(loaded), json.dumps(loaded.model_dump(mode="json"))):
         assert "from-env" not in text
@@ -370,7 +374,9 @@ def test_configured_only_with_email_and_password(renpho_connector, monkeypatch):
     monkeypatch.setattr(renpho_connector.settings, "password", SecretStr(""))
     assert not renpho_connector.is_configured()
     monkeypatch.setattr(renpho_connector.settings, "password", SecretStr("p"))
-    assert renpho_connector.is_configured() and renpho_connector.schedule_label() == "every day"
+    assert renpho_connector.is_configured()
+    runs = schedule.resolve(renpho_connector, None, "Europe/Paris")
+    assert (runs.cron, runs.label, runs.source) == ("52 2 * * *", "Daily at 02:52", "default")
 
 
 # -- HTTP (renpho-api against a fake Renpho cloud) ----------------------------------------

@@ -23,7 +23,8 @@ A change on Renpho's side can break it until that client follows.
    | `TRIBUTARY_RENPHO_USER` | Its `user` tag (default: `TRIBUTARY_INFLUXDB_USER`). Required when there are several accounts. |
    | `TRIBUTARY_RENPHO_EMAIL_2`, `TRIBUTARY_RENPHO_PASSWORD_2`, `TRIBUTARY_RENPHO_USER_2` | A second person's account, all three together; then `_3`... up to `_9`, without a gap. Each `user` must differ. |
    | `TRIBUTARY_RENPHO_THRESHOLDS` | Optional: the boundaries of each person's levels, JSON, see [Levels](#levels). |
-   | `TRIBUTARY_RENPHO_INTERVAL_MINUTES` | Minutes between two syncs (default 1440, once a day). |
+   | `TRIBUTARY_RENPHO_SCHEDULE` | A 5-field cron expression, in `TRIBUTARY_TZ` (default: daily at 02:52). Set it on the source's page instead, when you can: see [Scheduling](../scheduling.md). |
+   | `TRIBUTARY_RENPHO_INTERVAL_MINUTES` | Deprecated: minutes between two syncs, counted from the start. Superseded by the schedule; still honoured so an existing deployment keeps working. |
 
 3. In Tributary, *Dry run* shows the line protocol of what the first sync
    would write; *Run now* writes it.

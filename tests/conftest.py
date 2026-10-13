@@ -47,15 +47,19 @@ def db():
 
 @pytest.fixture(autouse=True)
 def _clean_state():
-    """Each test starts with no run, no cursor, no queued request."""
+    """Each test starts with no run, no cursor, no schedule set in the UI, no
+    checked upload and no preference, and nothing queued."""
     from app.database import SessionLocal
-    from app.models import Cursor, SyncRun
+    from app.models import ConnectorSchedule, Cursor, Preference, StagedUpload, SyncRun
 
     with SessionLocal() as session:
-        session.query(SyncRun).delete()
-        session.query(Cursor).delete()
+        for table in (SyncRun, Cursor, ConnectorSchedule, StagedUpload, Preference):
+            session.query(table).delete()
         session.commit()
     yield
+    # A test that saved a schedule starts the thread (app/scheduler.reschedule);
+    # stop it, so it cannot consume the next test's queue.
+    scheduler.stop()
     while not scheduler._requests.empty():
         scheduler._requests.get_nowait()
     scheduler._pending.clear()

@@ -22,8 +22,11 @@ A dose:
               Paris dose is 11:00 in winter, 10:00 in summer), tags med =
               the export's name, renamed or left out per
               TRIBUTARY_MEDISAFE_NAMES, and status = taken / skipped / missed
-              / unlogged (the app's taken / dismissed / missed, and pending or
-              snooze: a reminder nobody answered says nothing about the dose).
+              / unlogged (the app's taken / dismissed / missed, and pending,
+              snooze or deleted: a reminder nobody answered, or a dose the
+              user removed in the app, says nothing about the dose -- so a
+              re-import of a current export rewrites a dose an earlier one
+              left as taken, which is intended).
               Fields: taken (1 when the dose was taken), app_status (the
               app's own word), dose and unit when the export carries them,
               strength (the medication's, "10 mg"), delay_min for a taken dose
@@ -61,8 +64,8 @@ SOURCE = "medisafe"
 # The columns an import reads: a file without them is not a doses export.
 COLUMNS = ("name", "Scheduled for", "Recorded on", "dose_status", "dosage", "unit", "med_strength", "notes")
 # The app's status -> the contract's.
-STATUS = {"taken": "taken", "dismissed": "skipped", "missed": "missed", "pending": "unlogged",
-          "snooze": "unlogged"}
+STATUS = {"taken": "taken", "dismissed": "skipped", "missed": "missed",
+          "pending": "unlogged", "snooze": "unlogged", "deleted": "unlogged"}
 
 # The export's file name carries the account number.
 ACCOUNT_IN_NAME = re.compile(r"^(Doses_)[^_]+(_)", re.IGNORECASE)
@@ -226,6 +229,7 @@ class MedisafeConnector(Connector):
     description = ("The scheduled doses (taken, missed, skipped, unlogged) of a Medisafe export, imported in "
                    "the UI: the days it covers, renamed per TRIBUTARY_MEDISAFE_NAMES.")
     icon = "bi-capsule-pill"
+    category = "Medication"
     settings_class = MedisafeSettings
     measurements = (MEDICATION,)
     file_types = (".zip", ".csv")
@@ -233,6 +237,13 @@ class MedisafeConnector(Connector):
     # as the script's --replace did: a dose whose status changed is another
     # series, and the old point would stay.
     rebuild_own_source = True
+
+    def import_fingerprint(self) -> Dict[str, Any]:
+        """Renaming a medication, writing the notes or moving the end date all
+        change what an import writes: any of them invalidates a checked
+        upload."""
+        return {"names": self.settings.names, "notes": self.settings.notes,
+                "end_date": self.settings.end_date}
 
     @property
     def watch_dir(self) -> Optional[Path]:

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="tb-pagehead">
+  <h1>Settings</h1>
+  <p class="tb-sub">Which integrations the overview shows, so a few sources are not buried under the whole
+    catalogue.</p>
+</div>
+
+{# Hiding is display only, and the page says so: nobody should read "hide" as
+   "stop syncing". #}
+<div class="tb-strip">
+  <i class="bi bi-eye"></i><strong>Showing or hiding changes nothing about the runs.</strong>
+  A hidden source is still scheduled, still runs, and its series keep filling — it is only left out of the
+  overview. Bring it back here at any time.
+</div>
+
+<section class="tb-panel">
+  <h2>Shown in the overview</h2>
+  <p class="tb-hint">Untick a source to leave it out of the overview. Everything is shown on a fresh
+    install.</p>
+  <form method="post" action="/settings">
+    {% for category in categories %}
+      {% set here = cards | selectattr("category", "equalto", category) | list %}
+      {% if here %}
+      <div class="tb-cat-head mt-3"><i class="bi {{ category_icon(category) }}"></i>
+        <h2>{{ category }}</h2><span class="tb-count">{{ here | length }}</span><span class="tb-rule"></span></div>
+      {% for c in here %}
+      <div class="tb-pick">
+        <span class="tb-ico"><i class="bi {{ c.icon }}"></i></span>
+        <div class="form-check flex-grow-1 mb-0">
+          <input class="form-check-input" type="checkbox" name="visible" value="{{ c.key }}"
+                 id="show-{{ c.key }}" {% if not c.hidden %}checked{% endif %} />
+          <label class="form-check-label" for="show-{{ c.key }}">{{ c.label }}</label>
+          <p>{{ c.description }}
+            {%- if c.schedule %} <em>Runs {{ c.schedule.label }}.</em>
+            {%- elif not c.schedule_capable %} <em>Imports a file: no schedule.</em>
+            {%- elif not c.configured %} <em>Not configured yet.</em>
+            {%- else %} <em>Manual only.</em>{% endif %}</p>
+        </div>
+        <a class="btn btn-sm btn-outline-secondary" href="/connectors/{{ c.key }}">Open</a>
+      </div>
+      {% endfor %}
+      {% endif %}
+    {% endfor %}
+    <div class="tb-actions mt-3">
+      <button class="btn btn-sm btn-primary" type="submit">Save</button>
+      <button class="btn btn-sm btn-outline-secondary" type="submit" name="reset" value="true">Show all</button>
+    </div>
+  </form>
+</section>
+
+<section class="tb-panel">
+  <h2>Compatible tools</h2>
+  <p class="tb-hint">Maintained tools that write into the same databases and line up with Tributary's points.
+    Tributary does not run them and does not configure them, so they are not shown or hidden here:
+    {{ tools_outside | join(", ") }}. Each one appears under the categories it feeds, on the overview and in
+    <a href="https://github.com/vchatela-org/tributary/blob/main/docs/compatible-tools.md">compatible tools</a>.</p>
+  {% for category, tools in tools.items() %}{% if tools %}
+    <div class="tb-tools"><strong>{{ category }}</strong> —
+      {% for t in tools %}<a href="{{ t.url }}" rel="noreferrer">{{ t.label }}</a> ({{ t.writes }}){% if not loop.last %}, {% endif %}{% endfor %}
+    </div>
+  {% endif %}{% endfor %}
+</section>
+
+<section class="tb-panel">
+  <h2>This install</h2>
+  <dl class="tb-facts">
+    <div><dt>Version</dt><dd>v{{ app_version }}</dd></div>
+    <div><dt>Time zone</dt><dd>{{ tz }}</dd></div>
+    <div><dt>InfluxDB</dt>
+      <dd>{% if influxdb_configured %}configured{% if influxdb_user %} as {{ influxdb_user }}{% endif %}{% else %}not configured{% endif %}</dd></div>
+    <div><dt>Checked files kept</dt><dd>{{ staged_ttl_hours | int }} h</dd></div>
+  </dl>
+  <p class="tb-hint mt-3 mb-0">These come from the environment (the deployment) and are not set from here;
+    see <a href="https://github.com/vchatela-org/tributary/blob/main/docs/deployment.md">deployment</a> and
+    the <a href="/docs">API</a>.</p>
+</section>
+{% endblock %}

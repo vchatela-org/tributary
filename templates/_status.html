@@ -1,0 +1,17 @@
+{# The fragment static/app.js fetches to update the page in place: the status of
+   every card, the buttons that status changes, and the activity line.
+
+   Two regions per connector, because a page wants one or the other: `status:` is
+   the whole card header (the overview), `actions:` is just the buttons (a
+   connector page shows the header itself). A page keeps only the targets it
+   needs; the others are ignored. #}
+{% import "_macros.html" as m %}
+<div data-region="activity">{{ m.activity(active, queued, connectors_by_key) }}</div>
+{% for section in sections %}
+{% for c in section.cards %}
+<div data-region="status:{{ c.key }}">{{ m.status_region(c) }}</div>
+{# The connector page's buttons: `resync` matches what that page renders, so the
+   poll does not drop the Full resync button. The overview keeps only `status:`. #}
+<div data-region="actions:{{ c.key }}">{{ m.actions(c, show_open=False, resync=True) }}</div>
+{% endfor %}
+{% endfor %}

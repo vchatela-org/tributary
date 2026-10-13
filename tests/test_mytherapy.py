@@ -213,6 +213,6 @@ def test_it_takes_an_upload_in_the_ui(connector):
     assert connector.accepts_files is True and connector.file_types == (".zip", ".csv")
     page = TestClient(app).get("/").text
     section, = [part for part in page.split("<section") if 'id="mytherapy"' in part]
-    assert 'action="/connectors/mytherapy/upload"' in section
+    assert 'action="/connectors/mytherapy/check"' in section
     assert "TRIBUTARY_MYTHERAPY_NAMES" in section
     assert not connector.watch_dir  # a folder is not read: the export is imported

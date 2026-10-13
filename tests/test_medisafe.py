@@ -62,16 +62,28 @@ def test_times_are_the_exports_utc_whatever_the_time_zone(connector, influx, db,
 
 
 def test_statuses_map_to_the_contract_and_keep_the_apps_word(connector, influx, db, tmp_path):
-    """dismissed -> skipped; pending and snooze (a reminder nobody answered)
-    -> unlogged; the app's word stays in app_status."""
+    """dismissed -> skipped; pending, snooze and deleted (a reminder nobody
+    answered, or a dose the user removed) -> unlogged; the app's word stays in
+    app_status."""
     rows = [medisafe_row(scheduled=f"2026-01-1{i} 08:00:00", status=status)
-            for i, status in enumerate(("taken", "dismissed", "missed", "pending", "snooze"))]
+            for i, status in enumerate(("taken", "dismissed", "missed", "pending", "snooze", "deleted"))]
     _import(db, connector, tmp_path, rows)
     stored = [(tags["status"], fields["app_status"], fields["taken"], "delay_min" in fields)
               for tags, fields, _ts in influx.stored("medication")]
     assert stored == [("taken", '"taken"', "1i", True), ("skipped", '"dismissed"', "0i", False),
                       ("missed", '"missed"', "0i", False), ("unlogged", '"pending"', "0i", False),
-                      ("unlogged", '"snooze"', "0i", False)]
+                      ("unlogged", '"snooze"', "0i", False), ("unlogged", '"deleted"', "0i", False)]
+
+
+def test_a_deleted_dose_is_a_point_in_the_no_record_bucket(connector, influx, db, tmp_path):
+    """A dose the app reports as deleted (removed in the app) is kept, not
+    dropped: written exactly as a dose nobody answered, status=unlogged and
+    taken=0, with the app's own word in app_status and no delay."""
+    _import(db, connector, tmp_path, [medisafe_row(status="deleted")])
+    assert influx.written_lines() == [
+        f'medication,med=Alpha\\ med,source=medisafe,status=unlogged,user={USER} app_status="deleted",'
+        f'dose=1.0,taken=0i,unit="pills" {epoch(2026, 1, 15, 11, 0)}',
+    ]
 
 
 def test_an_unknown_status_fails_the_import(connector, influx, db, tmp_path):
@@ -291,4 +303,4 @@ def test_it_takes_an_upload_in_the_ui_and_never_watches_a_folder(connector, tmp_
         connector.settings.watch_dir = None
     page = TestClient(app).get("/").text
     section, = [part for part in page.split("<section") if 'id="medisafe"' in part]
-    assert 'action="/connectors/medisafe/upload"' in section
+    assert 'action="/connectors/medisafe/check"' in section

@@ -16,8 +16,9 @@ Audiobookshelf 2.37.
    |---|---|
    | `TRIBUTARY_ABS_URL` | The server's base URL, e.g. `http://audiobookshelf:80`. Reach it directly rather than through an authenticating proxy. |
    | `TRIBUTARY_ABS_TOKEN` | The API key. |
-   | `TRIBUTARY_ABS_INTERVAL_MINUTES` | Minutes between two syncs (default 60). |
+   | `TRIBUTARY_ABS_SCHEDULE` | A 5-field cron expression, in `TRIBUTARY_TZ` (default: daily at 03:10). Set it on the source's page instead, when you can: see [Scheduling](../scheduling.md). |
    | `TRIBUTARY_ABS_LOOKBACK_DAYS` | How far back each sync looks for sessions uploaded late by the mobile apps (default 30, see below). |
+   | `TRIBUTARY_ABS_INTERVAL_MINUTES` | Deprecated: minutes between two syncs, counted from the start. Superseded by the schedule; still honoured so an existing deployment keeps working. |
 
 3. In Tributary, *Dry run* shows the line protocol of what the first sync
    would write; *Run now* writes it.

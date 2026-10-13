@@ -144,9 +144,6 @@ def numbered_env(env_file: str = ".env") -> Dict[str, str]:
 class RenphoSettings(ConnectorSettings):
     model_config = SettingsConfigDict(env_prefix=PREFIX, env_file=".env", extra="ignore")
 
-    # A weigh-in carries its own time and every run reads the whole history:
-    # once a day is plenty.
-    interval_minutes: int = 1440
     # The first account: the Renpho app's login (an account created with
     # Google or Apple needs a password set in the app first).
     email: Optional[str] = None
@@ -356,6 +353,10 @@ class RenphoConnector(Connector):
     description = ("Smart-scale weigh-ins (weight, body fat, muscle, water...) of one or several Renpho "
                    "accounts, from the Renpho cloud, rated with the app's levels.")
     icon = "bi-person-standing"
+    category = "Body & health"
+    # A weigh-in carries its own time and every run reads the whole history:
+    # once a day is plenty. 02:52, so the night's runs are staggered.
+    default_schedule = "52 2 * * *"
     settings_class = RenphoSettings
     measurements = (BODY_COMPOSITION, BODY_LEVELS, BODY_THRESHOLDS)
     required_env = (f"{PREFIX}EMAIL", f"{PREFIX}PASSWORD")

@@ -166,6 +166,11 @@ class AudiobookshelfConnector(Connector):
     label = "Audiobookshelf"
     description = "Listening sessions (audiobooks and podcasts) and finished books, from the API."
     icon = "bi-headphones"
+    category = "Reading & media"
+    # Daily, not hourly: listening history has nothing new most hours, and an
+    # hourly run against the server for nothing is waste. 03:10 is after
+    # Renpho's 02:52, so two runs never overlap.
+    default_schedule = "10 3 * * *"
     settings_class = AudiobookshelfSettings
     measurements = (READING_SESSION, BOOK_FINISHED)
     required_env = ("TRIBUTARY_ABS_URL", "TRIBUTARY_ABS_TOKEN")
