@@ -14,14 +14,16 @@ as it was -- and the run shows as failed.
 import json
 import logging
 import os
+from datetime import datetime, time, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
 from app import influxdb
 from app.config import settings
-from app.connectors.base import Connector, ConnectorError
+from app.connectors.base import Connector, ConnectorError, Span
 from app.influxdb import InfluxError
 from app.models import Cursor, SyncRun, utcnow
 from app.points import Point, encode
@@ -65,30 +67,38 @@ def _folder_files(connector: Connector) -> Dict[str, Tuple[int, int]]:
     return files
 
 
-def _import(connector: Connector, path: Path, label: str) -> List[Point]:
+def _read(read: Callable[[Path], Any], path: Path, label: str) -> Any:
+    """A connector's reading of one file, its errors named after the file."""
     try:
-        return list(connector.import_file(path))
+        return read(path)
     except ConnectorError as exc:
         raise ConnectorError(f"{label}: {exc}") from None
     except (OSError, ValueError, KeyError) as exc:
         raise ConnectorError(f"{label}: unreadable ({type(exc).__name__}: {exc}).") from None
 
 
+def _import(connector: Connector, path: Path, label: str) -> List[Point]:
+    return _read(lambda p: list(connector.import_file(p)), path, label)
+
+
 def collect(connector: Connector, state: Dict[str, Any], full: bool = False, file: Optional[str] = None,
             filename: Optional[str] = None
-            ) -> Tuple[List[Point], List[str], Optional[Dict[str, Any]], bool, List[str]]:
+            ) -> Tuple[List[Point], List[str], Optional[Dict[str, Any]], Optional[Span], List[str]]:
     """(points, summary, new cursor state -- None to keep it as is --,
-    whether to drop the connector's own series before writing, the parts of
-    the source that failed)."""
+    what of the connector's own series to drop before writing -- None:
+    nothing --, the parts of the source that failed)."""
     if file:
         label = filename or Path(file).name
         points = _import(connector, Path(file), label)
-        # `rebuild_own_source`: an uploaded file that holds a connector's whole
+        # `rebuild_own_source`: an uploaded file that holds a connector's
         # history (an export) replaces its series rather than adding to it or
         # overwriting point by point -- a dose the export no longer has is one
-        # the source no longer knows. The connector raises before this when the
-        # file holds nothing to write back, so the series is never left empty.
-        return points, [f"Imported {label}"], None, connector.rebuild_own_source, []
+        # the source no longer knows. All of it, or only the days the file
+        # covers (an export of a date range). The connector raises before this
+        # when the file holds nothing to write back, so the series is never
+        # left empty.
+        rebuild = _read(connector.import_span, Path(file), label) if connector.rebuild_own_source else None
+        return points, [f"Imported {label}"], None, rebuild, []
 
     if not connector.is_configured():
         raise ConnectorError(f"Not configured: set {', '.join(connector.required_env) or 'its settings'}.")
@@ -96,7 +106,7 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
     summary: List[str] = []
     errors: List[str] = []
     new_state = dict(state)
-    rebuild = False
+    rebuild: Optional[Span] = None
 
     if connector.api_configured():
         result = connector.sync(connector.full_cursor(state.get("sync")) if full else state.get("sync"))
@@ -113,7 +123,7 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
             # The folder is the source of truth: any change (a file added,
             # replaced or removed) rewrites the whole source from it.
             if changed or set(known) != set(files):
-                rebuild = True
+                rebuild = Span()
                 changed = list(files)
                 summary.append(f"{len(files)} file(s) re-read from the watched folder, own series rebuilt")
         elif changed:
@@ -129,18 +139,38 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
 # Writing
 # ────────────────────────────────────────────────
 
-def _write(connector: Connector, lines: Dict[str, List[str]], rebuild: bool) -> Tuple[Dict[str, int], int, Dict[str, int]]:
+def _span_times(span: Span) -> Tuple[Optional[datetime], Optional[datetime]]:
+    """[start, end) of a span's days, local midnights (TRIBUTARY_TZ)."""
+    if span.whole:
+        return None, None
+    tz = ZoneInfo(settings.tz)
+    return (datetime.combine(span.first, time(), tzinfo=tz),
+            datetime.combine(span.last + timedelta(days=1), time(), tzinfo=tz))
+
+
+def _dropped(rebuild: Optional[Span]) -> str:
+    """The run message's mention of the drop."""
+    if rebuild is None:
+        return ""
+    if rebuild.whole:
+        return ", after dropping its own series"
+    return f", after dropping its own series from {rebuild.first} to {rebuild.last}"
+
+
+def _write(connector: Connector, lines: Dict[str, List[str]], rebuild: Optional[Span]
+           ) -> Tuple[Dict[str, int], int, Dict[str, int]]:
     """({database: points written}, points older than the retention,
     {reason: points refused}). Nothing to write, nothing to drop: no
     request at all."""
-    if not lines and not rebuild:
+    if not lines and rebuild is None:
         return {}, 0, {}
     databases = sorted({m.database for m in connector.measurements} | set(lines))
     if settings.influxdb_create_databases:
         influxdb.create_missing_databases(databases)
-    if rebuild:
+    if rebuild is not None:
+        start, end = _span_times(rebuild)
         for m in connector.measurements:
-            influxdb.drop_source(m.database, m.name, connector.source)
+            influxdb.drop_source(m.database, m.name, connector.source, start, end)
     written: Dict[str, int] = {}
     expired = 0
     refused: Dict[str, int] = {}
@@ -198,10 +228,10 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
             record.preview = _preview(lines)
             record.points = total
             record.stats_json = json.dumps({database: len(v) for database, v in lines.items()})
-            if total or rebuild:
+            if total or rebuild is not None:
                 record.message = (f"Dry run. {what}{total} point(s) would be written"
                                   + (f" ({_by_database({d: len(v) for d, v in lines.items()})})" if total else "")
-                                  + (", after dropping its own series" if rebuild else "") + ".")
+                                  + _dropped(rebuild) + ".")
             else:
                 record.message = "Dry run. Nothing new." if not summary else f"Dry run. {what}nothing to write."
             record.message += failed
@@ -210,10 +240,9 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
             written, expired, refused = _write(connector, lines, rebuild)
             record.points = sum(written.values())
             record.stats_json = json.dumps(written)
-            if total or rebuild:
+            if total or rebuild is not None:
                 record.message = f"{what}{record.points} point(s) written" + (
-                    f" ({_by_database(written)})" if written else "") + (
-                    ", after dropping its own series" if rebuild else "") + "."
+                    f" ({_by_database(written)})" if written else "") + _dropped(rebuild) + "."
             else:
                 record.message = "Nothing new." if not summary else f"{what}nothing to write."
             if expired:

@@ -11,6 +11,8 @@ then TRIBUTARY_ABS_URL=http://<host>:13378 and TRIBUTARY_ABS_TOKEN=demo-key.
 """
 import argparse
 import copy
+import csv
+import io
 import itertools
 import json
 import re
@@ -112,7 +114,40 @@ class FakeInflux:
             for key in [k for k in self.points if k[0] == database and k[1] == measurement
                         and dict(k[2]).get("source") == source]:
                 del self.points[key]
+        elif statement.startswith("DELETE FROM"):
+            match = re.match(r'DELETE FROM "(.+)" WHERE "source" = \'(.+)\' '
+                             r"AND time >= '(.+)' AND time < '(.+)'$", statement)
+            measurement, source, start, end = match.groups()
+            start, end = (int(datetime.fromisoformat(t.replace("Z", "+00:00")).timestamp()) for t in (start, end))
+            for key in [k for k in self.points if k[0] == database and k[1] == measurement
+                        and dict(k[2]).get("source") == source and start <= k[3] < end]:
+                del self.points[key]
+        else:
+            result.update(self._select(database, statement))
         return result
+
+    def _select(self, database: Optional[str], statement: str) -> Dict:
+        """The one SELECT a connector makes today: a single field of a
+        measurement, filtered on two tags (the MyFitnessPal weigh-in dedup).
+        Answers one merged series, no tags, RFC3339 times -- as InfluxDB does
+        without `GROUP BY *` and without `epoch=s`."""
+        match = re.match(r'SELECT "(\w+)" FROM "(\w+)" WHERE "(\w+)" = \'([^\']*)\''
+                         r' AND "(\w+)" != \'([^\']*)\'$', statement)
+        if match is None:
+            return {}
+        field, measurement, t1, v1, t2, v2 = match.groups()
+        values = []
+        for (db, m, tags, ts), fields in self.points.items():
+            tags = dict(tags)
+            if db != database or m != measurement or tags.get(t1) != v1 or tags.get(t2) == v2:
+                continue
+            if field in fields:
+                raw = fields[field]
+                values.append([datetime.fromtimestamp(ts, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                               int(raw[:-1]) if raw.endswith("i") else float(raw)])
+        if not values:
+            return {}
+        return {"series": [{"name": measurement, "columns": ["time", field], "values": values}]}
 
     def stored(self, measurement: Optional[str] = None) -> List[Tuple[Dict[str, str], Dict[str, str], int]]:
         """(tags, fields, ts) of the points InfluxDB would hold, oldest first."""
@@ -649,6 +684,65 @@ def write_mytherapy_export(path, rows, zipped=False):
             archive.writestr("MyTherapy Archive.csv", text)
     else:
         Path(path).write_text(text, encoding="utf-8")
+    return Path(path)
+
+
+# ────────────────────────────────────────────────
+# MyFitnessPal (its export zip, built by hand)
+# ────────────────────────────────────────────────
+
+# The export's columns, in the app's order (French here). The rows the tests
+# build are invented: no real account, no real food or workout name.
+MYFITNESSPAL_WEIGHT_COLUMNS = ["Date", "Body Fat %", "Poids"]
+MYFITNESSPAL_FOOD_COLUMNS = [
+    "Date", "Repas", "Calories", "Lipides (g)", "Acides gras saturés", "Acides gras polyinsaturés",
+    "Acides gras monoinsaturés", "Acides gras trans", "Cholestérol", "Sodium (mg)", "Potassium",
+    "Glucides (g)", "Fibres", "Sucres", "Protéines (g)", "Vitamine A", "Vitamine C", "Calcium", "Fer",
+    "export_headers.note"]
+MYFITNESSPAL_EXERCISE_COLUMNS = [
+    "Date", "Exercices", "Type", "Calories liées aux exercices", "Minutes d'exercice", "Séries",
+    "Répétitions par série", "Kilogrammes", "Pas", "export_headers.note"]
+# A note a food entry might carry: it is not one of the columns the connector
+# writes, so it must never reach InfluxDB (nor ever be in the code).
+MYFITNESSPAL_NOTE = "a private note"  # ggignore
+
+
+def mfp_weight_row(day="2026-03-01", weight="70.1", fat=""):
+    """One row of the weigh-ins CSV (Date, Body Fat % and Poids matter)."""
+    return {"Date": day, "Body Fat %": fat, "Poids": weight}
+
+
+def mfp_food_row(day="2026-03-01", meal="Déjeuner", **nutrients):
+    """One meal; a nutrient left out stays out (the export writes its 0)."""
+    return {"Date": day, "Repas": meal, **nutrients}
+
+
+def mfp_exercise_row(day="2026-03-01", activity="Course", kcal="300", minutes="30"):
+    return {"Date": day, "Exercices": activity, "Calories liées aux exercices": kcal,
+            "Minutes d'exercice": minutes}
+
+
+def _mfp_csv(columns, rows):
+    out = io.StringIO(newline="")
+    writer = csv.DictWriter(out, fieldnames=columns, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(rows)
+    return out.getvalue()
+
+
+def write_myfitnesspal_export(path, weight=(), food=(), exercise=(), span=None):
+    """The export the app saves: a zip of the three CSVs. The connector
+    recognises the files by their columns, so the test names them as nonsense
+    on purpose -- unless `span` (first, last) is given: then as the app names
+    them, after the date range the user picked
+    ("Récapitulatif-des-mesures-du-2019-01-01-au-2024-12-31.csv")."""
+    names = (["r1.csv", "r2.csv", "r3.csv"] if span is None else
+             [f"Récapitulatif-des-{what}-du-{span[0]}-au-{span[1]}.csv"
+              for what in ("mesures", "aliments-consommés", "exercices")])
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr(names[0], _mfp_csv(MYFITNESSPAL_WEIGHT_COLUMNS, weight))
+        archive.writestr(names[1], _mfp_csv(MYFITNESSPAL_FOOD_COLUMNS, food))
+        archive.writestr(names[2], _mfp_csv(MYFITNESSPAL_EXERCISE_COLUMNS, exercise))
     return Path(path)
 
 

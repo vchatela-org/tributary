@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from app import influxdb, runner
@@ -94,6 +96,16 @@ def test_nothing_to_write_means_no_request(abs_api, abs_connector, influx, db):
 def test_drop_source_quotes_its_values(influx):
     influxdb.drop_source("BodyStats", 'we"ird', "it's")
     assert influx.queries[-1] == ("BodyStats", "DROP SERIES FROM \"we\\\"ird\" WHERE \"source\" = 'it\\'s'")
+
+
+def test_drop_source_over_a_span_deletes_its_points_in_it_only(influx):
+    """DROP SERIES takes no time condition: a span is a DELETE, UTC bounds,
+    the end excluded."""
+    paris = timezone(timedelta(hours=2))
+    influxdb.drop_source("BodyStats", "exercise", "it's",
+                         datetime(2026, 10, 1, tzinfo=paris), datetime(2026, 10, 5, tzinfo=paris))
+    assert influx.queries[-1] == ("BodyStats", "DELETE FROM \"exercise\" WHERE \"source\" = 'it\\'s' "
+                                  "AND time >= '2026-09-30T22:00:00Z' AND time < '2026-10-04T22:00:00Z'")
 
 
 @pytest.mark.parametrize("body, expected", [

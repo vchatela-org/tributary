@@ -22,11 +22,14 @@ and implements one or both inputs:
     for an upload in the UI and, when TRIBUTARY_<KEY>_WATCH_DIR is set, the
     files of a watched folder. With `rebuild_own_source`, a change in the
     folder drops the connector's own series and rewrites them from every
-    file in it (the folder is then the source of truth).
+    file in it (the folder is then the source of truth), and an uploaded
+    file replaces them: all of them, or only the days the file covers
+    (`import_span`, for an export of a date range the user picked).
 """
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
-from typing import Any, ClassVar, Iterable, List, Optional, Tuple, Type
+from typing import Any, ClassVar, Iterable, List, NamedTuple, Optional, Tuple, Type
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -46,6 +49,17 @@ class ConnectorSettings(BaseSettings):
     # File connectors: a folder whose new or changed files are imported at
     # each scheduled run (mount it read-only).
     watch_dir: Optional[str] = None
+
+
+class Span(NamedTuple):
+    """The days (TRIBUTARY_TZ, both included) of a connector's own series a
+    rebuild replaces. Span(): the whole series."""
+    first: Optional[date] = None
+    last: Optional[date] = None
+
+    @property
+    def whole(self) -> bool:
+        return self.first is None
 
 
 @dataclass
@@ -113,6 +127,13 @@ class Connector:
 
     def import_file(self, path: Path) -> Iterable[Point]:
         raise NotImplementedError
+
+    def import_span(self, path: Path) -> Span:
+        """With `rebuild_own_source`: the days an uploaded file covers, read
+        after import_file succeeded. Only those are replaced, so an export of
+        a date range the user picked leaves the rest of the history as it
+        was. Span() (the default): the file holds the whole history."""
+        return Span()
 
     # -- Schedule ------------------------------------------------------------
 

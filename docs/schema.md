@@ -53,10 +53,11 @@ what the connectors declare (`app/schema.py`, each connector's
 - **Privacy.** InfluxDB 1.x often runs without authentication. Numbers and
   low-cardinality tags only; the only text fields are book or show titles
   (`title`), Todoist's task text (`content`, `labels`) when you ask for it
-  (`TRIBUTARY_TODOIST_TASK_TEXT`), and the words a medication app itself
-  uses for a dose (its status, its unit: a bounded vocabulary). No message,
-  search, URL, address, email, IP or free-form note otherwise. A test fails
-  on any other text field.
+  (`TRIBUTARY_TODOIST_TASK_TEXT`), the words a medication app itself uses
+  for a dose (its status, its unit), and an exercise app's own name for an
+  exercise (`activity`): bounded vocabularies. No message, search, URL,
+  address, email, IP or free-form note otherwise. A test fails on any other
+  text field.
 - **Databases** are created by Tributary when missing, `WITH SHARD DURATION
   52w` (the default weekly shards make hundreds of tiny shards for a few
   years of history). An existing database is never altered.
@@ -91,6 +92,8 @@ reminder app. No *local time*.
 | `body_levels` | `source`, `user`, `scale`, `user_id` | `weight_kg` (float), `bmi` (float), `body_fat_pct` (float), `subcutaneous_fat_pct` (float), `visceral_fat` (float), `lean_body_mass_kg` (float), `muscle_pct` (float), `bone_pct` (float), `body_age` (float), `bmr_kcal` (float), `body_water_pct` (float), `protein_pct` (float) | Tributary: `renpho` |
 | `body_thresholds` | `user` | `weight_kg_t1` (float), `weight_kg_t2` (float), `weight_kg_t3` (float), `weight_kg_min` (float), `weight_kg_max` (float), `bmi_t1` (float), `bmi_t2` (float), `bmi_t3` (float), `bmi_min` (float), `bmi_max` (float), `body_fat_pct_t1` (float), `body_fat_pct_t2` (float), `body_fat_pct_t3` (float), `body_fat_pct_t4` (float), `body_fat_pct_min` (float), `body_fat_pct_max` (float), `subcutaneous_fat_pct_t1` (float), `subcutaneous_fat_pct_t2` (float), `subcutaneous_fat_pct_min` (float), `subcutaneous_fat_pct_max` (float), `visceral_fat_t1` (float), `visceral_fat_t2` (float), `visceral_fat_t3` (float), `visceral_fat_min` (float), `visceral_fat_max` (float), `lean_body_mass_kg_t1` (float), `lean_body_mass_kg_t2` (float), `lean_body_mass_kg_min` (float), `lean_body_mass_kg_max` (float), `muscle_pct_t1` (float), `muscle_pct_t2` (float), `muscle_pct_min` (float), `muscle_pct_max` (float), `bone_pct_t1` (float), `bone_pct_t2` (float), `bone_pct_min` (float), `bone_pct_max` (float), `body_age_t1` (float), `body_age_min` (float), `body_age_max` (float), `bmr_kcal_t1` (float), `bmr_kcal_min` (float), `bmr_kcal_max` (float), `body_water_pct_t1` (float), `body_water_pct_t2` (float), `body_water_pct_min` (float), `body_water_pct_max` (float), `protein_pct_t1` (float), `protein_pct_t2` (float), `protein_pct_min` (float), `protein_pct_max` (float) | Tributary: `renpho` |
 | `medication` | `source`, `user`, `med`, `status` | `taken` (int), `app_status` (str), `dose` (float), `unit` (str), `delay_min` (int), `note` (str), `strength` (str) | Tributary: `mytherapy`. Medisafe's one-off import (`source=medisafe`, 2020-05 → 2026-02-11) wrote `note` and `strength` too |
+| `nutrition` | `source`, `user`, `meal` | `energy_kcal` (float), `fat_g` (float), `carbs_g` (float), `protein_g` (float), `saturated_fat_g` (float), `polyunsaturated_fat_g` (float), `monounsaturated_fat_g` (float), `trans_fat_g` (float), `fiber_g` (float), `sugar_g` (float), `cholesterol_mg` (float), `sodium_mg` (float), `potassium_mg` (float) | Tributary: `myfitnesspal` |
+| `exercise` | `source`, `user`, `category` | `activity` (str), `energy_kcal` (float), `duration_s` (int) | Tributary: `myfitnesspal` |
 
 - `body_composition`: one point per weigh-in, at its time, with a field
   for each metric the scale measured (none for one it didn't: never a
@@ -121,6 +124,22 @@ reminder app. No *local time*.
   `note` (free text) and `strength` are the Medisafe import's, not the
   MyTherapy connector's: its exports carry a note column, but no dose is
   ever written with one.
+- `nutrition`: one point per logged meal, at noon *local* on the day (the
+  export has dates only, and a day must land on the right date whether a
+  query groups in UTC or in Paris). `meal` is `breakfast`, `lunch`, `dinner`
+  or `snacks`. The macros (`energy_kcal`, `fat_g`, `carbs_g`, `protein_g`)
+  are always written; a secondary nutrient is there only when the entry
+  reported one -- the export writes a 0 for "not reported", so a 0 would
+  understate it. Sum per `time(1d)` for daily totals.
+- `exercise`: one point per workout or a linked device's daily calorie
+  adjustment, at noon *local* plus the entry's index within the day (so
+  several workouts on one date stay separate points). `category` is `run`,
+  `bike`, `strength`, `aerobic`, `walk`, `hike`, `swim`, `climb`, `paddle`,
+  `elliptical`, `other` -- and `adjustment` for a device's calorie
+  adjustment, which is not a workout: filter it out with
+  `"category" != 'adjustment'`. `activity` is the app's own name for the
+  exercise; `duration_s` is absent on an adjustment (the export's fixed
+  "1 minute" is a placeholder).
 
 ### `TodoistStats`
 

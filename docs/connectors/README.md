@@ -6,6 +6,7 @@
 | [Renpho](renpho.md) | `renpho` | API, daily, one account per person | `BodyStats`: `body_composition`, `body_levels`, `body_thresholds` |
 | [Todoist](todoist.md) | `todoist` | API, daily | `TodoistStats`: `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` |
 | [MyTherapy](mytherapy.md) | `mytherapy` | export file, uploaded in the UI | `BodyStats`: `medication` |
+| [MyFitnessPal](myfitnesspal.md) | `myfitnesspal` | export file, uploaded in the UI | `BodyStats`: `body_composition`, `nutrition`, `exercise` |
 
 ## Before writing one
 
@@ -47,6 +48,13 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
   folder that is the source of truth, where a change in it rebuilds the
   series. Safe only because nothing else writes that source, and a connector
   raises rather than let a rebuild write nothing back.
+- `import_span(path) -> Span(first, last)` when an export covers a date range
+  the user picks (MyFitnessPal): only those days (`TRIBUTARY_TZ`, both
+  included) of the connector's series are replaced (`DELETE FROM ... WHERE
+  "source" = '<key>' AND time >= ... AND time < ...`), so an export of the last
+  month never empties the years before it. The default, `Span()`, is the
+  whole series. Such a connector takes uploads only (its `watch_dir` is
+  `None`): a folder of range exports is not a whole history.
 
 Points are `Point(measurement, time, tags, fields)`, time in UTC. The core
 adds `source` (unless the measurement is declared `tagged_source=False`),

@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -188,6 +189,39 @@ def test_rebuild_own_source_drops_only_its_own_series(influx, db, tmp_path):
         assert sorted(t["source"] for t, _f, _ts in influx.stored("steps")) == ["csvsteps", "other"]
         assert runner.run(db, connector).message == "Nothing new."
         assert len([q for _db, q in influx.queries if q.startswith("DROP")]) == 2
+    finally:
+        connectors.unregister("csvsteps")
+
+
+def test_an_upload_with_a_span_replaces_those_days_only(influx, db, tmp_path):
+    """`import_span`: an export of a date range replaces the connector's own
+    series over those days (local midnights, TRIBUTARY_TZ) and nothing
+    outside them."""
+    from datetime import date
+
+    from app.connectors.base import Span
+
+    class RangeSteps(CsvSteps):
+        def import_span(self, path):
+            return Span(date(2025, 1, 2), date(2025, 1, 3))
+
+    connector = connectors.register(RangeSteps(rebuild=True))
+    try:
+        for day in (1, 2, 3, 4):  # midnight UTC, i.e. 01:00 in Paris
+            influx.points[("ActivityStats", "steps", (("device", "watch"), ("source", "csvsteps")),
+                           int(datetime(2025, 1, day, tzinfo=timezone.utc).timestamp()))] = {"steps": "1i"}
+        upload = tmp_path / "range.csv"
+        upload.write_text("2025-01-03T12:00:00+00:00,300\n")
+        run = runner.run(db, connector, file=str(upload), filename="range.csv", trigger="upload")
+        assert run.message == ("Imported range.csv: 1 point(s) written (ActivityStats 1), "
+                               "after dropping its own series from 2025-01-02 to 2025-01-03.")
+        assert [q for _db, q in influx.queries if q.startswith(("DROP", "DELETE"))] == [
+            "DELETE FROM \"steps\" WHERE \"source\" = 'csvsteps' "
+            "AND time >= '2025-01-01T23:00:00Z' AND time < '2025-01-03T23:00:00Z'"]
+        assert [(ts, f["steps"]) for _t, f, ts in influx.stored("steps")] == [
+            (int(datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp()), "1i"),
+            (int(datetime(2025, 1, 3, 12, tzinfo=timezone.utc).timestamp()), "300i"),
+            (int(datetime(2025, 1, 4, tzinfo=timezone.utc).timestamp()), "1i")]
     finally:
         connectors.unregister("csvsteps")
 

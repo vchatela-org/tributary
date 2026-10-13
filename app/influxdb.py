@@ -13,6 +13,7 @@ with year-long shards; an existing database is never altered.
 import http.client
 import json
 import re
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlparse
@@ -112,12 +113,25 @@ def _quote(value: str) -> str:
     return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
+def _time(value: datetime) -> str:
+    """An InfluxQL time literal, RFC3339 UTC."""
+    return value.astimezone(timezone.utc).strftime("'%Y-%m-%dT%H:%M:%SZ'")
+
+
 def _identifier(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def drop_source(database: str, measurement: str, source: str) -> None:
+def drop_source(database: str, measurement: str, source: str,
+                start: Optional[datetime] = None, end: Optional[datetime] = None) -> None:
     """Every series of one measurement written by one source: for a
     connector that rebuilds its own source from scratch. Safe only because
-    each source has a single writer (docs/schema.md)."""
-    query(f"DROP SERIES FROM {_identifier(measurement)} WHERE \"source\" = {_quote(source)}", database)
+    each source has a single writer (docs/schema.md). With `start` and
+    `end`, only its points in [start, end): an import that covers those
+    days only."""
+    where = f"\"source\" = {_quote(source)}"
+    if start is None:
+        query(f"DROP SERIES FROM {_identifier(measurement)} WHERE {where}", database)
+        return
+    query(f"DELETE FROM {_identifier(measurement)} WHERE {where} "
+          f"AND time >= {_time(start)} AND time < {_time(end)}", database)

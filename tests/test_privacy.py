@@ -10,8 +10,9 @@ from fastapi.testclient import TestClient
 from app import connectors, runner
 from app.database import engine
 from app.main import app
-from tests.fakes import (BOB_RECORDS, MYTHERAPY_NOTE, RENPHO_SECRETS, SECRETS, TODOIST_SECRETS,
-                         TODOIST_TASKS, mytherapy_row, write_mytherapy_export)
+from tests.fakes import (BOB_RECORDS, MYFITNESSPAL_NOTE, MYTHERAPY_NOTE, RENPHO_SECRETS, SECRETS,
+                         TODOIST_SECRETS, TODOIST_TASKS, mfp_exercise_row, mfp_food_row, mfp_weight_row,
+                         mytherapy_row, write_myfitnesspal_export, write_mytherapy_export)
 
 # (database, measurement, field): the only text fields allowed out. A new
 # one is a privacy decision: add it here on purpose, with docs/schema.md.
@@ -20,7 +21,12 @@ ALLOWED_TEXT = {("MediaStats", "reading_session", "title"), ("MediaStats", "book
                 # ("confirmed", "pills"): a bounded vocabulary, not free text.
                 # The export's `note` column, free text, is left out (the job
                 # wrote it; no export ever carried one).
-                ("BodyStats", "medication", "app_status"), ("BodyStats", "medication", "unit")}
+                ("BodyStats", "medication", "app_status"), ("BodyStats", "medication", "unit"),
+                # MyFitnessPal: the app's own exercise name ("Course",
+                # "Musculation"...), as the job wrote it into the `activity`
+                # field. A bounded vocabulary the app draws from, not the
+                # export's free-text `note` column (which is left out).
+                ("BodyStats", "exercise", "activity")}
 # Todoist's task text: only with TRIBUTARY_TODOIST_TASK_TEXT (the job it
 # replaced wrote it, and its dashboard lists the completions).
 OPT_IN_TEXT = {("TodoistStats", "todoist_task_completed", "content"),
@@ -162,3 +168,32 @@ def test_no_mytherapy_alias_or_note_is_kept(mytherapy_connector, influx, db, mon
         for private in ("First", "Second", MYTHERAPY_NOTE, "Actual", "scheduled_date"):
             assert private not in text, (where, private)
     assert "med=Alpha\\ med" in seen["influxdb"] and "med=Beta\\ med" in seen["influxdb"]
+
+
+def test_no_myfitnesspal_member_name_or_note_is_kept(myfitnesspal_connector, influx, db, monkeypatch, caplog,
+                                                     tmp_path):
+    """The export's free-text `note` column and its member names never leave;
+    the `activity` field holds the app's own exercise name, as the job wrote it
+    (and as the dashboard reads it)."""
+    from app.config import settings
+
+    caplog.set_level(logging.DEBUG)
+    monkeypatch.setattr(settings, "influxdb_user", "alice")
+
+    def export():
+        return write_myfitnesspal_export(
+            tmp_path / "export.zip", span=("2026-03-01", "2026-03-31"),
+            weight=[mfp_weight_row()],
+            food=[mfp_food_row(**{"Calories": "600", "export_headers.note": MYFITNESSPAL_NOTE})],
+            exercise=[mfp_exercise_row(activity="Course")])
+
+    path = export()
+    runner.run(db, myfitnesspal_connector, dry_run=True, file=str(path), filename=path.name, trigger="upload")
+    path = export()
+    runner.run(db, myfitnesspal_connector, file=str(path), filename=path.name, trigger="upload")
+
+    seen = {**_everything_seen(influx), "logs": caplog.text}
+    for where, text in seen.items():
+        assert MYFITNESSPAL_NOTE not in text, where
+        assert "Récapitulatif" not in text, where
+    assert 'activity="Course"' in seen["influxdb"]
