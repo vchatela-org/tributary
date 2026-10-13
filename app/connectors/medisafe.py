@@ -63,6 +63,11 @@ PREFIX = "TRIBUTARY_MEDISAFE_"
 SOURCE = "medisafe"
 # The columns an import reads: a file without them is not a doses export.
 COLUMNS = ("name", "Scheduled for", "Recorded on", "dose_status", "dosage", "unit", "med_strength", "notes")
+# The export separates them by commas, read first; a semicolon or a tab is a
+# spreadsheet's re-save in some locales (French: `;`).
+DELIMITERS = (",", ";", "\t")
+# Where a file that isn't the export sends the user.
+THE_EXPORT = "The doses export is Doses_<account>_000.csv, or the zip holding it."
 # The app's status -> the contract's.
 STATUS = {"taken": "taken", "dismissed": "skipped", "missed": "missed",
           "pending": "unlogged", "snooze": "unlogged", "deleted": "unlogged"}
@@ -133,14 +138,95 @@ def utc_epoch(raw: str) -> int:
     return int(moment.replace(tzinfo=timezone.utc).timestamp() if moment.tzinfo is None else moment.timestamp())
 
 
-def _rows(text: str) -> List[Dict[str, str]]:
-    reader = csv.DictReader(io.StringIO(text, newline=""))
-    missing = [column for column in COLUMNS if column not in (reader.fieldnames or [])]
+def _bare(name: str) -> str:
+    """A header name without the spaces and the BOM a tool may have put around
+    it (a re-save, a second BOM): they are not the export's."""
+    return name.replace("\ufeff", "").strip()
+
+
+def _match(fieldnames: List[str]) -> Tuple[Dict[str, str], List[str]]:
+    """The file's name of each column an import reads -> that column, and the
+    columns it lacks. A genuine export's names are COLUMNS exactly, matched
+    first, so it is read as it always was; a name that only matches padded or
+    cased differently counts when it is the only one that does."""
+    found: Dict[str, str] = {}
+    missing: List[str] = []
+    for column in COLUMNS:
+        near = [column] if column in fieldnames else [
+            name for name in fieldnames if _bare(name).casefold() == column.casefold()]
+        if len(near) == 1:
+            found[near[0]] = column
+        else:
+            missing.append(column)
+    return found, missing
+
+
+def _no_csv(text: str) -> Optional[str]:
+    """Why a file holds no CSV at all, said before its first line is read as
+    one (a web page's may be one huge line)."""
+    if not text or text.isspace():
+        return "the file is empty."
+    if re.match(r"\s*<", text):
+        return ("the file is a web page (HTML or XML), not a CSV: a download that failed or expired? "
+                "Download the export again.")
+    return None
+
+
+def _first_lines(text: str) -> Tuple[List[str], List[str]]:
+    """A file's first two lines, split by whichever delimiter splits the first
+    most."""
+    best: Tuple[List[str], List[str]] = ([], [])
+    for delimiter in DELIMITERS:
+        reader = csv.reader(io.StringIO(text, newline=""), delimiter=delimiter)
+        lines = ([_bare(cell) for cell in next(reader, [])], [_bare(cell) for cell in next(reader, [])])
+        if len(lines[0]) > len(best[0]):
+            best = lines
+    return best
+
+
+def _names(cells: List[str]) -> bool:
+    """Whether a line reads as column names: several, each short, printable
+    and with no digit nor @ (a dose's row always has its times, a contact an
+    address)."""
+    return len(cells) >= 3 and all(0 < len(cell) <= 32 and cell.isprintable()
+                                   and not any(ch.isdigit() or ch == "@" for ch in cell) for cell in cells)
+
+
+def _not_the_export(text: str, missing: Optional[List[str]]) -> str:
+    """What the file holds instead of the export's columns. A run's message is
+    stored, shown and logged: the first line is quoted only when it reads as
+    column names and the next one doesn't (a list of names would), never when
+    it may be a row -- a medication's name, a note --, which is described."""
     if missing:
-        raise ConnectorError(f"not a Medisafe doses export: no column {', '.join(map(repr, missing))}.")
-    # A row with more columns than the header (a stray comma) is read for the
-    # ones it has, as the script read it.
-    return [{name: (value or "") for name, value in row.items() if name is not None} for row in reader]
+        # Some of the export's columns are there: name the others.
+        return f"no column {', '.join(map(repr, missing))}."
+    first, below = _first_lines(text)
+    if len(first) < 2:
+        return f"its first line has no comma, semicolon or tab to separate columns. {THE_EXPORT}"
+    if not _names(first) or _names(below):
+        return f"its first line ({len(first)} columns) doesn't read as column names. {THE_EXPORT}"
+    shown = ", ".join(map(repr, first[:5])) + (f" and {len(first) - 5} more" if len(first) > 5 else "")
+    return f"its columns are {shown}, none of them a doses export's. {THE_EXPORT}"
+
+
+def _rows(text: str) -> List[Dict[str, str]]:
+    """The rows of one CSV, keyed by COLUMNS' names -- or why it is not a
+    doses export."""
+    reason = _no_csv(text)
+    if reason:
+        raise ConnectorError(f"not a Medisafe doses export: {reason}")
+    fewest: Optional[List[str]] = None
+    for delimiter in DELIMITERS:
+        reader = csv.DictReader(io.StringIO(text, newline=""), delimiter=delimiter)
+        names, missing = _match(reader.fieldnames or [])
+        if not missing:
+            # A row with more columns than the header (a stray comma) is read
+            # for the ones it has, as the script read it.
+            return [{names.get(name, name): (value or "") for name, value in row.items() if name is not None}
+                    for row in reader]
+        if len(missing) < len(COLUMNS) and (fewest is None or len(missing) < len(fewest)):
+            fewest = missing
+    raise ConnectorError(f"not a Medisafe doses export: {_not_the_export(text, fewest)}")
 
 
 def read_export(path: Path) -> List[Dict[str, str]]:
