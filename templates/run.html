@@ -3,12 +3,16 @@
 {% block title %}Run {{ run.id }}{% endblock %}
 {% block content %}
 <p class="small mb-2"><a href="/runs?connector={{ run.connector }}"><i class="bi bi-arrow-left me-1"></i>{{ connector.label if connector else run.connector }} runs</a></p>
-<h1 class="h3 mb-3">Run {{ run.id }}
-  <span class="tb-dot {{ run.status }}"></span>{{ m.status_word(run) }}
-  {% if run.dry_run %}<span class="tb-pill tb-pill-mute">Check</span>{% endif %}
-  {% if run.full %}<span class="tb-pill tb-pill-mute">Full resync</span>{% endif %}
-</h1>
-<dl class="row">
+{% set state = {"ok": "ok", "error": "failing", "running": "running"}.get(run.status, "new") %}
+<div class="tb-head{% if connector %} tb-hue-{{ category_hue(connector.category) }}{% endif %}">
+  {% if connector %}<span class="tb-ico lg"><i class="bi {{ connector.icon }}"></i></span>{% endif %}
+  <div class="flex-grow-1">
+    <h1>Run {{ run.id }} {{ m.pill(state, m.status_word(run)) }}
+      {% if run.dry_run %}<span class="tb-tag">Check</span>{% endif %}
+      {% if run.full %}<span class="tb-tag">Full resync</span>{% endif %}</h1>
+  </div>
+</div>
+<dl class="row tb-panel mx-0">
   <dt class="col-sm-2">Source</dt><dd class="col-sm-10">{{ connector.label if connector else run.connector }}</dd>
   <dt class="col-sm-2">How</dt><dd class="col-sm-10">{{ m.trigger_label(run) }}</dd>
   <dt class="col-sm-2">Started</dt><dd class="col-sm-10">{{ run.started_at | localtime(True) }} ({{ tz }})</dd>

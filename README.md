@@ -25,8 +25,11 @@ many sources.
 
 ![The overview: every source, by category, with its last and next run](docs/screenshots/overview-light.png)
 
-<sub>Light and dark follow your system (**dark** below). Every source is shown unless
-you hide it in [Settings](#settings); hiding never stops a run.</sub>
+<sub>One row per source, coloured by its category: its state, its last and next run and
+its buttons. The chevron unfolds the rest (what it reads and writes, and the file picker
+of a source you import into). Light and dark follow your system until you pick one at the
+foot of the sidebar (**dark** below). Every source is shown unless you hide it in
+[Settings](#settings); hiding never stops a run.</sub>
 
 ![The same overview in dark mode](docs/screenshots/overview-dark.png)
 
@@ -127,7 +130,7 @@ staggered so two runs never overlap). The page says which one is in force, and
 offers *Reset to default*. A run missed while the app was down happens **once**
 shortly after the next start, never several times.
 
-![A source's page: the schedule editor and the next five runs](docs/screenshots/schedule-light.png)
+![A source's page: its state at a glance, the next five runs and the schedule editor, unfolded](docs/screenshots/schedule-light.png)
 
 ## Importing an export
 

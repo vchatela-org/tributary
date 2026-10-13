@@ -38,6 +38,7 @@ def _overview(db: Session) -> dict:
         "active": [{"run": run, "connector": connectors.get(run.connector)}
                    for run in scheduler.running(db)],
         "queued": sorted(scheduler.pending_keys()),
+        "next_up": views.next_up(sections),
         "connectors_by_key": views.by_key(),
         "influxdb_configured": influxdb.is_configured(),
         "influxdb_user": settings.influxdb_user,

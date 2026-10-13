@@ -26,6 +26,16 @@ def duration(start: Optional[datetime], end: Optional[datetime]) -> str:
     return f"{seconds:.1f} s" if seconds < 60 else f"{int(seconds // 60)} min {int(seconds % 60):02d} s"
 
 
+def nav_sources() -> list:
+    """The sidebar's sources, on every page. Its own short session: base.html is
+    shared by routes that do not all hand a database to their template."""
+    from app import views
+    from app.database import SessionLocal
+
+    with SessionLocal() as db:
+        return views.nav(db)
+
+
 templates.env.filters["localtime"] = localtime
 templates.env.globals["duration"] = duration
 templates.env.globals["app_version"] = __version__
@@ -33,3 +43,5 @@ templates.env.globals["tz"] = settings.tz
 templates.env.globals["max_upload_mb"] = settings.max_upload_mb
 templates.env.globals["staged_ttl_hours"] = settings.staged_upload_ttl_hours
 templates.env.globals["category_icon"] = categories.icon_for
+templates.env.globals["category_hue"] = categories.hue_for
+templates.env.globals["nav_sources"] = nav_sources

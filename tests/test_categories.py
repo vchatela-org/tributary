@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 from app import connectors
-from app.categories import CATEGORIES, EXTERNAL_TOOLS
+from app.categories import CATEGORIES, EXTERNAL_TOOLS, hue_for
 
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
@@ -61,6 +61,21 @@ def test_a_connector_that_reads_an_api_says_when_and_an_upload_one_says_nothing(
             assert schedule.validate(connector.default_schedule) == connector.default_schedule
         else:
             assert not connector.default_schedule, f"{connector.key} is upload-only: no schedule"
+
+
+def test_every_category_wears_its_own_hue_in_both_themes():
+    """One identity hue per category, from the stylesheet's validated slots: a
+    category added without one would fall back to grey, and two sharing a slot
+    could not be told apart."""
+    css = (ROOT / "static" / "style.css").read_text(encoding="utf-8")
+    light, dark = css.split('[data-bs-theme="dark"] {', 1)
+    dark = dark.split("}", 1)[0]
+    hues = [hue_for(name) for name in CATEGORIES]
+    assert sorted(hues) == list(range(1, len(CATEGORIES) + 1)), hues
+    for slot in hues:
+        assert f"--tb-c{slot}:" in light and f"--tb-c{slot}:" in dark, slot
+        assert f".tb-hue-{slot} {{ --tb-hue: var(--tb-c{slot}); }}" in css, slot
+    assert hue_for("Not a category") == 0
 
 
 def test_the_readme_groups_every_integration_by_category():

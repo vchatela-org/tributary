@@ -1,21 +1,24 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
 {% block title %}{{ item.label }}{% endblock %}
-{# This page keeps two live regions: the buttons (the header is rendered here, not
-   swapped) and its own runs table. #}
+{# This page keeps three live regions: the buttons and the tiles (the header is
+   rendered here, not swapped) and its own runs table. #}
 {% block poll %}/partials/status /partials/runs?connector={{ item.key }}{% endblock %}
 {% block content %}
 {% set c = item %}
-<p class="small mb-2"><a href="/">← All integrations</a> · {{ c.category }}</p>
+<nav class="tb-crumb" aria-label="Breadcrumb"><a href="/">Integrations</a><i class="bi bi-chevron-right"></i>
+  <span>{{ c.category }}</span></nav>
 
-<div class="d-flex flex-wrap align-items-start gap-3 mb-3">
-  <span class="tb-ico" style="width:46px;height:46px;font-size:1.4rem;"><i class="bi {{ c.icon }}"></i></span>
+<div class="tb-head tb-hue-{{ c.hue }}">
+  <span class="tb-ico lg"><i class="bi {{ c.icon }}"></i></span>
   <div class="flex-grow-1" style="min-width: 16rem;">
-    <h1 class="h3 mb-1">{{ c.label }} {{ m.pill(c.state, c.state_label) }}</h1>
+    <h1>{{ c.label }}</h1>
     <p class="tb-sub mb-0">{{ c.description }}</p>
   </div>
-  <div data-region="actions:{{ c.key }}">{{ m.actions(c, show_open=False, resync=True) }}</div>
+  <div data-region="actions:{{ c.key }}">{{ m.actions(c, page=True) }}</div>
 </div>
+
+<div class="tb-kpis" data-region="kpis:{{ c.key }}">{{ m.kpis(c) }}</div>
 
 {% if c.accepts_files %}
 <section class="tb-panel{% if c.staged %} hi{% endif %}" id="import">
@@ -30,7 +33,7 @@
     </ol>
 
     {% if c.last_run and c.last_run.dry_run %}
-    <p class="mb-1"><strong>{{ c.last_run.points if c.last_run.points is not none else 0 }} point(s)</strong>
+    <p class="mb-1"><strong>{{ "{:,}".format(c.last_run.points) if c.last_run.points is not none else 0 }} point(s)</strong>
       would be written. <a href="/runs/{{ c.last_run.id }}">The check's full line protocol</a>.</p>
     <p class="tb-hint">{{ c.last_run.message }}</p>
     {% endif %}
@@ -40,7 +43,7 @@
         <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-box-arrow-in-down me-1"></i>Import for real</button>
       </form>
       <form method="post" action="/connectors/{{ c.key }}/discard">
-        <button class="btn btn-sm btn-outline-secondary" type="submit">Discard</button>
+        <button class="btn btn-sm btn-ghost" type="submit">Discard</button>
       </form>
       <span class="tb-hint mb-0 ms-1">Kept until
         <b>{{ staged_expires | localtime }}</b>; importing applies exactly what was checked. If the file or
@@ -51,7 +54,7 @@
       imports exactly what the check showed.</p>
     <form method="post" action="/connectors/{{ c.key }}/check" enctype="multipart/form-data">
       <div class="tb-drop">
-        <i class="bi bi-file-earmark-zip"></i>
+        <i class="bi bi-file-earmark-arrow-up"></i>
         <p class="mb-2">Choose <b>the export</b>, or drop it here.</p>
         <input class="form-control form-control-sm d-inline-block align-middle" style="max-width: 22rem;"
                type="file" name="file" accept="{{ c.file_types | join(',') }}" required />
@@ -65,7 +68,7 @@
 </section>
 {% endif %}
 
-<section class="tb-panel">
+<section class="tb-panel" id="schedule">
   <h2>Schedule</h2>
   {% if not c.schedule_capable %}
     {# An upload-only source: no API and no watched folder, so no schedule could
@@ -75,7 +78,7 @@
   {% else %}
   {% if resolved and resolved.scheduled %}
     <p class="tb-hint">Runs <strong>{{ resolved.label }}</strong>, {{ resolved.source_label }}.
-      Times are in {{ tz }}; saving here overrides both the environment and the default.</p>
+      Times are in {{ tz }}.</p>
   {% elif resolved and resolved.source == "ui" %}
     <p class="tb-hint">Set to <strong>Manual only</strong> here: nothing is scheduled — you run it or import a
       file when you want to.</p>
@@ -84,74 +87,57 @@
   {% endif %}
   {% if resolved and resolved.note %}<p class="tb-note">{{ resolved.note }}</p>{% endif %}
 
-  <form method="post" action="/connectors/{{ c.key }}/schedule">
-    <div class="d-flex flex-wrap align-items-end gap-3">
-      <div>
-        <label class="form-label mb-1 tb-lab" for="preset-{{ c.key }}">Repeat</label>
-        <select class="form-select form-select-sm" id="preset-{{ c.key }}" name="preset" style="min-width: 13rem;">
-          {% for p in presets %}
-          <option value="{{ p.key }}" {% if p.chosen %}selected{% endif %}>{{ p.label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div>
-        <label class="form-label mb-1 tb-lab" for="at-{{ c.key }}">Time</label>
-        <input class="form-control form-control-sm" type="time" id="at-{{ c.key }}" name="at" value="{{ clock }}">
-      </div>
-      <div>
-        <label class="form-label mb-1 tb-lab" for="weekday-{{ c.key }}">Day (weekly)</label>
-        <select class="form-select form-select-sm" id="weekday-{{ c.key }}" name="weekday">
-          {% for number, name in [(0, "Sunday"), (1, "Monday"), (2, "Tuesday"), (3, "Wednesday"),
-                                  (4, "Thursday"), (5, "Friday"), (6, "Saturday")] %}
-          <option value="{{ number }}" {% if weekday | string == number | string %}selected{% endif %}>{{ name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div>
-        <label class="form-label mb-1 tb-lab" for="custom-{{ c.key }}">Custom (cron)</label>
-        <input class="form-control form-control-sm tb-mono" id="custom-{{ c.key }}" name="custom" value=""
-               placeholder="{{ c.connector.default_schedule or '0 3 * * *' }}" style="min-width: 10rem;">
-      </div>
-      <button class="btn btn-sm btn-primary" type="submit">Save</button>
-    </div>
-    <p class="tb-hint mt-2 mb-0">A custom expression is used as typed when the <em>Custom</em> repeat is chosen,
-      and it wins over the fields beside it. Five fields: minute hour day-of-month month day-of-week.</p>
-  </form>
-
-  <form method="post" action="/connectors/{{ c.key }}/schedule" class="mt-1">
-    <input type="hidden" name="reset" value="true">
-    <button class="btn btn-sm btn-outline-secondary" type="submit">Reset to default
-      ({{ default_label }})</button>
-  </form>
-
-  <p class="tb-next">
-    {% if next_runs %}
-      <b>{{ resolved.label }}</b> — the next runs
-      <ul>{% for moment in next_runs %}<li class="tb-mono">{{ moment | localtime }}</li>{% endfor %}</ul>
-    {% else %}
-      <b>Nothing scheduled</b> — it runs when you ask, or when you import a file.
-    {% endif %}
-  </p>
-  {% endif %}
-</section>
-
-<section class="tb-panel">
-  <h2>What it writes</h2>
-  <p class="tb-hint">Into InfluxDB <code class="tb-mono">{{ c.measurements[0].database if c.measurements | length == 1
-      else c.measurements | map(attribute='database') | unique | join(', ') }}</code>, every point tagged
-    <code class="tb-mono">source={{ c.key }}</code>. Other tools write the same databases and line up with
-    these points.</p>
-  <div class="d-flex flex-wrap gap-2">
-    {% for ms in c.measurements %}
-    <span class="btn btn-sm btn-outline-secondary tb-mono" style="cursor: default;">{{ ms.database }}.{{ ms.name }}</span>
-    {% endfor %}
-  </div>
-  {% if c.required_env %}
-  <p class="tb-next"><b>Setup</b> — the environment variables this source reads:
-    <ul>{% for name in c.required_env %}<li><code class="tb-mono">{{ name }}</code></li>{% endfor %}</ul>
-  </p>
+  {% if next_runs %}
+  <div class="tb-next-runs"><span class="tb-lab">Next runs</span>
+    {% for moment in next_runs %}<span class="tb-tag tb-mono">{{ moment | localtime }}</span>{% endfor %}</div>
   {% else %}
-  <p class="tb-next">Nothing to set in the environment: this source only reads the file you import.</p>
+  <p class="tb-hint"><b>Nothing scheduled</b> — it runs when you ask, or when you import a file.</p>
+  {% endif %}
+
+  {# Folded: the schedule is read far more often than it is changed. Open when
+     a save was just refused, so the reason sits next to the fields. #}
+  <details class="tb-fold" {% if request.query_params.get('notice') %}open{% endif %}>
+    <summary>Change the schedule</summary>
+    <form method="post" action="/connectors/{{ c.key }}/schedule">
+      <div class="d-flex flex-wrap align-items-end gap-3">
+        <div>
+          <label class="form-label mb-1 tb-lab" for="preset-{{ c.key }}">Repeat</label>
+          <select class="form-select form-select-sm" id="preset-{{ c.key }}" name="preset" style="min-width: 13rem;">
+            {% for p in presets %}
+            <option value="{{ p.key }}" {% if p.chosen %}selected{% endif %}>{{ p.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label mb-1 tb-lab" for="at-{{ c.key }}">Time</label>
+          <input class="form-control form-control-sm" type="time" id="at-{{ c.key }}" name="at" value="{{ clock }}">
+        </div>
+        <div>
+          <label class="form-label mb-1 tb-lab" for="weekday-{{ c.key }}">Day (weekly)</label>
+          <select class="form-select form-select-sm" id="weekday-{{ c.key }}" name="weekday">
+            {% for number, name in [(0, "Sunday"), (1, "Monday"), (2, "Tuesday"), (3, "Wednesday"),
+                                    (4, "Thursday"), (5, "Friday"), (6, "Saturday")] %}
+            <option value="{{ number }}" {% if weekday | string == number | string %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label mb-1 tb-lab" for="custom-{{ c.key }}">Custom (cron)</label>
+          <input class="form-control form-control-sm tb-mono" id="custom-{{ c.key }}" name="custom" value=""
+                 placeholder="{{ c.connector.default_schedule or '0 3 * * *' }}" style="min-width: 10rem;">
+        </div>
+        <button class="btn btn-sm btn-primary" type="submit">Save</button>
+      </div>
+      <p class="tb-hint mt-2 mb-2">Saving here overrides both the environment and the default. A custom
+        expression is used as typed when the <em>Custom</em> repeat is chosen, and it wins over the fields beside
+        it. Five fields: minute hour day-of-month month day-of-week.</p>
+    </form>
+    <form method="post" action="/connectors/{{ c.key }}/schedule">
+      <input type="hidden" name="reset" value="true">
+      <button class="btn btn-sm btn-ghost" type="submit"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset to
+        default ({{ default_label }})</button>
+    </form>
+  </details>
   {% endif %}
 </section>
 
@@ -163,4 +149,26 @@
   <p class="tb-next mb-0"><a href="/runs?connector={{ c.key }}">Every run of {{ c.label }} →</a>
     {% if c.staged %} · <a href="/runs/{{ c.staged.dry_run_id }}">the check</a>{% endif %}</p>
 </section>
+
+<details class="tb-panel tb-fold-panel">
+  <summary><h2>What it writes</h2>
+    <span class="tb-lab">{{ c.measurements | length }} measurement{{ "" if c.measurements | length == 1 else "s" }}
+      in {{ c.measurements | map(attribute='database') | unique | join(', ') }}</span></summary>
+  <p class="tb-hint mt-2">Into InfluxDB <code class="tb-mono">{{ c.measurements[0].database if c.measurements | length == 1
+      else c.measurements | map(attribute='database') | unique | join(', ') }}</code>, every point tagged
+    <code class="tb-mono">source={{ c.key }}</code>. Other tools write the same databases and line up with
+    these points.</p>
+  <div class="d-flex flex-wrap gap-2">
+    {% for ms in c.measurements %}
+    <span class="tb-tag tb-mono">{{ ms.database }}.{{ ms.name }}</span>
+    {% endfor %}
+  </div>
+  {% if c.required_env %}
+  <div class="tb-next"><b>Setup</b> — the environment variables this source reads:
+    <ul>{% for name in c.required_env %}<li><code class="tb-mono">{{ name }}</code></li>{% endfor %}</ul>
+  </div>
+  {% else %}
+  <p class="tb-next">Nothing to set in the environment: this source only reads the file you import.</p>
+  {% endif %}
+</details>
 {% endblock %}

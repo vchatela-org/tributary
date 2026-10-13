@@ -1,36 +1,38 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
-{# The cards' status, the buttons and the activity line update in place: the page
+{# The rows' status, the buttons and the activity bar update in place: the page
    is served whole, and app.js swaps these regions from the fragment. #}
 {% block poll %}/partials/status{% endblock %}
 {% block content %}
 <div class="tb-pagehead">
-  <h1>Integrations</h1>
-  <p class="tb-sub">
-    {{ counters.total }} source{{ "" if counters.total == 1 else "s" }} in
-    {{ sections | length }} categor{{ "y" if sections | length == 1 else "ies" }} ·
-    <strong>{{ counters.ok }} healthy</strong>
-    {%- if counters.failing %}, <span class="text-danger">{{ counters.failing }} failing</span>{% endif %}
-    {%- if counters.checked %}, {{ counters.checked }} checked{% endif %}
-    {%- if counters.active %}, {{ counters.active }} running or queued{% endif %}
-  </p>
+  <div>
+    <h1>Integrations</h1>
+    <p class="tb-sub">
+      {{ counters.total }} source{{ "" if counters.total == 1 else "s" }} in
+      {{ sections | length }} categor{{ "y" if sections | length == 1 else "ies" }} ·
+      <strong>{{ counters.ok }} healthy</strong>
+      {%- if counters.failing %}, <strong class="tb-ink-critical">{{ counters.failing }} failing</strong>{% endif %}
+      {%- if counters.checked %}, {{ counters.checked }} checked{% endif %}
+      {%- if counters.active %}, {{ counters.active }} running or queued{% endif %}
+    </p>
+  </div>
 </div>
 
-<div class="tb-strip{% if not influxdb_configured %} warn{% endif %}">
+{# What is running, what is queued and what comes next, beside where it all
+   goes. app.js swaps the activity half in place: the document is never
+   reloaded, so a run in flight cannot take away a file picker. #}
+<div class="tb-bar">
+  <div class="tb-bar-activity" data-region="activity">{{ m.activity(active, queued, connectors_by_key, next_up) }}</div>
+  <div class="tb-bar-db{% if not influxdb_configured %} warn{% endif %}">
   {% if influxdb_configured %}
-    <i class="bi bi-database-check"></i>InfluxDB configured
-    {%- if influxdb_user %}, writing as <code class="tb-mono">{{ influxdb_user }}</code>{% endif %}
-    · schedules in {{ tz }}
+    <i class="bi bi-database-check"></i>InfluxDB
+    {%- if influxdb_user %} as <code class="tb-mono">{{ influxdb_user }}</code>{% endif %} · {{ tz }}
   {% else %}
     <i class="bi bi-database-x"></i>InfluxDB not configured: set
     <code class="tb-mono">TRIBUTARY_INFLUXDB_URL</code>. Checks work without it.
   {% endif %}
+  </div>
 </div>
-
-{# What is running right now, and what is queued. app.js swaps this region and
-   the cards' status regions in place: the document is never reloaded, so a run
-   in flight cannot take away a file picker. #}
-<div class="tb-activity" data-region="activity">{{ m.activity(active, queued, connectors_by_key) }}</div>
 
 {% if not sections %}
   <div class="tb-panel tb-empty">
@@ -42,68 +44,75 @@
 {% endif %}
 
 {% for section in sections %}
-<section class="tb-cat">
-  <div class="tb-cat-head">
-    <i class="bi {{ category_icon(section.name) }}"></i>
+<section class="tb-group tb-hue-{{ category_hue(section.name) }}">
+  <header class="tb-group-head">
+    <i class="bi {{ category_icon(section.name) }} tb-hue-ink"></i>
     <h2>{{ section.name }}</h2>
     <span class="tb-count">{{ section.cards | length }}</span>
-    <span class="tb-rule"></span>
-  </div>
-  {% if not section.cards %}
-  <p class="tb-external mb-0">No Tributary connector for this domain yet.</p>
-  {% endif %}
-  <div class="tb-grid">
+  </header>
+  {% if section.cards %}
+  <ul class="tb-list">
   {% for c in section.cards %}
-    <article class="tb-tile{% if not c.configured %} off{% endif %}" id="{{ c.key }}">
-      {# The status, what is going on, and the buttons: re-rendered in place. #}
-      <div data-region="status:{{ c.key }}">{{ m.status_region(c) }}</div>
-      {{ m.facts(c) }}
-      {% if c.state == "checked" %}
-      <p class="tb-hint mb-2"><a href="/connectors/{{ c.key }}">See exactly what it would write</a>
-        before importing it.</p>
-      {% endif %}
-      {# Outside the swapped region: a file picker is the user's, and a run in
-         flight must not clear it. #}
-      {% if c.accepts_files %}
-      <form class="mt-3" method="post" action="/connectors/{{ c.key }}/check" enctype="multipart/form-data">
-        <div class="tb-drop">
-          <i class="bi bi-file-earmark-zip"></i>
-          <p class="mb-2">Choose the export; Tributary <b>checks it first</b> and writes nothing.</p>
-          <input class="form-control form-control-sm d-inline-block align-middle" style="max-width: 20rem;"
-                 type="file" name="file" accept="{{ c.file_types | join(',') }}" required />
-          <button class="btn btn-sm btn-outline-primary ms-1 align-middle" type="submit">
-            <i class="bi bi-clipboard-check me-1"></i>Check file</button>
-          <p class="mb-0 mt-2 small">{{ c.file_types | join(" or ") }} · up to {{ max_upload_mb }} MB ·
-            kept {{ staged_ttl_hours | int }} h for the import</p>
-        </div>
-      </form>
-      {% endif %}
-    </article>
+    <li class="tb-src" id="{{ c.key }}">
+      <div class="tb-src-row">
+        {# The state, how it last went, and the buttons: re-rendered in place. #}
+        <div class="tb-src-main" data-region="status:{{ c.key }}">{{ m.status_region(c) }}</div>
+        <button class="tb-toggle" type="button" aria-expanded="false" aria-controls="more-{{ c.key }}"
+                aria-label="Details of {{ c.label }}" title="Details"><i class="bi bi-chevron-down"></i></button>
+      </div>
+      {# Folded by app.js; open without JavaScript. Outside the swapped region:
+         a file picker is the user's, and a run in flight must not clear it. #}
+      <div class="tb-src-more" id="more-{{ c.key }}">
+        <p class="tb-hint">{{ c.description }}</p>
+        {{ m.facts(c) }}
+        {% if c.accepts_files %}
+        <form class="tb-upload" method="post" action="/connectors/{{ c.key }}/check" enctype="multipart/form-data">
+          <label class="tb-lab" for="file-{{ c.key }}">Check an export — Tributary <b>checks it first</b> and
+            writes nothing</label>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <input class="form-control form-control-sm" style="max-width: 22rem;" id="file-{{ c.key }}"
+                   type="file" name="file" accept="{{ c.file_types | join(',') }}" required />
+            <button class="btn btn-sm btn-primary" type="submit">
+              <i class="bi bi-clipboard-check me-1"></i>Check file</button>
+            <span class="small text-body-secondary">{{ c.file_types | join(" or ") }} · up to {{ max_upload_mb }} MB ·
+              kept {{ staged_ttl_hours | int }} h for the import</span>
+          </div>
+        </form>
+        {% endif %}
+        <a class="tb-more-link" href="/connectors/{{ c.key }}">Schedule, runs and what it writes
+          <i class="bi bi-arrow-right"></i></a>
+      </div>
+    </li>
   {% endfor %}
-  </div>
+  </ul>
+  {% else %}
+  <p class="tb-group-empty">No Tributary connector for this domain yet.</p>
+  {% endif %}
   {{ m.external(section.tools) }}
 </section>
 {% endfor %}
 
 {% if showing_hidden %}
-<section class="tb-cat">
-  <div class="tb-cat-head"><i class="bi bi-eye-slash"></i><h2>Hidden</h2>
-    <span class="tb-count">{{ hidden_cards | length }}</span><span class="tb-rule"></span></div>
-  <div class="tb-grid">
+<section class="tb-group">
+  <header class="tb-group-head"><i class="bi bi-eye-slash"></i><h2>Hidden</h2>
+    <span class="tb-count">{{ hidden_cards | length }}</span></header>
+  <ul class="tb-list">
     {% for c in hidden_cards %}
-    <article class="tb-tile off">
-      <div class="tb-tile-head">
+    <li class="tb-src off tb-hue-{{ c.hue }}">
+      <div class="tb-src-row"><div class="tb-src-main">
         <span class="tb-ico"><i class="bi {{ c.icon }}"></i></span>
-        <div class="tb-tile-id"><h3><a href="/connectors/{{ c.key }}">{{ c.label }}</a></h3>
-          <p>{{ c.description }}</p></div>
-        <span class="tb-pill tb-pill-mute">Hidden</span>
-      </div>
-      <p class="tb-hint mb-2">Left out of the overview only: it is still scheduled, still runs, and its
-        series keep filling.</p>
-    </article>
+        <div class="tb-src-id">
+          <div class="tb-src-name"><a href="/connectors/{{ c.key }}">{{ c.label }}</a>
+            <span class="tb-src-when">{{ m.cadence(c) }}</span></div>
+          <div class="tb-src-meta">Left out of the overview only: it is still scheduled, still runs, and its
+            series keep filling.</div>
+        </div>
+        <span class="tb-pill tb-tone-mute"><i class="bi bi-eye-slash" aria-hidden="true"></i>Hidden</span>
+      </div></div>
+    </li>
     {% endfor %}
-  </div>
-  <p class="tb-external"><a href="/settings">Bring one back in Settings</a>.</p>
+  </ul>
+  <div class="tb-group-foot"><a href="/settings">Bring one back in Settings</a>.</div>
 </section>
 {% elif has_hidden and not showing_hidden %}
 <p class="small text-body-secondary text-center mt-2">

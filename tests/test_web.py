@@ -69,7 +69,7 @@ def test_a_configured_connector_has_its_buttons_and_runs(client, abs_api, abs_co
     page = client.get("/").text
     # Daily, not hourly: an hourly run against the server for nothing is waste.
     assert "Daily at 03:10" in page and 'action="/connectors/audiobookshelf/run"' in page
-    # Run now, a dry run (the line protocol, nothing written), and Open.
+    # Run now, and a dry run (the line protocol, nothing written).
     assert "Run now" in page and "Dry run" in page
     # The connector page adds the full resync.
     connector_page = client.get("/connectors/audiobookshelf").text
@@ -131,6 +131,29 @@ def test_the_full_resync_button_survives_a_poll(client, abs_api, no_thread):
     fragment must render the same buttons or the first swap drops Full resync."""
     assert "Full resync" in client.get("/connectors/audiobookshelf").text
     assert "Full resync" in client.get("/partials/status").text
+
+
+def test_the_overview_folds_each_source_without_hiding_a_form(client):
+    """A row shows the source's state and buttons; its details (the facts, the
+    file picker) sit in a body app.js folds and a toggle unfolds. The body is in
+    the page whatever the state, so without JavaScript nothing is out of reach;
+    and it is outside the polled region, so a poll never clears a chosen file."""
+    page = client.get("/").text
+    assert 'aria-controls="more-medisafe"' in page and 'id="more-medisafe"' in page
+    body = page.split('id="more-medisafe"', 1)[1].split("</li>", 1)[0]
+    assert 'action="/connectors/medisafe/check"' in body and 'type="file"' in body
+    assert 'data-region' not in body
+    # "Import a file" unfolds the row onto its picker, and falls back to the page.
+    assert 'href="/connectors/medisafe#import"' in page and 'data-expand="medisafe"' in page
+
+
+def test_the_schedule_editor_is_folded_until_a_save_is_refused(client):
+    """Read far more often than changed: the editor is behind a fold, open when
+    the last save came back refused so the reason sits beside the fields."""
+    page = client.get("/connectors/renpho").text
+    assert '<details class="tb-fold" >' in page and "Custom (cron)" in page
+    refused = client.get("/connectors/renpho?notice=bad").text
+    assert '<details class="tb-fold" open>' in refused
 
 
 def test_a_compatible_tool_shows_what_it_covers(client):
