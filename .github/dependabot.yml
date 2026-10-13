@@ -1,3 +1,6 @@
+# Commit prefixes feed the release notes (release-please-config.json): a runtime
+# dependency ("deps") is listed under Dependencies and makes a patch release; a dev
+# dependency ("chore") or an Actions bump ("ci") stays out of the notes.
 version: 2
 updates:
   - package-ecosystem: "pip"
@@ -5,18 +8,27 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+      prefix-development: "chore"
 
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "deps"
 
   - package-ecosystem: "docker-compose"
     directory: "/"
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "deps"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    commit-message:
+      prefix: "ci"

@@ -1,0 +1,24 @@
+name: 🏷️ Release
+
+# release-please keeps one release PR open with the next version and its CHANGELOG.md
+# entry, built from the conventional commits merged since the last release. Merging
+# that PR is the release: it tags vX.Y.Z, publishes the GitHub Release, and starts the
+# image builds on the tag (a tag made by GITHUB_TOKEN starts no workflow by itself).
+# See vchatela-org/shared-workflows, release-please.yml.
+
+on:
+  push:
+    branches: [ 'main' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  release:
+    uses: vchatela-org/shared-workflows/.github/workflows/release-please.yml@v1
+    with:
+      build_workflows: docker-build-push.yml ghcr-publish.yml
