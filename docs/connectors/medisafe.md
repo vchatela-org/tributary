@@ -51,9 +51,15 @@ Upload only: Tributary never watches a folder for this connector.
   summer); MyTherapy's are local. A stretch with off-hour schedules usually
   is the phone's time zone while travelling.
 - `status` is `taken`, `skipped` (the app's `dismissed`), `missed`, or
-  `unlogged` (`pending` or `snooze`: a reminder nobody answered says nothing
-  about the dose); `app_status` keeps the app's own word. `taken` is 1 for
-  `taken` and 0 otherwise.
+  `unlogged` (the app's `pending`, `snooze` or `deleted`: a reminder nobody
+  answered, or a dose the user removed in the app, says nothing about the
+  dose); `app_status` keeps the app's own word. `taken` is 1 for `taken` and 0
+  otherwise.
+  - A dose the app reports as `deleted` (removed in the app) is kept too:
+    `status=unlogged`, `app_status=deleted`, `taken=0`, no `delay_min`. It is
+    in the days the import replaces, so re-importing a current export rewrites
+    any such dose an earlier export left as `taken` -- intended, not a
+    regression.
 - `delay_min`, for a taken dose only: from the scheduled time to the moment
   it was recorded, in whole minutes (floored; negative: early). A blank
   record time writes no delay, a blank dosage no `dose`.
