@@ -25,8 +25,10 @@ many sources.
 
 ![The overview: every source, by category, with its last and next run](docs/screenshots/overview-light.png)
 
-<sub>Light and dark follow your system. Every source is shown unless you hide it in
-[Settings](#settings); hiding never stops a run.</sub>
+<sub>Light and dark follow your system (**dark** below). Every source is shown unless
+you hide it in [Settings](#settings); hiding never stops a run.</sub>
+
+![The same overview in dark mode](docs/screenshots/overview-dark.png)
 
 ## Integrations
 
@@ -125,12 +127,37 @@ staggered so two runs never overlap). The page says which one is in force, and
 offers *Reset to default*. A run missed while the app was down happens **once**
 shortly after the next start, never several times.
 
+![A source's page: the schedule editor and the next five runs](docs/screenshots/schedule-light.png)
+
+## Importing an export
+
+A source that only has a "download your data" file is imported from its page.
+Tributary **checks the file first** — nothing is written — shows the line
+protocol, and keeps it so *Import for real* does not ask for it again; the file
+lives on the data volume for a day and is deleted once imported. A file the
+check no longer stands for (it was replaced, or a setting changed) is refused
+and asked to be checked again.
+
+![Importing an export: choose, check, then import for real](docs/screenshots/connector-import-light.png)
+
+![The same source in dark mode](docs/screenshots/connector-import-dark.png)
+
+## Run history
+
+Every run is kept, with its trigger, result, point count and message; a check's
+line protocol is readable and copyable. The page filters by source and by
+failure, and updates a run in progress without reloading itself.
+
+![The run history, filtered by source](docs/screenshots/runs-light.png)
+
 ## Settings
 
 **Settings** chooses which sources the overview shows, so a few of them are not
 buried under the whole catalogue. It is display only: a hidden source is still
 scheduled, still runs, and its series keep filling. Everything is shown on a
 fresh install, and everything can be brought back from the same page.
+
+![Settings: which sources the overview shows](docs/screenshots/settings-light.png)
 
 ## No login
 
