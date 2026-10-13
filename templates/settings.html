@@ -61,7 +61,7 @@
     <a href="https://github.com/vchatela-org/tributary/blob/main/docs/compatible-tools.md">compatible tools</a>.</p>
   {% for category, tools in tools.items() %}{% if tools %}
     <div class="tb-tools"><strong>{{ category }}</strong> —
-      {% for t in tools %}<a href="{{ t.url }}" rel="noreferrer">{{ t.label }}</a> ({{ t.writes }}){% if not loop.last %}, {% endif %}{% endfor %}
+      {% for t in tools %}<a href="{{ t.url }}" rel="noreferrer">{{ t.label }}</a> ({{ t.writes | code_spans }}){% if not loop.last %}, {% endif %}{% endfor %}
     </div>
   {% endif %}{% endfor %}
 </section>

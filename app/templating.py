@@ -1,7 +1,9 @@
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup, escape
 
 from app import categories
 from app.__version__ import __version__
@@ -26,6 +28,12 @@ def duration(start: Optional[datetime], end: Optional[datetime]) -> str:
     return f"{seconds:.1f} s" if seconds < 60 else f"{int(seconds // 60)} min {int(seconds % 60):02d} s"
 
 
+def code_spans(text: str) -> Markup:
+    """A short text from the code whose `names` are written Markdown-style (a
+    compatible tool's databases): escaped, then each backticked span as <code>."""
+    return Markup(re.sub(r"`([^`]+)`", r"<code>\1</code>", str(escape(text))))
+
+
 def nav_sources() -> list:
     """The sidebar's sources, on every page. Its own short session: base.html is
     shared by routes that do not all hand a database to their template."""
@@ -37,6 +45,7 @@ def nav_sources() -> list:
 
 
 templates.env.filters["localtime"] = localtime
+templates.env.filters["code_spans"] = code_spans
 templates.env.globals["duration"] = duration
 templates.env.globals["app_version"] = __version__
 templates.env.globals["tz"] = settings.tz
