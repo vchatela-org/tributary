@@ -130,6 +130,11 @@ def todoist_connector():
 
 
 @pytest.fixture()
+def myfitnesspal_connector():
+    return connectors.get("myfitnesspal")
+
+
+@pytest.fixture()
 def mytherapy_connector(monkeypatch):
     """MyTherapy with a mapping (invented aliases): it takes an export upload."""
     import json
