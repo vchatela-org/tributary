@@ -1,96 +1,98 @@
 # Tributary
 
-Self-hosted, docker-first: Tributary pulls your personal measurements from
-the apps and devices that hold them into **InfluxDB 1.x**, and ships
-**Grafana dashboards** to look at them. Think
-[garmin-grafana](https://github.com/arpanghosh8453/garmin-grafana), for
-many sources.
+Tributary is the plumbing between the apps that hold your personal data and
+your own Grafana. It reads each source, from its API on a schedule or from the
+export file you upload, normalises what it finds to
+[one shared schema](docs/schema.md), and writes it into **InfluxDB 1.x**,
+where writing a point again replaces it instead of duplicating it. **The
+graphs live in Grafana:** Tributary draws none of its own, and its web UI is
+for runs, imports, schedules and settings. Think
+[garmin-grafana](https://github.com/arpanghosh8453/garmin-grafana), for many
+sources.
 
-- **Integrations**, one per source, grouped by domain: from its API on a
-  schedule, from its export files (upload, or a watched folder), or both.
-- **A web UI**: every source with its schedule and last runs, *Run now*, *Dry
-  run* (the exact line protocol, nothing written), *Full resync*, a file you
-  **check before importing**, and the history of every run.
-- **Schedules set in the UI**: per source, as a preset or a cron expression —
-  no environment variable to change and no redeploy.
-- **One shared schema** ([docs/schema.md](docs/schema.md)): a database per
-  domain (`MediaStats`, `BodyStats`, `SleepStats`...), a `source` tag per
-  tracker, fixed field types. Other tools write into the same databases
-  ([compatible tools](docs/compatible-tools.md)), so one Grafana relates
-  everything: reading in the evening and sleep, weight and activity...
-- **Append-only and idempotent:** a point rewritten overwrites itself;
-  nothing a source later forgets is dropped.
-- **Private by default:** numbers and a few tags leave, titles as the only
-  text (task names too, if you ask); secrets stay in the environment.
+```mermaid
+flowchart LR
+    api["APIs<br>Renpho, Audiobookshelf, Todoist"] -- on a schedule --> T
+    files["Export files<br>MyTherapy, Medisafe, MyFitnessPal"] -- uploaded in the UI --> T
+    T["<b>Tributary</b><br>fetch or import, normalise,<br>write: same key, same point"] --> DB[("InfluxDB 1.x<br>a database per domain")]
+    tools["Compatible tools<br>garmin-grafana, Takeback..."] -.-> DB
+    DB --> G["<b>Grafana</b><br>the dashboards"]
+```
 
-![The overview: every source, by category, with its last and next run](docs/screenshots/overview-light.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/overview-dark.png">
+  <img alt="The Tributary overview with demo data: sources by category, each with its schedule, last and next run" src="docs/screenshots/overview-light.png">
+</picture>
 
-<sub>One row per source, coloured by its category: its state, its last and next run and
-its buttons. The chevron unfolds the rest (what it reads and writes, and the file picker
-of a source you import into). Light and dark follow your system until you pick one at the
-foot of the sidebar (**dark** below). Every source is shown unless you hide it in
-[Settings](#settings); hiding never stops a run.</sub>
+<sub>The overview, with demo data: one row per source, in its category's colour.
+Light or dark follows your system; the other pages are in [docs/ui.md](docs/ui.md).</sub>
 
-![The same overview in dark mode](docs/screenshots/overview-dark.png)
+- **Check before writing.** *Dry run* shows the exact line protocol and writes
+  nothing; an export is checked first, then imported.
+- **Safe to repeat.** A point is keyed by measurement, tags and time, so a
+  rerun rewrites the same points. An API source only adds; an export replaces
+  that source's own series (or only the days it covers), never another tool's.
+- **One schema, many writers.** A database per domain (`MediaStats`,
+  `BodyStats`...), a `source` tag per tracker, fixed field types: other tools
+  write into the same databases, so one Grafana relates them all.
+- **Private by default.** Numbers and a few tags; free text only where it is
+  the point (a book's title) or when you ask (task names, dose notes); secrets
+  stay in the environment.
 
-## Integrations
+## Supported sources
 
-Grouped by what a person is actually looking at. A source with an API runs on a
-schedule; one that only has an export is imported from the UI when you have one.
+| Source | Category | Gets its data | Writes: measurements → database | Default schedule |
+|---|---|---|---|---|
+| [**Renpho**](docs/connectors/renpho.md) | Body & health | API (one account per person) | `body_composition`, `body_levels`, `body_thresholds` → `BodyStats` | Daily at 02:52 |
+| [**MyTherapy**](docs/connectors/mytherapy.md) | Medication | Export, uploaded in the UI | `medication` → `BodyStats` | none: you import a file |
+| [**Medisafe**](docs/connectors/medisafe.md) | Medication | Export, uploaded in the UI | `medication` → `BodyStats` | none: you import a file |
+| [**MyFitnessPal**](docs/connectors/myfitnesspal.md) | Nutrition & fitness | Export, uploaded in the UI | `body_composition`, `nutrition`, `exercise` → `BodyStats` | none: you import a file |
+| *No connector yet* | Sleep | covered by the compatible tools below | | |
+| [**Audiobookshelf**](docs/connectors/audiobookshelf.md) | Reading & media | API | `reading_session`, `book_finished` → `MediaStats` | Daily at 03:10 |
+| [**Todoist**](docs/connectors/todoist.md) | Productivity | API | `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` → `TodoistStats` | Daily at 00:30 |
+
+Schedules are in `TRIBUTARY_TZ` and staggered so two runs never overlap;
+change one on the source's page ([scheduling](docs/scheduling.md)). Each
+source's page in [docs/connectors/](docs/connectors/README.md) says which
+variables it reads and what it deliberately leaves out.
+
 The **compatible tools** are maintained projects that write into the same
-databases — Tributary does not run them, and they are listed so a domain is
-complete rather than to be configured here.
+databases. Tributary does not run them: a connector is written only for a
+source no maintained tool covers ([compatible tools](docs/compatible-tools.md)).
 
-### Body & health
-
-| Source | Input | Writes |
+| Compatible tool | Category | Writes |
 |---|---|---|
-| **Renpho** | the API, daily, one account per person | `BodyStats`: `body_composition`, `body_levels`, `body_thresholds` |
+| [**garmin-grafana**](https://github.com/arpanghosh8453/garmin-grafana) | Body & health, Sleep | InfluxDB `GarminStats` (activity, sleep, heart rate, body battery...), with its own dashboards |
+| [**Whoops**](https://github.com/kryoseu/whoops) | Sleep | PostgreSQL (Whoop sleep, recovery, strain) |
+| [**Takeback**](https://github.com/vchatela-org/takeback) | Reading & media, Productivity | InfluxDB `MediaStats`, `ShoppingStats`, `DigitalStats`, from GDPR archives (Kindle sessions, Audible, purchases...) |
 
-Compatible tools: [**garmin-grafana**](https://github.com/arpanghosh8453/garmin-grafana) — the Garmin API, into `GarminStats` (activity, heart rate, body battery...).
+## Graphs: in Grafana
 
-### Medication
+Tributary only writes; dashboards read InfluxDB. [grafana/](grafana/) ships:
 
-| Source | Input | Writes |
+| Dashboard | Reads | Panels |
 |---|---|---|
-| **MyTherapy** | an export you import | `BodyStats`: `medication` |
-| **Medisafe** | an export you import | `BodyStats`: `medication` |
+| [Reading & listening](grafana/dashboards/reading-listening.json) | `MediaStats`: `reading_session`, `book_finished` | time per day and per week by kind and source, sessions, active days, time by device, evening reading (by local hour), books finished |
 
-### Nutrition & fitness
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/grafana-reading-dark.png">
+  <img alt="The Reading and listening dashboard in Grafana, with demo data: time per day by kind, per week by source, and by device" src="docs/screenshots/grafana-reading-light.png">
+</picture>
 
-| Source | Input | Writes |
-|---|---|---|
-| **MyFitnessPal** | an export you import | `BodyStats`: `body_composition`, `nutrition`, `exercise` |
+<sub>The Reading & listening dashboard in Grafana, with demo data (Audiobookshelf
+plus Kindle sessions from Takeback).</sub>
 
-### Sleep
-
-Nothing of Tributary's yet: sleep is covered by the tools below, and by Garmin
-and Whoop reading it in place.
-
-Compatible tools: [**garmin-grafana**](https://github.com/arpanghosh8453/garmin-grafana) (Garmin stats, into `GarminStats`), [**Whoops**](https://github.com/kryoseu/whoops) (Whoop, into PostgreSQL).
-
-### Reading & media
-
-| Source | Input | Writes |
-|---|---|---|
-| **Audiobookshelf** | the API, daily | `MediaStats`: `reading_session`, `book_finished` |
-
-Compatible tools: [**Takeback**](https://github.com/vchatela-org/takeback) — GDPR archives (Kindle reading sessions, Audible), into `MediaStats`.
-
-### Productivity
-
-| Source | Input | Writes |
-|---|---|---|
-| **Todoist** | the API, daily | `TodoistStats`: `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` |
-
-Compatible tools: [**Takeback**](https://github.com/vchatela-org/takeback) — GDPR archives (purchases, activity counts), into `ShoppingStats`, `DigitalStats`.
-
-Each integration has its own page: [docs/connectors/](docs/connectors/), with what
-it writes, which variables it reads and what it deliberately leaves out. A
-connector is written only for a source no maintained tool covers: Garmin, for
-instance, is [garmin-grafana](docs/compatible-tools.md)'s.
-[Writing a connector](docs/connectors/README.md);
-[porting a job that already feeds InfluxDB](docs/porting.md).
+- The quick start below provisions it: [grafana/provisioning/](grafana/provisioning/)
+  declares the `InfluxDB MediaStats` datasource and loads `grafana/dashboards/`
+  into a *Tributary* folder.
+- In a Grafana you already run, import the JSON: it uses any InfluxDB
+  datasource whose name contains `MediaStats` ([deployment](docs/deployment.md#docker-compose)).
+- It reads the schema, not a connector: points another tool writes the same
+  way (Kindle sessions from Takeback) show up in the same panels.
+- **No dashboard here yet** for Renpho, MyTherapy, Medisafe, MyFitnessPal or
+  Todoist. Their series are described in [the schema](docs/schema.md); add a
+  datasource per database (`InfluxDB BodyStats`...) as the provisioning file
+  explains.
 
 ## Quick start
 
@@ -103,127 +105,45 @@ cp .env.example .env    # then set the sources you use, e.g. TRIBUTARY_ABS_URL a
 docker compose up -d
 ```
 
-This builds Tributary and starts it with InfluxDB 1.11 and Grafana:
+This builds Tributary and starts it with InfluxDB 1.x and Grafana:
 
-- Tributary: <http://127.0.0.1:8000>. Each configured source runs on its own
-  schedule (a daily time by default); *Run now* and *Dry run* show what it does
-  before that. A source with only an export is imported from its page: the file
-  is **checked first** — nothing is written — and then imported.
-- Grafana: <http://127.0.0.1:3000> (first login `admin` / `admin`), with
-  the InfluxDB datasources and the proposed dashboards of
-  [grafana/](grafana/) in a *Tributary* folder.
+- Tributary: <http://127.0.0.1:8000>. Each configured source runs on its
+  schedule; *Run now* and *Dry run* show what it does before that. An export
+  source is imported from its page: the file is checked first, then imported.
+- Grafana: <http://127.0.0.1:3000> (first login `admin` / `admin`), with the
+  datasource and the dashboards of [grafana/](grafana/) in a *Tributary*
+  folder.
 
-Already running InfluxDB or Grafana? See [docs/deployment.md](docs/deployment.md).
+Every setting is an environment variable: [.env.example](.env.example), and
+the full list in [docs/deployment.md](docs/deployment.md#configuration), which
+also covers an existing InfluxDB or Grafana, and Kubernetes.
 
-## Scheduling
+**No login.** Tributary has no accounts: anyone who reaches its port can start
+runs. Keep it local (the compose file binds `127.0.0.1`) or put an
+authenticating reverse proxy in front (Authentik, Authelia, oauth2-proxy...):
+[docs/deployment.md](docs/deployment.md#no-login-keep-it-private).
 
-Each source runs on a **5-field cron expression**, in `TRIBUTARY_TZ`. Set it on
-the source's page — a preset (*Every hour*, *Daily at a time*, *Weekly on a day
-and time*) or an expression you type — and the page shows the next five runs.
-Times are absolute, so a restart no longer shifts a schedule.
+## Documentation
 
-Where a value comes from, in order: what you saved in the UI; else
-`TRIBUTARY_<KEY>_SCHEDULE`; else the deprecated
-`TRIBUTARY_<KEY>_INTERVAL_MINUTES`, still honoured so an existing deployment keeps
-working; else the source's own default (daily for the ones that read an API,
-staggered so two runs never overlap). The page says which one is in force, and
-offers *Reset to default*. A run missed while the app was down happens **once**
-shortly after the next start, never several times.
+- [The web UI](docs/ui.md): the overview, a source's page, importing an
+  export, the run history, settings, and the HTTP API.
+- [Scheduling](docs/scheduling.md): cron per source, where a value comes from,
+  what a missed run does.
+- [Deployment](docs/deployment.md): every setting, Docker Compose, Kubernetes,
+  upgrades.
+- [Connectors](docs/connectors/README.md): one page per source, and how to
+  write one.
+- [The shared schema](docs/schema.md): every measurement, tag and field type,
+  for Tributary and the tools writing next to it.
+- [Compatible tools](docs/compatible-tools.md) and
+  [porting a job that already feeds InfluxDB](docs/porting.md).
 
-![A source's page: its state at a glance, the next five runs and the schedule editor, unfolded](docs/screenshots/schedule-light.png)
+## Contributing
 
-## Importing an export
-
-A source that only has a "download your data" file is imported from its page.
-Tributary **checks the file first** — nothing is written — shows the line
-protocol, and keeps it so *Import for real* does not ask for it again; the file
-lives on the data volume for a day and is deleted once imported. A file the
-check no longer stands for (it was replaced, or a setting changed) is refused
-and asked to be checked again.
-
-![Importing an export: choose, check, then import for real](docs/screenshots/connector-import-light.png)
-
-![The same source in dark mode](docs/screenshots/connector-import-dark.png)
-
-## Run history
-
-Every run is kept, with its trigger, result, point count and message; a check's
-line protocol is readable and copyable. The page filters by source and by
-failure, and updates a run in progress without reloading itself.
-
-![The run history, filtered by source](docs/screenshots/runs-light.png)
-
-## Settings
-
-**Settings** chooses which sources the overview shows, so a few of them are not
-buried under the whole catalogue. It is display only: a hidden source is still
-scheduled, still runs, and its series keep filling. Everything is shown on a
-fresh install, and everything can be brought back from the same page.
-
-![Settings: which sources the overview shows](docs/screenshots/settings-light.png)
-
-## No login
-
-Tributary has no accounts. Run it where only you can reach it (the compose
-file binds it to `127.0.0.1`), or behind an authenticating reverse proxy
-(Authentik, Authelia, oauth2-proxy...). Details in
-[docs/deployment.md](docs/deployment.md), along with every setting and how
-to run it on Kubernetes.
-
-## Dashboards
-
-[grafana/dashboards/](grafana/dashboards/) holds proposed dashboards,
-provisioned by the compose file:
-
-- **Reading & listening** (`MediaStats`): time per day and week by kind and
-  source, devices, evening reading (by local hour), finished books.
-
-They read the shared schema, not a connector: data written by another tool
-following it (e.g. Kindle sessions from a GDPR-export tool) shows up in the
-same panels.
-
-## API
-
-`/docs` has the OpenAPI description. In short: `GET /api/connectors`,
-`GET /api/runs`, `GET /api/runs/{id}` (a dry run's line protocol),
-`POST /api/connectors/{key}/run?dry_run=&full=`,
-`POST /api/connectors/{key}/upload?dry_run=`,
-`GET|PUT /api/connectors/{key}/schedule`,
-`POST /api/connectors/{key}/import` (import what a check kept),
-`DELETE /api/connectors/{key}/staged`, `GET|POST /api/preferences`,
-`GET /api/health`.
-
-## Development
-
-```sh
-python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/python -m pytest -q
-TRIBUTARY_DATA_DIR=./data .venv/bin/uvicorn app.main:app --reload
-```
-
-`python -m tests.fakes` serves a fake Audiobookshelf with a few sessions,
-to try the whole chain without a real server (`TRIBUTARY_ABS_URL=http://127.0.0.1:13378`,
-`TRIBUTARY_ABS_TOKEN=demo-key`).
-
-Before pushing, `./scripts/privacy-scan.sh` checks that no personal data
-(real identifiers, private addresses, internal hostnames) entered the tree.
-
-## Releasing
-
-Releases are cut by [release-please](https://github.com/googleapis/release-please) from the
-[conventional commits](https://www.conventionalcommits.org/) on `main`. It keeps one release PR
-open, `chore(main): release X.Y.Z`, with the next version and its `CHANGELOG.md` entry; every
-`feat`, `fix`, `perf`, `revert` or `deps` change merged since the last release joins it, so several
-can ship together. Merging it tags `vX.Y.Z`, publishes the GitHub Release (the notes Renovate and
-Dependabot show when they bump the image) and builds the image on the tag: GHCR (`X.Y.Z`, `X.Y` and
-`latest`) and the owner's Harbor. Don't bump `app/__version__.py` or push a tag by hand.
-
-PRs are **squash-merged**, with the PR title as the commit subject and an empty body (the merge
-dialog's prefill: keep it). The title is the PR's one line in the notes and decides the bump: `feat`
-makes a minor, the other listed types a patch, a breaking change (`feat!:`) a minor while in 0.x;
-`docs`, `chore`, `ci`, `test`, `refactor`, `build` and `style` stay out of the notes. So keep the
-title a conventional commit; the "PR title" check says when it is not. Details, and how to force a
-version: [shared-workflows](https://github.com/vchatela-org/shared-workflows#reusable-workflow-release-pr-release-please).
+A new source is welcome when no maintained tool covers it yet
+([before writing one](docs/connectors/README.md#before-writing-one)). Run the
+tests and the privacy scan before pushing, and title the PR as a conventional
+commit, since it decides the release: [development and releases](docs/development.md).
 
 ## License
 

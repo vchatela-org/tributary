@@ -58,8 +58,9 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
 
 - `key`: its id, also the `source` tag of every point it writes.
 - `label`, `description`, `icon` (a Bootstrap icon) for the UI.
-- `category`: one of `app/categories.py`'s `CATEGORIES`, the section the UI and
-  the README show it under. A test fails when it is missing or unknown.
+- `category`: one of `app/categories.py`'s `CATEGORIES`, the section the UI
+  shows it under and its row's category in the README. A test fails when it is
+  missing or unknown.
 - `settings_class`: a `ConnectorSettings` subclass with its own prefix,
   `TRIBUTARY_<KEY>_`. Secrets are `SecretStr`: never logged, stored or
   returned. `watch_dir` comes with it, and so do the two schedule values:
