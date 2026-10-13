@@ -222,6 +222,20 @@ def test_the_settings_page_shows_a_hidden_source_unchecked(client):
     assert "checked" in next(line for line in page.splitlines() if 'id="show-audiobookshelf"' in line)
 
 
+def test_the_settings_page_shows_a_tool_s_databases_as_code(client):
+    """A compatible tool's databases are written `GarminStats` in the code: the page
+    shows them as code, not with the backticks."""
+    page = client.get("/settings").text
+    assert "InfluxDB <code>GarminStats</code>" in page
+    assert "`GarminStats`" not in page
+
+
+def test_code_spans_escapes_what_is_not_code():
+    from app.templating import code_spans
+
+    assert code_spans("a <b> & `x<y>`") == "a &lt;b&gt; &amp; <code>x&lt;y&gt;</code>"
+
+
 def test_a_staged_check_reports_the_points_it_would_write(client, steps, db, no_thread):
     """The API says how many points the waiting check produced, so a script need
     not go and match the dry run."""
