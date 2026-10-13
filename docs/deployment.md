@@ -43,7 +43,7 @@ Each connector has its own, documented with it ([connectors](connectors/README.m
 ## Docker Compose
 
 See the README's quick start: `docker-compose.yml` runs Tributary, InfluxDB
-1.11 and Grafana with the datasources and dashboards of `grafana/`
+1.x and Grafana with the datasources and dashboards of `grafana/`
 provisioned. To use an InfluxDB you already have, drop the `influxdb`
 service and point `TRIBUTARY_INFLUXDB_URL` at yours; for an existing
 Grafana, copy the datasource from `grafana/provisioning/datasources/` and
