@@ -19,6 +19,10 @@ os.environ.update({
     "TRIBUTARY_RENPHO_PASSWORD": "",
     "TRIBUTARY_RENPHO_USER": "",
     "TRIBUTARY_RENPHO_THRESHOLDS": "",
+    "TRIBUTARY_TODOIST_TOKEN": "",
+    "TRIBUTARY_MYTHERAPY_WATCH_DIR": "",
+    "TRIBUTARY_MYTHERAPY_NAMES": "",
+    "TRIBUTARY_MYTHERAPY_START_DATE": "",
 })
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.chdir(Path(__file__).resolve().parents[1])  # templates/ and static/ are relative
@@ -26,7 +30,8 @@ os.chdir(Path(__file__).resolve().parents[1])  # templates/ and static/ are rela
 from app import connectors, scheduler  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.main import app  # noqa: E402,F401 -- creates the tables; scheduler off (nothing configured)
-from tests.fakes import THRESHOLDS, FakeAbs, FakeInflux, FakeRenpho  # noqa: E402
+from tests.fakes import MYTHERAPY_NAMES, THRESHOLDS, TODOIST_TOKEN  # noqa: E402
+from tests.fakes import FakeAbs, FakeInflux, FakeRenpho, FakeTodoist  # noqa: E402
 
 
 @pytest.fixture()
@@ -117,3 +122,40 @@ def bob(monkeypatch, renpho_cloud, renpho_connector):
 def no_thread(monkeypatch):
     """Requests are queued, never run by a live scheduler thread."""
     monkeypatch.setattr(scheduler, "_ensure_thread", lambda: False)
+
+
+@pytest.fixture()
+def todoist_connector():
+    return connectors.get("todoist")
+
+
+@pytest.fixture()
+def mytherapy_connector(monkeypatch):
+    """MyTherapy with a mapping (invented aliases): it takes an export upload."""
+    import json
+
+    from app.connectors import mytherapy
+
+    connector = connectors.get("mytherapy")
+    monkeypatch.setattr(connector, "settings",
+                        mytherapy.MyTherapySettings(names=json.dumps(MYTHERAPY_NAMES)))
+    return connector
+
+
+@pytest.fixture()
+def todoist_api(monkeypatch, todoist_connector):
+    """Todoist configured (task text off, the default), its API served
+    in-process over HTTP; retries don't wait (`fake.slept` records them)."""
+    from pydantic import SecretStr
+
+    from app.connectors import todoist
+
+    fake = FakeTodoist()
+    fake.slept = []
+    monkeypatch.setattr(todoist, "API_URL", fake.url)
+    monkeypatch.setattr(todoist, "_sleep", fake.slept.append)
+    monkeypatch.setattr(todoist_connector.settings, "token", SecretStr(TODOIST_TOKEN))
+    monkeypatch.setattr(todoist_connector.settings, "task_text", False)
+    monkeypatch.setattr(todoist_connector.settings, "lookback_days", 3)
+    yield fake
+    fake.close()

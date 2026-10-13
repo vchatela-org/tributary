@@ -128,6 +128,30 @@ def test_a_measurement_may_carry_no_source_tag():
         encode([Point(bounds, at(2025, 1, 1), {"source": "scale"}, {"bmi_t1": 18.5})], source="scale")
 
 
+def test_a_measurement_may_carry_no_user_tag():
+    """A job ported as is that wrote none: TRIBUTARY_INFLUXDB_USER is not added."""
+    plain = Measurement("TodoistStats", "todoist_karma", tags=(), fields={"karma": float}, tagged_source=False,
+                        tagged_user=False)
+    assert plain.tag_keys == ()
+    assert encode([Point(plain, at(2025, 1, 1), {}, {"karma": 1.0})], "todoist", "me")["TodoistStats"] == [
+        f"todoist_karma karma=1.0 {epoch(2025, 1, 1)}"]
+    with pytest.raises(ValueError):
+        encode([Point(plain, at(2025, 1, 1), {"user": "me"}, {"karma": 1.0})], "todoist")
+
+
+def test_last_wins_merges_a_key_as_consecutive_writes_would():
+    m = Measurement("D", "m", tags=(), fields={"count": int, "minutes": float, "note": str}, last_wins=True)
+    lines = encode([Point(m, at(2025, 1, 1), {}, {"count": 1, "minutes": 2.0, "note": "first"}),
+                    Point(m, at(2025, 1, 1), {}, {"count": 1, "note": "second"})], "s")["D"]
+    assert lines == [f'm,source=s count=1i,minutes=2.0,note="second" {epoch(2025, 1, 1)}']
+
+
+def test_a_measurement_may_keep_its_texts_whole():
+    whole = Measurement("D", "m", tags=(), fields={"note": str}, text_max=None)
+    assert encode([Point(whole, at(2025, 1, 1), {}, {"note": "x" * 1000})], "s")["D"] == [
+        f'm,source=s note="{"x" * 1000}" {epoch(2025, 1, 1)}']
+
+
 def test_undeclared_tags_and_fields_are_refused():
     with pytest.raises(ValueError, match="tag"):
         encode([Point(READING_SESSION, at(2025, 1, 1), {"ip": "x"}, {"minutes": 1.0})], source="x")

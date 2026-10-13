@@ -83,7 +83,12 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
     if file:
         label = filename or Path(file).name
         points = _import(connector, Path(file), label)
-        return points, [f"Imported {label}"], None, False, []
+        # `rebuild_own_source`: an uploaded file that holds a connector's whole
+        # history (an export) replaces its series rather than adding to it or
+        # overwriting point by point -- a dose the export no longer has is one
+        # the source no longer knows. The connector raises before this when the
+        # file holds nothing to write back, so the series is never left empty.
+        return points, [f"Imported {label}"], None, connector.rebuild_own_source, []
 
     if not connector.is_configured():
         raise ConnectorError(f"Not configured: set {', '.join(connector.required_env) or 'its settings'}.")
@@ -207,7 +212,8 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
             record.stats_json = json.dumps(written)
             if total or rebuild:
                 record.message = f"{what}{record.points} point(s) written" + (
-                    f" ({_by_database(written)})" if written else "") + "."
+                    f" ({_by_database(written)})" if written else "") + (
+                    ", after dropping its own series" if rebuild else "") + "."
             else:
                 record.message = "Nothing new." if not summary else f"{what}nothing to write."
             if expired:
