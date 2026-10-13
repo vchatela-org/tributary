@@ -22,8 +22,11 @@ A dose:
               Paris dose is 11:00 in winter, 10:00 in summer), tags med =
               the export's name, renamed or left out per
               TRIBUTARY_MEDISAFE_NAMES, and status = taken / skipped / missed
-              / unlogged (the app's taken / dismissed / missed, and pending or
-              snooze: a reminder nobody answered says nothing about the dose).
+              / unlogged (the app's taken / dismissed / missed, and pending,
+              snooze or deleted: a reminder nobody answered, or a dose the
+              user removed in the app, says nothing about the dose -- so a
+              re-import of a current export rewrites a dose an earlier one
+              left as taken, which is intended).
               Fields: taken (1 when the dose was taken), app_status (the
               app's own word), dose and unit when the export carries them,
               strength (the medication's, "10 mg"), delay_min for a taken dose
@@ -61,8 +64,8 @@ SOURCE = "medisafe"
 # The columns an import reads: a file without them is not a doses export.
 COLUMNS = ("name", "Scheduled for", "Recorded on", "dose_status", "dosage", "unit", "med_strength", "notes")
 # The app's status -> the contract's.
-STATUS = {"taken": "taken", "dismissed": "skipped", "missed": "missed", "pending": "unlogged",
-          "snooze": "unlogged"}
+STATUS = {"taken": "taken", "dismissed": "skipped", "missed": "missed",
+          "pending": "unlogged", "snooze": "unlogged", "deleted": "unlogged"}
 
 # The export's file name carries the account number.
 ACCOUNT_IN_NAME = re.compile(r"^(Doses_)[^_]+(_)", re.IGNORECASE)
