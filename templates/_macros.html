@@ -1,37 +1,164 @@
-{% macro status_badge(run) -%}
-{% if run.status == 'ok' %}<span class="badge text-bg-success"><i class="bi bi-check2 me-1"></i>OK</span>
-{% elif run.status == 'error' %}<span class="badge text-bg-danger"><i class="bi bi-x-octagon me-1"></i>Error</span>
-{% else %}<span class="badge text-bg-info"><span class="spinner-border spinner-border-sm me-1"></span>Running</span>
-{% endif %}
-{% if run.dry_run %}<span class="badge text-bg-secondary">Dry run</span>{% endif %}
-{% if run.full %}<span class="badge text-bg-secondary">Full</span>{% endif %}
+{# Small pieces shared by the pages and by the fragments app.js swaps in.
+   The status bits live in one macro (status_region) so the server-rendered page
+   and the polled fragment cannot drift apart. #}
+
+{% macro pill(state, label) -%}
+{% set kind = {"ok": "ok", "failing": "err", "error": "err", "running": "info", "queued": "mute",
+               "checked": "warn", "new": "mute", "unconfigured": "mute"}.get(state, "mute") %}
+<span class="tb-pill tb-pill-{{ kind }}{% if state == 'running' %} live{% endif %}">{{ label }}</span>
 {%- endmacro %}
 
 {% macro trigger_label(run) -%}
-{{ {"schedule": "Scheduled", "manual": "Manual", "upload": "Upload"}.get(run.trigger, run.trigger) }}
+{{ {"schedule": "Scheduled", "manual": "Manual", "upload": "Import"}.get(run.trigger, run.trigger) }}
+{%- endmacro %}
+
+{% macro status_word(run) -%}
+{{ {"ok": "OK", "error": "Failed", "running": "Running"}.get(run.status, run.status) }}
+{%- endmacro %}
+
+{# The run buttons. Every one is a POST back to the page it was pressed on. #}
+{% macro actions(c, show_open=True) -%}
+<div class="tb-actions">
+  {% if c.state == "running" %}
+    <span class="tb-pill tb-pill-info live">Running</span>
+  {% elif c.state == "queued" %}
+    <span class="tb-pill tb-pill-mute" title="Already queued: it runs after the current one">Queued</span>
+  {% elif c.state == "checked" %}
+    <form method="post" action="/connectors/{{ c.key }}/import">
+      <button class="btn btn-sm btn-primary" type="submit">
+        <i class="bi bi-box-arrow-in-down me-1"></i>Import for real</button>
+    </form>
+    <form method="post" action="/connectors/{{ c.key }}/discard">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">Discard</button>
+    </form>
+  {% elif c.configured %}
+    {# An API or a watched folder: it can read its source on demand. #}
+    <form method="post" action="/connectors/{{ c.key }}/run">
+      <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-arrow-repeat me-1"></i>Run now</button>
+    </form>
+    {% if show_open %}<a class="btn btn-sm btn-outline-secondary" href="/connectors/{{ c.key }}">Open</a>{% endif %}
+  {% else %}
+    {% if c.accepts_files %}
+    {% if c.state == "unconfigured" %}
+    <a class="btn btn-sm btn-outline-secondary" href="/connectors/{{ c.key }}">Set up</a>
+    {% else %}
+    <a class="btn btn-sm btn-primary" href="/connectors/{{ c.key }}#import">
+      <i class="bi bi-file-earmark-zip me-1"></i>Import a file</a>
+    {% endif %}
+    {% endif %}
+    {% if show_open %}<a class="btn btn-sm btn-outline-secondary" href="/connectors/{{ c.key }}">Open</a>{% endif %}
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{# The part of a card app.js re-renders: the state, what is going on, and the
+   buttons that state changes. Nothing that holds user input. #}
+{% macro status_region(c) -%}
+<div class="tb-tile-head">
+  <span class="tb-ico"><i class="bi {{ c.icon }}"></i></span>
+  <div class="tb-tile-id">
+    <h3><a href="/connectors/{{ c.key }}">{{ c.label }}</a></h3>
+    <p>{{ c.description }}</p>
+  </div>
+  {{ pill(c.state, c.state_label) }}
+</div>
+{% if c.state == "unconfigured" and c.required_env %}
+<div class="tb-actline"><span class="tb-pill tb-pill-mute">Set up</span>
+  <span>Set {% for name in c.required_env %}<code class="tb-mono">{{ name }}</code>{% if not loop.last %},
+    {% endif %}{% endfor %} to run it. A check works without them.</span></div>
+{% elif c.state == "running" %}
+<div class="tb-actline"><span class="tb-pill tb-pill-info live">Running</span>
+  <span>The run going on right now — this page stays where it is.</span></div>
+{% elif c.state == "queued" %}
+<div class="tb-actline"><span class="tb-pill tb-pill-mute">Queued</span>
+  <span>Already queued: it runs after the current one.</span></div>
+{% elif c.state == "checked" and c.staged %}
+<div class="tb-actline"><span class="tb-pill tb-pill-warn">Checked</span>
+  <span><b>{{ c.staged.filename }}</b> is ready to import.</span></div>
+{% endif %}
+{{ actions(c) }}
+{%- endmacro %}
+
+{# What the source accepts and when it runs: enough to decide without leaving
+   the page. #}
+{% macro facts(c) -%}
+<dl class="tb-facts">
+  <div><dt>Runs</dt>
+    <dd>{% if c.schedule %}{{ c.schedule.label }}{% elif not c.configured %}not configured{% else %}manual only{% endif %}</dd></div>
+  <div><dt>Next</dt>
+    <dd>{% if c.schedule and c.schedule.next_run %}{{ c.schedule.next_run | localtime }}{% else %}–{% endif %}</dd></div>
+  <div><dt>Last</dt>
+    <dd>{% if c.last_run %}{{ c.last_run.started_at | localtime }}{% else %}never{% endif %}</dd></div>
+  <div><dt>Data</dt><dd>{{ c.input_label }}</dd></div>
+  <div><dt>Writes</dt>
+    <dd>{% if c.measurements | length == 1 %}{{ c.measurements[0].database }}.{{ c.measurements[0].name }}
+        {%- else %}{{ c.measurements | length }} measurements{% endif %}</dd></div>
+</dl>
+{%- endmacro %}
+
+{% macro external(tools) -%}
+{% if tools %}
+<p class="tb-external"><strong>Also feeding this domain, not run by Tributary:</strong>
+  {% for t in tools %}<span class="tb-chip"><a href="{{ t.url }}" rel="noreferrer"><i
+      class="bi bi-box-arrow-up-right me-1"></i>{{ t.label }}</a><em>{{ t.notes }}</em></span>{% endfor %}
+</p>
+{% endif %}
 {%- endmacro %}
 
 {% macro runs_table(runs, show_connector=False) -%}
+{% if runs %}
 <div class="table-responsive">
-  <table class="table table-sm align-middle mb-0">
+  <table class="tb-runs">
     <thead><tr>
-      <th>Started ({{ tz }})</th>
-      {% if show_connector %}<th>Connector</th>{% endif %}
-      <th>Trigger</th><th>Status</th><th class="text-end">Points</th><th>Duration</th><th>Message</th>
+      <th>When ({{ tz }})</th>
+      {% if show_connector %}<th>Source</th>{% endif %}
+      <th>How</th><th>State</th><th class="tb-num">Points</th><th>Time</th><th>Message</th>
     </tr></thead>
     <tbody>
     {% for run in runs %}
       <tr>
-        <td class="text-nowrap"><a href="/runs/{{ run.id }}">{{ run.started_at | localtime(True) }}</a></td>
-        {% if show_connector %}<td>{{ run.connector }}</td>{% endif %}
+        <td class="tb-when tb-mono"><a href="/runs/{{ run.id }}">{{ run.started_at | localtime }}</a></td>
+        {% if show_connector %}
+        <td>{% set c = connectors_by_key.get(run.connector) if connectors_by_key else None %}
+          {{ c.label if c else run.connector }}</td>
+        {% endif %}
         <td>{{ trigger_label(run) }}</td>
-        <td class="text-nowrap">{{ status_badge(run) }}</td>
-        <td class="text-end">{{ run.points if run.points is not none else "" }}</td>
-        <td class="text-nowrap">{{ duration(run.started_at, run.finished_at) }}</td>
-        <td class="run-message">{{ run.message or "" }}</td>
+        <td class="tb-when"><span class="tb-dot {{ run.status }}"></span>{{ status_word(run) }}
+          {% if run.dry_run %} <span class="tb-pill tb-pill-mute">Check</span>{% endif %}
+          {% if run.full %} <span class="tb-pill tb-pill-mute">Full</span>{% endif %}</td>
+        <td class="tb-num">{{ run.points if run.points is not none else "" }}</td>
+        <td class="tb-mono">{{ duration(run.started_at, run.finished_at) }}</td>
+        <td class="tb-msg">{{ run.message or "" }}
+          {%- if run.promoted_from %} <a href="/runs/{{ run.promoted_from }}">its check</a>{% endif %}</td>
       </tr>
     {% endfor %}
     </tbody>
   </table>
 </div>
+{% else %}
+<div class="tb-empty"><i class="bi bi-inbox"></i>No run yet.</div>
+{% endif %}
+{%- endmacro %}
+
+{# What is going on right now, across every source. #}
+{% macro activity(active, queued, connectors_by_key) -%}
+<i class="bi bi-arrow-repeat"></i>
+{% if active or queued %}
+  {% for item in active %}
+    <span class="tb-run"><span class="tb-dot running"></span><b>{{ item.connector.label if item.connector else item.run.connector }}</b>
+      — {{ item.run.trigger }}{% if item.run.dry_run %} (check){% endif %}</span>
+  {% endfor %}
+  {% for key in queued %}
+    <span class="tb-run"><span class="tb-dot"></span><b>{{ connectors_by_key[key].label if key in connectors_by_key else key }}</b>
+      — queued</span>
+  {% endfor %}
+{% else %}
+  <span class="tb-run">Nothing running.</span>
+{% endif %}
+<span class="tb-soft">Runs go one after another in the background; this page never reloads itself, so you can
+  keep choosing files while one is going.</span>
+{%- endmacro %}
+
+{% macro schedule_source(resolved) -%}
+{% if resolved %}{{ resolved.source_label }}{% else %}no schedule{% endif %}
 {%- endmacro %}

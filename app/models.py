@@ -30,6 +30,10 @@ class SyncRun(Base):
     stats_json = Column(Text, nullable=True)  # {database: points}
     # Dry run: the line protocol it would have written (capped).
     preview = Column(Text, nullable=True)
+    # The dry run whose checked file this import applied ("Import for real"):
+    # the two stay distinguishable in the history, and the import's counts are
+    # read next to the diff the user saw (app/runner.py).
+    promoted_from = Column(Integer, nullable=True)
 
 
 class Cursor(Base):
@@ -39,4 +43,59 @@ class Cursor(Base):
 
     connector = Column(String(50), primary_key=True)
     value_json = Column(Text, nullable=True)
+    updated_at = Column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class ConnectorSchedule(Base):
+    """When a connector runs, as set in the UI: a 5-field cron expression in
+    TRIBUTARY_TZ. Absent: the environment or the connector's default decides
+    (app/schedule.py, which also says where the value came from)."""
+    __tablename__ = "connector_schedules"
+
+    connector = Column(String(50), primary_key=True)
+    cron = Column(String(120), nullable=False)
+    updated_at = Column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class StagedUpload(Base):
+    """An uploaded export that was *checked* (a dry run) and kept, so "Import
+    for real" does not upload it a second time.
+
+    The file stays in the data dir for `staged_upload_ttl_hours` and is deleted
+    on the import, on discard, or when it expires. Everything needed to refuse
+    a stale promote is here: the hashes must still match, or the row is dropped
+    and the user is asked to check the file again (app/runner.py).
+    """
+    __tablename__ = "staged_uploads"
+
+    connector = Column(String(50), primary_key=True)
+    # Absolute path in the data dir; the file is this row's only owner.
+    path = Column(Text, nullable=False)
+    # The name the run shows (a connector may mask what is personal in it).
+    filename = Column(String(255), nullable=False)
+    # sha256 of the file's bytes: a replaced file invalidates the check.
+    file_sha256 = Column(String(64), nullable=False)
+    # sha256 of the line protocol the check produced: the import writes exactly
+    # this, or it is refused. This is what binds the button to what was
+    # reviewed, whatever changed in between (the file, the settings, the
+    # readings already in InfluxDB).
+    points_sha256 = Column(String(64), nullable=False)
+    # sha256 of the settings the import read (Connector.import_fingerprint):
+    # told apart from a changed file, for the message.
+    config_sha256 = Column(String(64), nullable=False)
+    # The `user` a span replace would be scoped to (None: the whole series).
+    user = Column(String(255), nullable=True)
+    # The dry run this check recorded, for the run history's "promoted from".
+    dry_run_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=utcnow)
+
+
+class Preference(Base):
+    """One UI preference of this install, as JSON. Never a runtime setting: a
+    hidden connector keeps running and keeps filling its series, it is only
+    left out of the overview (app/views.py, the settings page)."""
+    __tablename__ = "preferences"
+
+    key = Column(String(60), primary_key=True)
+    value = Column(Text, nullable=True)
     updated_at = Column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)

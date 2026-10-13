@@ -128,8 +128,6 @@ STREAKS = ("current_daily_streak", "max_daily_streak", "current_weekly_streak", 
 class TodoistSettings(ConnectorSettings):
     model_config = SettingsConfigDict(env_prefix=PREFIX, env_file=".env", extra="ignore")
 
-    # Completions carry their own time: once a day is plenty.
-    interval_minutes: int = 1440
     # An API token (Todoist: Settings > Integrations > Developer).
     token: Optional[SecretStr] = None
     # Days read again before the last run's end, for completions synced late.
@@ -336,6 +334,10 @@ class TodoistConnector(Connector):
     description = ("Completed tasks and every completion (recurring tasks included), karma and streaks, "
                    "from the Todoist API.")
     icon = "bi-check2-square"
+    category = "Productivity"
+    # Completions carry their own time: once a day is plenty. 00:30, the time
+    # the CronJob this replaced ran at.
+    default_schedule = "30 0 * * *"
     settings_class = TodoistSettings
     measurements = (TASK_COMPLETED, COMPLETION, KARMA, STATS)
     required_env = (f"{PREFIX}TOKEN",)

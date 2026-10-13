@@ -54,16 +54,21 @@ def steps():
 def test_integrations_page_lists_connectors_and_what_they_need(client):
     page = client.get("/").text
     assert "Audiobookshelf" in page and "Not configured" in page
-    assert "<code>TRIBUTARY_ABS_URL</code>" in page and "InfluxDB not configured" in page
+    assert "TRIBUTARY_ABS_URL" in page and "InfluxDB not configured" in page
     assert 'action="/connectors/audiobookshelf/run"' not in page
-    assert "Renpho" in page and "<code>TRIBUTARY_RENPHO_PASSWORD</code>" in page
+    assert "Renpho" in page and "TRIBUTARY_RENPHO_PASSWORD" in page
+    # Grouped by category, every source in one of them.
+    for category in ("Body &amp; health", "Medication", "Nutrition &amp; fitness", "Sleep",
+                     "Reading &amp; media", "Productivity"):
+        assert category in page, category
 
 
 def test_a_configured_connector_has_its_buttons_and_runs(client, abs_api, abs_connector, db):
     runner.run(db, abs_connector, dry_run=True)
     page = client.get("/").text
-    assert "every hour" in page and 'action="/connectors/audiobookshelf/run"' in page
-    assert "Dry run" in page and "Full resync" in page
+    # Daily, not hourly: an hourly run against the server for nothing is waste.
+    assert "Daily at 03:10" in page and 'action="/connectors/audiobookshelf/run"' in page
+    assert "Run now" in page
     run_id = client.get("/api/runs").json()[0]["id"]
     detail = client.get(f"/runs/{run_id}").text
     assert "Line protocol" in detail and "reading_session,device=Google\\ Pixel\\ 7" in detail
@@ -123,20 +128,56 @@ def test_api_run_unknown_or_unconfigured(client):
 
 # -- Files ---------------------------------------------------------------------------------
 
-def test_upload_is_queued_imported_then_deleted(client, steps, influx, db, no_thread):
-    response = client.post("/connectors/csvsteps/upload", files={"file": ("my steps.csv", b"2025-01-01,8000\n")},
-                           follow_redirects=False)
-    assert response.status_code == 303 and response.headers["location"] == "/runs?connector=csvsteps"
+def test_the_form_checks_the_file_first_and_stays_on_the_page(client, steps, no_thread):
+    """The overview's form always checks first (nothing is written), and it ends
+    back on the page it came from -- never on a separate one, so the next card's
+    file picker is right there."""
+    response = client.post("/connectors/csvsteps/check", files={"file": ("my steps.csv", b"2025-01-01,8000\n")},
+                           follow_redirects=False, headers={"referer": "/"})
+    assert response.status_code == 303 and response.headers["location"] == "/"
     key, options = scheduler._requests.get_nowait()
     options = dict(options)
-    assert key == "csvsteps" and options["filename"] == "my steps.csv" and options["trigger"] == "upload"
+    assert key == "csvsteps" and options["filename"] == "my steps.csv"
+    assert options["trigger"] == "upload" and options["dry_run"] is True
     saved = options.pop("file")
     assert Path(saved).parent == uploads_dir() and os.path.exists(saved)
-    run = runner.run(db, steps, file=saved, **options)
-    assert run.status == "ok" and run.message == "Imported my steps.csv: 1 point(s) written (ActivityStats 1)."
-    assert not os.path.exists(saved)
+
+
+def test_a_check_is_kept_and_its_import_needs_no_second_upload(client, steps, influx, db, no_thread):
+    """Check, read, import: the file is kept between the two."""
+    client.post("/connectors/csvsteps/check", files={"file": ("my steps.csv", b"2025-01-01,8000\n")},
+                follow_redirects=False, headers={"referer": "/"})
+    _key, options = scheduler._requests.get_nowait()
+    options = dict(options)
+    saved = options["file"]
+    checked = runner.run(db, steps, **options)
+    assert checked.status == "ok" and checked.dry_run
+    assert os.path.exists(saved)  # kept for the import
+    assert influx.stored() == []
+    staged = runner.staged_upload(db, steps)
+    assert staged is not None and Path(staged.path) == Path(saved) and staged.dry_run_id == checked.id
+
+    imported = runner.promote(db, steps)
+    assert imported.status == "ok" and not imported.dry_run
+    assert imported.promoted_from == checked.id
+    assert imported.points == 1
     (tags, fields, _ts), = influx.stored("steps")
     assert tags == {"source": "csvsteps", "device": "watch"} and fields == {"steps": "8000i"}
+    # The file and its row are gone once it is imported.
+    assert not os.path.exists(saved) and runner.staged_upload(db, steps) is None
+
+
+def test_an_upload_without_a_check_is_imported_and_deleted_at_once(client, steps, influx, db, no_thread):
+    """The API's own upload (no check) still imports straight away and leaves
+    nothing behind."""
+    response = client.post("/api/connectors/csvsteps/upload", files={"file": ("my steps.csv", b"2025-01-01,8000\n")})
+    assert response.status_code == 202 and response.json()["dry_run"] is False
+    _key, options = scheduler._requests.get_nowait()
+    options = dict(options)
+    saved = options["file"]
+    run = runner.run(db, steps, **options)
+    assert run.status == "ok" and not os.path.exists(saved)
+    assert runner.staged_upload(db, steps) is None
 
 
 def test_upload_checks_the_file_type_and_connector(client, steps, no_thread):

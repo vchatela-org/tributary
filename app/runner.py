@@ -11,9 +11,11 @@ accounts) may report some as failed (SyncResult.errors): the others are
 written and the cursor saved -- the connector kept the failed parts' cursor
 as it was -- and the run shows as failed.
 """
+import hashlib
 import json
 import logging
 import os
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from zoneinfo import ZoneInfo
@@ -24,7 +26,7 @@ from app import influxdb
 from app.config import settings
 from app.connectors.base import Connector, ConnectorError, FileImport, Span
 from app.influxdb import InfluxError
-from app.models import Cursor, SyncRun, utcnow
+from app.models import Cursor, StagedUpload, SyncRun, utcnow
 from app.points import Point, encode
 
 logger = logging.getLogger(__name__)
@@ -34,6 +36,178 @@ PREVIEW_MAX_LINES = 2000
 # What a run drops of the connector's own series before writing: None for
 # nothing, else {measurement name: the days to replace, None for all of it}.
 Drop = Optional[Dict[str, Optional[Span]]]
+
+
+# ────────────────────────────────────────────────
+# A checked upload, kept for its import
+#
+# An upload is *checked* (a dry run) before it is imported, so the user can
+# read what it would write. The check keeps its file, and records what it
+# produced, so "Import for real" applies exactly that -- no second upload, and
+# nothing applied that was never reviewed. Everything here is about that
+# promise; the file is the user's data and lives at most
+# TRIBUTARY_STAGED_UPLOAD_TTL_HOURS.
+# ────────────────────────────────────────────────
+
+class StaleCheck(ConnectorError):
+    """A checked upload that no longer stands for the file or the settings: it is
+    dropped rather than applied, and the user is asked to check the file again.
+    Told apart from any other failure, which keeps the check so the import can be
+    retried without uploading again."""
+
+
+def _sha(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def points_sha256(lines: Dict[str, List[str]]) -> str:
+    """What a check produced, whole (the stored preview is capped, this is
+    not): two runs with the same digest write the same points."""
+    return _sha("\n".join(f"{database}\x00{line}" for database in sorted(lines) for line in lines[database]))
+
+
+def config_sha256(connector: Connector) -> str:
+    """The settings an import reads, apart from the file: the connector's own
+    import_fingerprint, the time zone, and the source it tags. Not the `user`:
+    that is compared on its own, so a change to it can be named in the
+    refusal."""
+    return _sha(json.dumps({"connector": connector.key, "tz": settings.tz,
+                            "fingerprint": connector.import_fingerprint()},
+                           sort_keys=True, default=str))
+
+
+def _unlink(path: Any) -> None:
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
+def key_of(connector) -> str:
+    """A connector, or its key: the staging helpers take either."""
+    return connector.key if hasattr(connector, "key") else str(connector)
+
+
+def staged_upload(db: Session, connector) -> Optional[StagedUpload]:
+    """The checked upload this connector is holding, if any."""
+    return db.get(StagedUpload, key_of(connector))
+
+
+def stage_upload(db: Session, connector: Connector, path: Path, filename: str,
+                 lines: Dict[str, List[str]], dry_run_id: Optional[int]) -> StagedUpload:
+    """Keep a checked upload: its file, and what the check produced."""
+    row = db.get(StagedUpload, connector.key)
+    previous = row.path if row is not None else None
+    if row is None:
+        row = StagedUpload(connector=connector.key)
+    row.path, row.filename = str(path), filename
+    row.file_sha256 = file_sha256(path)
+    row.points_sha256 = points_sha256(lines)
+    row.config_sha256 = config_sha256(connector)
+    row.user = settings.influxdb_user
+    row.dry_run_id = dry_run_id
+    row.created_at = utcnow()
+    db.add(row)
+    if previous and previous != str(path):
+        _unlink(previous)  # a second check replaces the first
+    return row
+
+
+def discard_staged(db: Session, connector: Connector) -> bool:
+    """Drop the checked upload (the user asked, or it is out of date)."""
+    row = db.get(StagedUpload, connector.key)
+    if row is None:
+        return False
+    db.delete(row)
+    _unlink(row.path)
+    return True
+
+
+def purge_staged(db: Session, ttl_hours: Optional[float] = None) -> int:
+    """Drop the checked uploads past their TTL, and the ones whose file is gone
+    (the data folder was rebuilt, a restart landed on another volume): an
+    expired check must never be importable. Called at startup and after every
+    upload or import."""
+    ttl = settings.staged_upload_ttl_hours if ttl_hours is None else ttl_hours
+    cutoff = utcnow() - timedelta(hours=max(0.0, ttl))
+    dropped = 0
+    for row in db.query(StagedUpload).all():
+        if not Path(row.path).exists() or (row.created_at is not None and row.created_at < cutoff):
+            db.delete(row)
+            _unlink(row.path)
+            dropped += 1
+    return dropped
+
+
+def verify_stage(db: Session, connector: Connector) -> StagedUpload:
+    """The checked upload this connector may import, or StaleCheck saying why
+    not. Read-only: the callers drop what no longer stands (verify_or_discard),
+    so the button can never apply a diff the user did not see."""
+    stage = db.get(StagedUpload, connector.key)
+    if stage is None:
+        raise StaleCheck("Nothing was checked yet: upload the export and check it first.")
+    if not Path(stage.path).exists():
+        raise StaleCheck("The checked file is gone (its lifetime ended, or the data folder changed): "
+                         "upload it again.")
+    if file_sha256(Path(stage.path)) != stage.file_sha256:
+        raise StaleCheck("The file is not the one that was checked: check it again.")
+    if config_sha256(connector) != stage.config_sha256:
+        raise StaleCheck("This connector's settings changed since the file was checked "
+                         "(the names map, the dates, or the time zone): check it again.")
+    if (settings.influxdb_user or None) != (stage.user or None):
+        raise StaleCheck("TRIBUTARY_INFLUXDB_USER changed since the file was checked: check it again.")
+    return stage
+
+
+def verify_or_discard(db: Session, connector: Connector) -> StagedUpload:
+    """verify_stage, dropping a check that no longer stands -- its file and its
+    row -- so it can never be imported later, and saying so to the caller."""
+    try:
+        return verify_stage(db, connector)
+    except StaleCheck:
+        discard_staged(db, connector)
+        db.commit()
+        raise
+
+
+def _verify_points(connector: Connector, lines: Dict[str, List[str]], stage: StagedUpload) -> None:
+    """Last gate, after re-reading the file: the import writes exactly what the
+    check showed, or it does not run."""
+    if points_sha256(lines) != stage.points_sha256:
+        raise StaleCheck("The file no longer yields what was checked: the export, this connector's settings, "
+                         "or the readings already in InfluxDB changed in between. Check it again.")
+
+
+def _after_upload(db: Session, connector: Connector, file: Optional[str], dry_run: bool, ok: bool) -> None:
+    """What becomes of an uploaded file, in one place:
+      - a check that succeeded: kept, as this connector's staged upload (the
+        TTL applies; an import or a discard removes it);
+      - a check that failed: deleted -- there is nothing to import;
+      - an import: the staged row and the file go once it wrote; a failed import
+        keeps them, so "Import for real" can be retried without uploading again.
+    """
+    if not file:
+        return
+    if dry_run:
+        if not ok:
+            row = db.get(StagedUpload, connector.key)
+            if row is not None and row.path == str(file):
+                discard_staged(db, connector)
+            _unlink(file)
+        return
+    if ok:
+        discard_staged(db, connector)
+    row = db.get(StagedUpload, connector.key)
+    if row is None or row.path != str(file):
+        _unlink(file)
 
 
 def load_cursor(db: Session, key: str) -> Dict[str, Any]:
@@ -233,19 +407,33 @@ def _by_database(counts: Dict[str, int]) -> str:
 
 
 def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: bool = False, full: bool = False,
-        file: Optional[str] = None, filename: Optional[str] = None) -> SyncRun:
+        file: Optional[str] = None, filename: Optional[str] = None,
+        promoted_from: Optional[int] = None) -> SyncRun:
     """One run, recorded as a SyncRun whatever happens. `full`: ignore the
-    cursor (everything the source has, rewritten); `file`: import that
-    uploaded file only, deleted afterwards."""
-    record = SyncRun(connector=connector.key, trigger=trigger, dry_run=dry_run, full=full, status="running")
+    cursor (everything the source has, rewritten); `file`: import that uploaded
+    file; `promoted_from`: import what this dry run checked, without uploading
+    it again -- the run re-verifies the staged file before it writes, so what
+    the user reviewed and what is written cannot drift apart."""
+    record = SyncRun(connector=connector.key, trigger=trigger, dry_run=dry_run, full=full, status="running",
+                     promoted_from=promoted_from)
     db.add(record)
     db.commit()
+    stage = None
     try:
+        if promoted_from is not None:
+            # Re-verified here, not only when the button was pressed: a promote
+            # may wait behind another run, and nothing may be applied that the
+            # check no longer stands for.
+            stage = verify_or_discard(db, connector)
+            file, filename, trigger = stage.path, stage.filename, "upload"
+            record.trigger = trigger
         if not dry_run and not influxdb.is_configured():
             raise ConnectorError("InfluxDB is not configured: set TRIBUTARY_INFLUXDB_URL (a dry run works without).")
         state = load_cursor(db, connector.key)
         points, summary, new_state, rebuild, errors = collect(connector, state, full, file, filename)
         lines = encode(points, connector.source, settings.influxdb_user, settings.tz)
+        if stage is not None and not dry_run:
+            _verify_points(connector, lines, stage)
         total = sum(len(v) for v in lines.values())
         what = (", ".join(summary) + ": ") if summary else ""
         failed = (" Failed: " + "; ".join(e.rstrip(". ") for e in errors) + ".") if errors else ""
@@ -262,6 +450,13 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
                 record.message = "Dry run. Nothing new." if not summary else f"Dry run. {what}nothing to write."
             record.message += failed
             record.status = "error" if errors else "ok"
+            if file and record.status == "ok":
+                # A check that worked keeps its file, so "Import for real" does
+                # not ask for it again. The name stored is the masked one the
+                # run shows (upload_label), never the account number a file may
+                # carry.
+                stage_upload(db, connector, Path(file),
+                             connector.upload_label(filename or Path(file).name), lines, record.id)
         else:
             written, expired, refused = _write(connector, lines, rebuild)
             record.points = sum(written.values())
@@ -279,7 +474,16 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
             record.status = "error" if refused or errors else "ok"
             if not refused and new_state is not None:
                 save_cursor(db, connector.key, new_state)
+    except StaleCheck as exc:
+        # The check no longer stands: drop it, file included, rather than leave
+        # something importable that was never reviewed.
+        db.rollback()
+        record.status, record.message = "error", str(exc)[:2000]
+        discard_staged(db, connector)
+        logger.warning("%s: the checked file is out of date: %s", connector.label, exc)
     except (ConnectorError, InfluxError) as exc:
+        # Anything else (InfluxDB down, a bad export): the check is kept, so
+        # "Import for real" can be retried without uploading again.
         db.rollback()
         record.status, record.message = "error", str(exc)[:2000]
         logger.warning("%s run failed: %s", connector.label, exc)
@@ -291,9 +495,16 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
         record.finished_at = utcnow()
         db.add(record)
         db.commit()
-        if file:
-            try:
-                os.remove(file)
-            except OSError:
-                pass
+        # One place decides what becomes of the uploaded file (app/runner.py
+        # _after_upload): a check keeps it for its import, an import consumes it.
+        _after_upload(db, connector, file, dry_run, record.status != "error")
+        db.commit()
     return record
+
+
+def promote(db: Session, connector: Connector) -> SyncRun:
+    """Import what was checked, without uploading the file again. Raises
+    ConnectorError (the UI shows it, nothing runs) when the check no longer
+    stands for the file or the settings."""
+    stage = verify_or_discard(db, connector)
+    return run(db, connector, trigger="upload", promoted_from=stage.dry_run_id)

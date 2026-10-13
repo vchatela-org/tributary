@@ -1,13 +1,48 @@
 # Connectors
 
+## The connectors
+
+Grouped by domain, the way the UI shows them. `Input` says how the data arrives
+and, for an API, how often it runs by default (change it in the UI).
+
+### Body & health
+
 | Connector | Source | Input | Writes |
 |---|---|---|---|
-| [Audiobookshelf](audiobookshelf.md) | `audiobookshelf` | API, hourly | `MediaStats`: `reading_session`, `book_finished` |
-| [Renpho](renpho.md) | `renpho` | API, daily, one account per person | `BodyStats`: `body_composition`, `body_levels`, `body_thresholds` |
-| [Todoist](todoist.md) | `todoist` | API, daily | `TodoistStats`: `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` |
-| [MyTherapy](mytherapy.md) | `mytherapy` | export file, uploaded in the UI | `BodyStats`: `medication` |
-| [MyFitnessPal](myfitnesspal.md) | `myfitnesspal` | export file, uploaded in the UI | `BodyStats`: `body_composition`, `nutrition`, `exercise` |
-| [Medisafe](medisafe.md) | `medisafe` | export file, uploaded in the UI | `BodyStats`: `medication` |
+| [**Renpho**](renpho.md) | `renpho` | API, daily, one account per person | `BodyStats`: `body_composition`, `body_levels`, `body_thresholds` |
+
+### Medication
+
+| Connector | Source | Input | Writes |
+|---|---|---|---|
+| [**MyTherapy**](mytherapy.md) | `mytherapy` | export file, imported in the UI | `BodyStats`: `medication` |
+| [**Medisafe**](medisafe.md) | `medisafe` | export file, imported in the UI | `BodyStats`: `medication` |
+
+### Nutrition & fitness
+
+| Connector | Source | Input | Writes |
+|---|---|---|---|
+| [**MyFitnessPal**](myfitnesspal.md) | `myfitnesspal` | export file, imported in the UI | `BodyStats`: `body_composition`, `nutrition`, `exercise` |
+
+### Sleep
+
+No connector yet: sleep is covered by
+[the compatible tools](../compatible-tools.md) (garmin-grafana, Whoops).
+
+### Reading & media
+
+| Connector | Source | Input | Writes |
+|---|---|---|---|
+| [**Audiobookshelf**](audiobookshelf.md) | `audiobookshelf` | API, daily | `MediaStats`: `reading_session`, `book_finished` |
+
+### Productivity
+
+| Connector | Source | Input | Writes |
+|---|---|---|---|
+| [**Todoist**](todoist.md) | `todoist` | API, daily | `TodoistStats`: `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` |
+
+A test compares this table with the code: a connector that is registered but
+missing here, or filed under another `category`, fails the suite.
 
 ## Before writing one
 
@@ -23,9 +58,16 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
 
 - `key`: its id, also the `source` tag of every point it writes.
 - `label`, `description`, `icon` (a Bootstrap icon) for the UI.
+- `category`: one of `app/categories.py`'s `CATEGORIES`, the section the UI and
+  the README show it under. A test fails when it is missing or unknown.
 - `settings_class`: a `ConnectorSettings` subclass with its own prefix,
   `TRIBUTARY_<KEY>_`. Secrets are `SecretStr`: never logged, stored or
-  returned. `interval_minutes` and `watch_dir` come with it.
+  returned. `watch_dir` comes with it, and so do the two schedule values:
+  `schedule` (a cron expression) and the deprecated `interval_minutes`.
+- `default_schedule`: the cron it runs on when neither the UI nor the
+  environment says otherwise, in `TRIBUTARY_TZ` (see
+  [scheduling](../scheduling.md)). `None` for an upload-only source, which has
+  no schedule at all. A test enforces one or the other.
 - `measurements`: what it writes, each with its database, tags and field
   types (`app/schema.py` for measurements other tools share). Add them to
   [the schema](../schema.md); a test compares both.
@@ -49,6 +91,11 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
   folder that is the source of truth, where a change in it rebuilds the
   series. Safe only because nothing else writes that source, and a connector
   raises rather than let a rebuild write nothing back.
+- `import_fingerprint()`: whatever *else* of this connector's settings decides
+  what an import writes (a names map, a cut-off date), as JSON-able values. It
+  is hashed into the record a **check** keeps, so that changing one invalidates
+  the checked file instead of letting "Import for real" apply a diff the user
+  never saw (`app/runner.py`). Empty when only the file decides.
 - `import_file` returns `FileImport(points, spans)` when an export covers a
   date range the user picks (MyFitnessPal): `spans` is `{measurement name:
   Span(first, last)}`, the days (`TRIBUTARY_TZ`, both included) the file
@@ -61,7 +108,8 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
   a folder of range exports is not a whole history.
 - `upload_label(filename)`: how a run names the uploaded file (stored, shown,
   logged). The name by default; a connector masks what it holds that is
-  personal (Medisafe: the account number of `Doses_<account>_000.csv`).
+  personal (Medisafe: the account number of `Doses_<account>_000.csv`). The
+  masked name is also what a checked upload keeps, never the raw one.
 
 Points are `Point(measurement, time, tags, fields)`, time in UTC. The core
 adds `source` (unless the measurement is declared `tagged_source=False`),

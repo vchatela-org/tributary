@@ -1,78 +1,115 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
 {% block content %}
-<div class="d-flex flex-wrap align-items-baseline gap-3 mb-3">
-  <h1 class="h3 mb-0">Integrations</h1>
-  <span class="text-body-secondary">
-    {% if influxdb_configured %}
-      <i class="bi bi-database-check me-1"></i>InfluxDB configured{% if influxdb_user %}, user tag <code>{{ influxdb_user }}</code>{% endif %}.
-    {% else %}
-      <i class="bi bi-database-x me-1"></i>InfluxDB not configured: set <code>TRIBUTARY_INFLUXDB_URL</code>. Dry runs work without it.
-    {% endif %}
-  </span>
+<div class="tb-pagehead">
+  <h1>Integrations</h1>
+  <p class="tb-sub">
+    {{ counters.total }} source{{ "" if counters.total == 1 else "s" }} in
+    {{ sections | length }} categor{{ "y" if sections | length == 1 else "ies" }} ·
+    <strong>{{ counters.ok }} healthy</strong>
+    {%- if counters.failing %}, <span class="text-danger">{{ counters.failing }} failing</span>{% endif %}
+    {%- if counters.checked %}, {{ counters.checked }} checked{% endif %}
+    {%- if counters.active %}, {{ counters.active }} running or queued{% endif %}
+  </p>
 </div>
 
-{% for item in items %}
-{% set c = item.connector %}
-<section class="card mb-4" id="{{ c.key }}">
-  <div class="card-body">
-    <div class="d-flex flex-wrap align-items-start gap-3">
-      <div class="me-auto" style="min-width: 18rem; flex: 1 1 28rem;">
-        <h2 class="h5 mb-1"><i class="bi {{ c.icon }} me-2"></i>{{ c.label }}
-          {% if item.configured %}
-          <span class="badge text-bg-primary-subtle text-primary-emphasis fw-normal ms-2">{{ c.schedule_label() }}</span>
-          {% else %}
-          <span class="badge text-bg-secondary fw-normal ms-2">Not configured</span>
-          {% endif %}
-        </h2>
-        <p class="text-body-secondary mb-1">{{ c.description }}</p>
-        {% if not item.configured and c.required_env %}
-        <p class="small mb-1">Set {% for name in c.required_env %}<code>{{ name }}</code>{% if not loop.last %}, {% endif %}{% endfor %} to run it.</p>
-        {% endif %}
-        <p class="small text-body-secondary mb-0">Writes
-          {% for ms in c.measurements %}<code>{{ ms.database }}.{{ ms.name }}</code>{% if not loop.last %}, {% endif %}{% endfor %},
-          tagged <code>source={{ c.source }}</code>.</p>
-      </div>
-      {% if item.configured %}
-      <div class="d-flex flex-wrap gap-2">
-        <form method="post" action="/connectors/{{ c.key }}/run">
-          <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-arrow-repeat me-1"></i>Run now</button>
-        </form>
-        <form method="post" action="/connectors/{{ c.key }}/run">
-          <input type="hidden" name="dry_run" value="true" />
-          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Show the line protocol, write nothing"><i class="bi bi-eye me-1"></i>Dry run</button>
-        </form>
-        <form method="post" action="/connectors/{{ c.key }}/run">
-          <input type="hidden" name="full" value="true" />
-          <button type="submit" class="btn btn-sm btn-outline-secondary" title="Read everything again, ignoring where the last run stopped; the same points overwrite themselves"><i class="bi bi-arrow-counterclockwise me-1"></i>Full resync</button>
-        </form>
-      </div>
-      {% endif %}
-    </div>
-
-    {% if c.accepts_files %}
-    <form class="upload-form d-flex flex-wrap align-items-center gap-2 mt-3" method="post"
-          action="/connectors/{{ c.key }}/upload" enctype="multipart/form-data">
-      <input class="form-control form-control-sm" style="max-width: 24rem;" type="file" name="file"
-             accept="{{ c.file_types | join(',') }}" required />
-      <div class="form-check form-check-inline small mb-0">
-        <input class="form-check-input" type="checkbox" name="dry_run" value="true" id="dry-{{ c.key }}" />
-        <label class="form-check-label" for="dry-{{ c.key }}">Dry run</label>
-      </div>
-      <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-upload me-1"></i>Import file</button>
-      {% if c.watch_dir %}<span class="small text-body-secondary">Also watching <code>{{ c.watch_dir }}</code>.</span>{% endif %}
-    </form>
-    {% endif %}
-  </div>
-
-  {% if item.runs %}
-  <div class="border-top">
-    {{ m.runs_table(item.runs) }}
-  </div>
-  <div class="card-footer small"><a href="/runs?connector={{ c.key }}">All runs of {{ c.label }}</a></div>
-  {% elif item.configured %}
-  <div class="card-footer small text-body-secondary">Never run yet: the first scheduled run comes shortly after the start.</div>
+<div class="tb-strip{% if not influxdb_configured %} warn{% endif %}">
+  {% if influxdb_configured %}
+    <i class="bi bi-database-check"></i>InfluxDB configured
+    {%- if influxdb_user %}, writing as <code class="tb-mono">{{ influxdb_user }}</code>{% endif %}
+    · schedules in {{ tz }}
+  {% else %}
+    <i class="bi bi-database-x"></i>InfluxDB not configured: set
+    <code class="tb-mono">TRIBUTARY_INFLUXDB_URL</code>. Checks work without it.
   {% endif %}
+</div>
+
+{# What is running right now, and what is queued. app.js swaps this region and
+   the cards' status regions in place: the document is never reloaded, so a run
+   in flight cannot take away a file picker. #}
+<div class="tb-activity" data-region="activity">{{ m.activity(active, queued, connectors_by_key) }}</div>
+
+{% if not sections %}
+  <div class="tb-panel tb-empty">
+    <i class="bi bi-eye-slash"></i>
+    <p class="mb-2">No source is shown. Every one is hidden in <a href="/settings">Settings</a> —
+      nothing stops running: hidden sources keep being scheduled and keep filling their series.</p>
+    <a class="btn btn-sm btn-primary" href="/settings">Show them again</a>
+  </div>
+{% endif %}
+
+{% for section in sections %}
+<section class="tb-cat">
+  <div class="tb-cat-head">
+    <i class="bi {{ category_icon(section.name) }}"></i>
+    <h2>{{ section.name }}</h2>
+    <span class="tb-count">{{ section.cards | length }}</span>
+    <span class="tb-rule"></span>
+  </div>
+  {% if not section.cards %}
+  <p class="tb-external mb-0">No Tributary connector for this domain yet.</p>
+  {% endif %}
+  <div class="tb-grid">
+  {% for c in section.cards %}
+    <article class="tb-tile{% if not c.configured %} off{% endif %}" id="{{ c.key }}">
+      {# The status, what is going on, and the buttons: re-rendered in place. #}
+      <div data-region="status:{{ c.key }}">{{ m.status_region(c) }}</div>
+      {{ m.facts(c) }}
+      {% if c.state == "checked" %}
+      <p class="tb-hint mb-2"><a href="/connectors/{{ c.key }}">See exactly what it would write</a>
+        before importing it.</p>
+      {% endif %}
+      {# Outside the swapped region: a file picker is the user's, and a run in
+         flight must not clear it. #}
+      {% if c.accepts_files %}
+      <form class="mt-3" method="post" action="/connectors/{{ c.key }}/check" enctype="multipart/form-data">
+        <div class="tb-drop">
+          <i class="bi bi-file-earmark-zip"></i>
+          <p class="mb-2">Choose the export; Tributary <b>checks it first</b> and writes nothing.</p>
+          <input class="form-control form-control-sm d-inline-block align-middle" style="max-width: 20rem;"
+                 type="file" name="file" accept="{{ c.file_types | join(',') }}" required />
+          <button class="btn btn-sm btn-outline-primary ms-1 align-middle" type="submit">
+            <i class="bi bi-clipboard-check me-1"></i>Check file</button>
+          <p class="mb-0 mt-2 small">{{ c.file_types | join(" or ") }} · up to {{ max_upload_mb }} MB ·
+            kept {{ staged_ttl_hours | int }} h for the import</p>
+        </div>
+      </form>
+      {% endif %}
+    </article>
+  {% endfor %}
+  </div>
+  {{ m.external(section.tools) }}
 </section>
 {% endfor %}
+
+{% if showing_hidden %}
+<section class="tb-cat">
+  <div class="tb-cat-head"><i class="bi bi-eye-slash"></i><h2>Hidden</h2>
+    <span class="tb-count">{{ hidden_cards | length }}</span><span class="tb-rule"></span></div>
+  <div class="tb-grid">
+    {% for c in hidden_cards %}
+    <article class="tb-tile off">
+      <div class="tb-tile-head">
+        <span class="tb-ico"><i class="bi {{ c.icon }}"></i></span>
+        <div class="tb-tile-id"><h3><a href="/connectors/{{ c.key }}">{{ c.label }}</a></h3>
+          <p>{{ c.description }}</p></div>
+        <span class="tb-pill tb-pill-mute">Hidden</span>
+      </div>
+      <p class="tb-hint mb-2">Left out of the overview only: it is still scheduled, still runs, and its
+        series keep filling.</p>
+    </article>
+    {% endfor %}
+  </div>
+  <p class="tb-external"><a href="/settings">Bring one back in Settings</a>.</p>
+</section>
+{% elif hidden_cards is defined and not showing_hidden %}
+<p class="small text-body-secondary text-center mt-2">
+  <a href="/?show=hidden">Show the hidden sources</a>
+</p>
+{% endif %}
+
+<p class="small text-body-secondary text-center mt-4">
+  Tributary v{{ app_version }} · <a href="/docs">API</a> ·
+  <a href="/settings">Settings</a>
+</p>
 {% endblock %}

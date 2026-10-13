@@ -351,7 +351,7 @@ def test_it_takes_an_upload_in_the_ui(connector):
     assert connector.accepts_files is True and connector.file_types == (".zip",)
     page = TestClient(app).get("/").text
     section, = [part for part in page.split("<section") if 'id="myfitnesspal"' in part]
-    assert 'action="/connectors/myfitnesspal/upload"' in section
+    assert 'action="/connectors/myfitnesspal/check"' in section
 
 
 def test_a_watched_folder_is_never_used(connector, tmp_path):

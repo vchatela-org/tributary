@@ -6,10 +6,10 @@ from urllib.parse import urlparse
 
 from fastapi import HTTPException, Request, UploadFile
 
-from app import connectors, scheduler
+from app import connectors, runner, scheduler
 from app.config import settings
-from app.connectors.base import Connector
-from app.database import uploads_dir
+from app.connectors.base import Connector, ConnectorError
+from app.database import SessionLocal, uploads_dir
 
 
 def same_origin(request: Request) -> None:
@@ -69,6 +69,30 @@ def queue_upload(connector: Connector, upload: UploadFile, dry_run: bool = False
         target.unlink(missing_ok=True)
         raise HTTPException(status_code=409, detail=f"{connector.label} can't take a file now")
     return filename
+
+
+def queue_promote(connector: Connector) -> int:
+    """Import what was checked, without uploading the file again. Returns the
+    dry run that checked it. 409 with the reason -- and no run queued -- when
+    the check no longer stands for the file or the settings: a refusal is not a
+    run, and it must never apply a diff the user did not see."""
+    with SessionLocal() as db:
+        try:
+            stage = runner.verify_or_discard(db, connector)
+        except runner.StaleCheck as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from None
+        dry_run_id = stage.dry_run_id
+    if not scheduler.request(connector.key, trigger="upload", promoted_from=dry_run_id):
+        raise HTTPException(status_code=409, detail=f"{connector.label} cannot run now")
+    return dry_run_id
+
+
+def discard_staged(connector: Connector) -> bool:
+    """Drop the checked upload, file included. False when there was none."""
+    with SessionLocal() as db:
+        dropped = runner.discard_staged(db, connector)
+        db.commit()
+        return dropped
 
 
 def safe_back(request: Request, default: str = "/") -> str:

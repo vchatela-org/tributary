@@ -6,11 +6,13 @@ the apps and devices that hold them into **InfluxDB 1.x**, and ships
 [garmin-grafana](https://github.com/arpanghosh8453/garmin-grafana), for
 many sources.
 
-- **Connectors**, one per source: from its API on a schedule, from its
-  export files (upload, or a watched folder), or both.
-- **A web UI**: every integration with its schedule and last runs, *Run
-  now*, *Dry run* (the exact line protocol, nothing written), *Full
-  resync*, file upload, and the history of every run.
+- **Integrations**, one per source, grouped by domain: from its API on a
+  schedule, from its export files (upload, or a watched folder), or both.
+- **A web UI**: every source with its schedule and last runs, *Run now*, *Dry
+  run* (the exact line protocol, nothing written), *Full resync*, a file you
+  **check before importing**, and the history of every run.
+- **Schedules set in the UI**: per source, as a preset or a cron expression —
+  no environment variable to change and no redeploy.
 - **One shared schema** ([docs/schema.md](docs/schema.md)): a database per
   domain (`MediaStats`, `BodyStats`, `SleepStats`...), a `source` tag per
   tracker, fixed field types. Other tools write into the same databases
@@ -21,19 +23,67 @@ many sources.
 - **Private by default:** numbers and a few tags leave, titles as the only
   text (task names too, if you ask); secrets stay in the environment.
 
-## Connectors
+![The overview: every source, by category, with its last and next run](docs/screenshots/overview-light.png)
 
-| Connector | Writes | Docs |
+<sub>Light and dark follow your system. Every source is shown unless you hide it in
+[Settings](#settings); hiding never stops a run.</sub>
+
+## Integrations
+
+Grouped by what a person is actually looking at. A source with an API runs on a
+schedule; one that only has an export is imported from the UI when you have one.
+The **compatible tools** are maintained projects that write into the same
+databases — Tributary does not run them, and they are listed so a domain is
+complete rather than to be configured here.
+
+### Body & health
+
+| Source | Input | Writes |
 |---|---|---|
-| Audiobookshelf | listening sessions (audiobooks, podcasts) and finished books → `MediaStats` | [docs/connectors/audiobookshelf.md](docs/connectors/audiobookshelf.md) |
-| Renpho | smart-scale weigh-ins (weight, body fat, muscle, water...) of one or several people, rated with the app's levels → `BodyStats` | [docs/connectors/renpho.md](docs/connectors/renpho.md) |
-| Todoist | completed tasks and every completion (recurring ones included), karma and streaks → `TodoistStats` | [docs/connectors/todoist.md](docs/connectors/todoist.md) |
-| MyTherapy | the doses of a medication reminder (taken, missed, skipped), from an export imported in the UI → `BodyStats` | [docs/connectors/mytherapy.md](docs/connectors/mytherapy.md) |
-| MyFitnessPal | weigh-ins the scales don't already have, meals' nutrients and workouts, from an export imported in the UI → `BodyStats` | [docs/connectors/myfitnesspal.md](docs/connectors/myfitnesspal.md) |
-| Medisafe | the doses of a medication reminder (taken, missed, skipped, unlogged), from an export imported in the UI → `BodyStats` | [docs/connectors/medisafe.md](docs/connectors/medisafe.md) |
+| **Renpho** | the API, daily, one account per person | `BodyStats`: `body_composition`, `body_levels`, `body_thresholds` |
 
-A connector is written only for a source no maintained tool covers: Garmin,
-for instance, is [garmin-grafana](docs/compatible-tools.md)'s.
+Compatible tools: [**garmin-grafana**](https://github.com/arpanghosh8453/garmin-grafana) — the Garmin API, into `GarminStats` (activity, heart rate, body battery...).
+
+### Medication
+
+| Source | Input | Writes |
+|---|---|---|
+| **MyTherapy** | an export you import | `BodyStats`: `medication` |
+| **Medisafe** | an export you import | `BodyStats`: `medication` |
+
+### Nutrition & fitness
+
+| Source | Input | Writes |
+|---|---|---|
+| **MyFitnessPal** | an export you import | `BodyStats`: `body_composition`, `nutrition`, `exercise` |
+
+### Sleep
+
+Nothing of Tributary's yet: sleep is covered by the tools below, and by Garmin
+and Whoop reading it in place.
+
+Compatible tools: [**garmin-grafana**](https://github.com/arpanghosh8453/garmin-grafana) (Garmin stats, into `GarminStats`), [**Whoops**](https://github.com/kryoseu/whoops) (Whoop, into PostgreSQL).
+
+### Reading & media
+
+| Source | Input | Writes |
+|---|---|---|
+| **Audiobookshelf** | the API, daily | `MediaStats`: `reading_session`, `book_finished` |
+
+Compatible tools: [**Takeback**](https://github.com/vchatela-org/takeback) — GDPR archives (Kindle reading sessions, Audible), into `MediaStats`.
+
+### Productivity
+
+| Source | Input | Writes |
+|---|---|---|
+| **Todoist** | the API, daily | `TodoistStats`: `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` |
+
+Compatible tools: [**Takeback**](https://github.com/vchatela-org/takeback) — GDPR archives (purchases, activity counts), into `ShoppingStats`, `DigitalStats`.
+
+Each integration has its own page: [docs/connectors/](docs/connectors/), with what
+it writes, which variables it reads and what it deliberately leaves out. A
+connector is written only for a source no maintained tool covers: Garmin, for
+instance, is [garmin-grafana](docs/compatible-tools.md)'s.
 [Writing a connector](docs/connectors/README.md);
 [porting a job that already feeds InfluxDB](docs/porting.md).
 
@@ -44,20 +94,43 @@ With Docker and Docker Compose:
 ```sh
 git clone https://github.com/vchatela-org/tributary.git
 cd tributary
-cp .env.example .env    # then set the connectors you use, e.g. TRIBUTARY_ABS_URL and TRIBUTARY_ABS_TOKEN
+cp .env.example .env    # then set the sources you use, e.g. TRIBUTARY_ABS_URL and TRIBUTARY_ABS_TOKEN
 docker compose up -d
 ```
 
 This builds Tributary and starts it with InfluxDB 1.11 and Grafana:
 
-- Tributary: <http://127.0.0.1:8000>. The first scheduled run of each
-  configured connector comes a minute after the start; *Dry run* shows
-  what it would write before that.
+- Tributary: <http://127.0.0.1:8000>. Each configured source runs on its own
+  schedule (a daily time by default); *Run now* and *Dry run* show what it does
+  before that. A source with only an export is imported from its page: the file
+  is **checked first** — nothing is written — and then imported.
 - Grafana: <http://127.0.0.1:3000> (first login `admin` / `admin`), with
   the InfluxDB datasources and the proposed dashboards of
   [grafana/](grafana/) in a *Tributary* folder.
 
 Already running InfluxDB or Grafana? See [docs/deployment.md](docs/deployment.md).
+
+## Scheduling
+
+Each source runs on a **5-field cron expression**, in `TRIBUTARY_TZ`. Set it on
+the source's page — a preset (*Every hour*, *Daily at a time*, *Weekly on a day
+and time*) or an expression you type — and the page shows the next five runs.
+Times are absolute, so a restart no longer shifts a schedule.
+
+Where a value comes from, in order: what you saved in the UI; else
+`TRIBUTARY_<KEY>_SCHEDULE`; else the deprecated
+`TRIBUTARY_<KEY>_INTERVAL_MINUTES`, still honoured so an existing deployment keeps
+working; else the source's own default (daily for the ones that read an API,
+staggered so two runs never overlap). The page says which one is in force, and
+offers *Reset to default*. A run missed while the app was down happens **once**
+shortly after the next start, never several times.
+
+## Settings
+
+**Settings** chooses which sources the overview shows, so a few of them are not
+buried under the whole catalogue. It is display only: a hidden source is still
+scheduled, still runs, and its series keep filling. Everything is shown on a
+fresh install, and everything can be brought back from the same page.
 
 ## No login
 
@@ -84,7 +157,11 @@ same panels.
 `/docs` has the OpenAPI description. In short: `GET /api/connectors`,
 `GET /api/runs`, `GET /api/runs/{id}` (a dry run's line protocol),
 `POST /api/connectors/{key}/run?dry_run=&full=`,
-`POST /api/connectors/{key}/upload`, `GET /api/health`.
+`POST /api/connectors/{key}/upload?dry_run=`,
+`GET|PUT /api/connectors/{key}/schedule`,
+`POST /api/connectors/{key}/import` (import what a check kept),
+`DELETE /api/connectors/{key}/staged`, `GET|POST /api/preferences`,
+`GET /api/health`.
 
 ## Development
 

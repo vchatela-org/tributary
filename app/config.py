@@ -31,8 +31,14 @@ class Settings(BaseSettings):
     max_upload_mb: int = 200
 
     # Seconds between the start and the first scheduled run: a run never
-    # happens at startup itself.
+    # happens at startup itself. Also how long a missed run waits before its
+    # one catch-up (never several: app/scheduler.py).
     first_run_delay: float = 60.0
+
+    # How long an uploaded export that was *checked* (a dry run) is kept so
+    # "Import for real" does not ask for it again. It holds personal data: past
+    # this, the file and its row are deleted (app/runner.py purge_staged).
+    staged_upload_ttl_hours: float = 24.0
 
     @property
     def db_url(self) -> str:
