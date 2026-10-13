@@ -31,7 +31,7 @@ jobs:
         run: |
           VERSION=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' app/__version__.py)
           if [ "v${VERSION}" != "${GITHUB_REF_NAME}" ]; then
-            echo "::error::app/__version__.py says ${VERSION} but the tag is ${GITHUB_REF_NAME}: bump app/__version__.py before tagging"
+            echo "::error::app/__version__.py says ${VERSION} but the tag is ${GITHUB_REF_NAME}: release through the release-please PR, which bumps app/__version__.py"
             exit 1
           fi
 
