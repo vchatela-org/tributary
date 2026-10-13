@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/vchatela-org/tributary/compare/v0.8.1...v0.9.0) (2026-10-13)
+
+
+### Features
+
+* **image:** a minimal non-root base, Chainguard Python 3.15 with no shell or package manager ([#23](https://github.com/vchatela-org/tributary/issues/23)) ([965846c](https://github.com/vchatela-org/tributary/commit/965846c55bcf59128fee01cfd91286c2f3798604))
+
 ## [0.8.1](https://github.com/vchatela-org/tributary/compare/v0.8.0...v0.8.1) (2026-10-13)
 
 
