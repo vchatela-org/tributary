@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/vchatela-org/tributary/compare/v0.9.0...v0.10.0) (2026-10-13)
+
+
+### Features
+
+* **grafana:** body composition, medication, nutrition & exercise and Todoist dashboards ([#25](https://github.com/vchatela-org/tributary/issues/25)) ([c406f21](https://github.com/vchatela-org/tributary/commit/c406f21317216c31f417ce01faa6b8d7f20c16ef))
+
 ## [0.9.0](https://github.com/vchatela-org/tributary/compare/v0.8.1...v0.9.0) (2026-10-13)
 
 
