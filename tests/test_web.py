@@ -326,6 +326,23 @@ def test_a_span_without_a_user_is_refused(influx, db, tmp_path):
         connectors.unregister("csvsteps")
 
 
+def test_the_import_endpoint_replays_a_fresh_check_and_refuses_a_stale_one(client, steps, influx, db, no_thread):
+    """POST .../import imports what a check kept, without a second upload; a check
+    that no longer stands is a 409, nothing queued, and the check dropped."""
+    path = uploads_dir() / "a.csv"
+    path.write_text("2025-01-01,1\n")
+    checked = runner.run(db, steps, trigger="upload", dry_run=True, file=str(path), filename="a.csv")
+    fresh = client.post("/api/connectors/csvsteps/import")
+    assert fresh.status_code == 202 and fresh.json()["promoted_from"] == checked.id
+    while not scheduler._requests.empty():
+        scheduler._requests.get_nowait()
+    # The check no longer stands: the staged file was replaced meanwhile.
+    path.write_text("2025-01-01,2\n")
+    stale = client.post("/api/connectors/csvsteps/import")
+    assert stale.status_code == 409 and "checked" in stale.json()["detail"]
+    assert scheduler._requests.empty() and runner.staged_upload(db, steps) is None
+
+
 def test_a_connector_may_mask_an_uploads_name(influx, db, tmp_path, client):
     """upload_label: what a run calls the file (stored, shown, logged), for a
     name that holds an account number."""
