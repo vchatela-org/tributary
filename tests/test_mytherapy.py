@@ -5,7 +5,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from app import runner
+from app import runner, schema
 from app.connectors import mytherapy
 from app.config import settings
 from app.main import app
@@ -194,8 +194,11 @@ def test_the_declared_series_is_the_jobs():
     assert mytherapy.parse_names(json.dumps(MYTHERAPY_NAMES)) == MYTHERAPY_NAMES
     assert set(mytherapy.STATUS) == {"confirmed", "rejected", "auto skipped"}
     assert mytherapy.MEDICATION.tag_keys == ("source", "user", "med", "status")
-    assert mytherapy.MEDICATION.field_types == {"taken": int, "app_status": str, "dose": float,
-                                                "unit": str, "delay_min": int}
+    # The measurement is shared with Medisafe (app/schema.py): MyTherapy
+    # writes these five fields, never Medisafe's `strength` or `note`.
+    assert mytherapy.MEDICATION is schema.MEDICATION
+    assert {"taken": int, "app_status": str, "dose": float, "unit": str,
+            "delay_min": int}.items() <= mytherapy.MEDICATION.field_types.items()
     assert mytherapy.MyTherapyConnector.required_env == ("TRIBUTARY_MYTHERAPY_NAMES",)
     assert mytherapy.MyTherapyConnector.rebuild_own_source is True
 

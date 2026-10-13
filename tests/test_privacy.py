@@ -10,9 +10,10 @@ from fastapi.testclient import TestClient
 from app import connectors, runner
 from app.database import engine
 from app.main import app
-from tests.fakes import (BOB_RECORDS, MYFITNESSPAL_NOTE, MYTHERAPY_NOTE, RENPHO_SECRETS, SECRETS,
+from tests.fakes import (BOB_RECORDS, MEDISAFE_ACCOUNT, MEDISAFE_NOTE, MYFITNESSPAL_NOTE, MYTHERAPY_NOTE, RENPHO_SECRETS, SECRETS,
                          TODOIST_SECRETS, TODOIST_TASKS, mfp_exercise_row, mfp_food_row, mfp_weight_row,
-                         mytherapy_row, write_myfitnesspal_export, write_mytherapy_export)
+                         medisafe_row, mytherapy_row, write_medisafe_export, write_myfitnesspal_export,
+                         write_mytherapy_export)
 
 # (database, measurement, field): the only text fields allowed out. A new
 # one is a privacy decision: add it here on purpose, with docs/schema.md.
@@ -26,12 +27,18 @@ ALLOWED_TEXT = {("MediaStats", "reading_session", "title"), ("MediaStats", "book
                 # "Musculation"...), as the job wrote it into the `activity`
                 # field. A bounded vocabulary the app draws from, not the
                 # export's free-text `note` column (which is left out).
-                ("BodyStats", "exercise", "activity")}
+                ("BodyStats", "exercise", "activity"),
+                # Medisafe: a medication's strength ("10 mg", "5 g"), as the
+                # script wrote it: a number and a unit the app offers.
+                ("BodyStats", "medication", "strength")}
 # Todoist's task text: only with TRIBUTARY_TODOIST_TASK_TEXT (the job it
-# replaced wrote it, and its dashboard lists the completions).
+# replaced wrote it, and its dashboard lists the completions). Medisafe's dose
+# note: only with TRIBUTARY_MEDISAFE_NOTES (the script wrote it, and the
+# Medication dashboard's dose table shows it).
 OPT_IN_TEXT = {("TodoistStats", "todoist_task_completed", "content"),
                ("TodoistStats", "todoist_task_completed", "labels"),
-               ("TodoistStats", "todoist_completion", "content")}
+               ("TodoistStats", "todoist_completion", "content"),
+               ("BodyStats", "medication", "note")}
 
 
 def test_only_titles_and_opt_in_text_are_declared_as_text():
@@ -197,3 +204,24 @@ def test_no_myfitnesspal_member_name_or_note_is_kept(myfitnesspal_connector, inf
         assert MYFITNESSPAL_NOTE not in text, where
         assert "Récapitulatif" not in text, where
     assert 'activity="Course"' in seen["influxdb"]
+
+
+def test_no_medisafe_note_or_account_is_kept(medisafe_connector, influx, db, monkeypatch, caplog, tmp_path):
+    """A dose's note (free text) never leaves unless TRIBUTARY_MEDISAFE_NOTES
+    asks for it; the account number in the export's name is masked
+    everywhere: InfluxDB, the stored runs, the API, the pages, the logs."""
+    from app.config import settings
+
+    caplog.set_level(logging.DEBUG)
+    monkeypatch.setattr(settings, "influxdb_user", "alice")
+    name = f"Doses_{MEDISAFE_ACCOUNT}_000.csv"
+    for dry_run in (True, False):
+        path = write_medisafe_export(tmp_path / name, [medisafe_row(strength="10 mg", notes=MEDISAFE_NOTE)])
+        runner.run(db, medisafe_connector, dry_run=dry_run, file=str(path), filename=name, trigger="upload")
+
+    seen = {**_everything_seen(influx), "logs": caplog.text}
+    for where, text in seen.items():
+        assert MEDISAFE_NOTE not in text, where
+        assert MEDISAFE_ACCOUNT not in text, where
+    assert "Doses_&lt;account&gt;_000.csv" in seen["pages"] or "Doses_<account>_000.csv" in seen["api"]
+    assert 'strength="10 mg"' in seen["influxdb"]

@@ -86,14 +86,21 @@ def _whole(connector: Connector) -> Dict[str, Optional[Span]]:
 
 def _upload_drop(connector: Connector, imported: FileImport) -> Drop:
     """What an uploaded file replaces: nothing, the whole series, or the
-    days it covers of each measurement it has a span for."""
+    days it covers of each measurement it has a span for -- this user's: a
+    span is replaced for TRIBUTARY_INFLUXDB_USER, so without one it would
+    reach every user's points, and the rewritten ones would carry none."""
     if not connector.rebuild_own_source:
         return None
     if imported.spans is None:
         return _whole(connector)
-    unknown = set(imported.spans) - {m.name for m in connector.measurements}
+    declared = {m.name: m for m in connector.measurements}
+    unknown = set(imported.spans) - set(declared)
     if unknown:
         raise ValueError(f"span(s) for undeclared measurement(s) {sorted(unknown)}")
+    if not settings.influxdb_user and any(declared[name].tagged_user for name in imported.spans):
+        raise ConnectorError("TRIBUTARY_INFLUXDB_USER is not set: an import replaces the days it covers of "
+                             "this user's points, and without one it would replace every user's. "
+                             "Set it and import again.")
     return dict(imported.spans) or None
 
 
@@ -104,7 +111,7 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
     of the connector's own series to drop before writing, the parts of the
     source that failed)."""
     if file:
-        label = filename or Path(file).name
+        label = connector.upload_label(filename or Path(file).name)
         imported = _import(connector, Path(file), label)
         # `rebuild_own_source`: an uploaded file that holds a connector's
         # history (an export) replaces its series rather than adding to it or

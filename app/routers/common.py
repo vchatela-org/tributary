@@ -45,7 +45,7 @@ def queue_run(connector: Connector, dry_run: bool = False, full: bool = False) -
 
 def queue_upload(connector: Connector, upload: UploadFile, dry_run: bool = False) -> str:
     """Save the upload where only the run reads it (deleted after), queue
-    its import. Returns the original file name."""
+    its import. Returns the file's name, as its run will show it."""
     if not connector.accepts_files:
         raise HTTPException(status_code=400, detail=f"{connector.label} takes no file")
     filename = Path(upload.filename or "upload").name
@@ -53,6 +53,7 @@ def queue_upload(connector: Connector, upload: UploadFile, dry_run: bool = False
         raise HTTPException(status_code=400,
                             detail=f"{connector.label} takes {', '.join(connector.file_types)} files")
     suffix = next(t for t in connector.file_types if filename.lower().endswith(t))
+    filename = connector.upload_label(filename)
     target = uploads_dir() / f"{uuid.uuid4().hex}{suffix}"
     limit = settings.max_upload_mb * 1024 * 1024
     size = 0

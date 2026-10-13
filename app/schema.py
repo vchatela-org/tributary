@@ -37,3 +37,14 @@ BODY_COMPOSITION = Measurement(
         "fat_free_weight_kg", "heart_rate_bpm", "cardiac_index", "body_shape",
     )},
 )
+
+# Medication reminders' doses: MyTherapy and Medisafe, each under its own
+# source. Medisafe's export alone carries `strength` and `note`; a dose's note
+# is written whole, as the script that first wrote it did (and with
+# TRIBUTARY_MEDISAFE_NOTES only).
+MEDICATION = Measurement(
+    database="BodyStats", name="medication", tags=("med", "status"),
+    fields={"taken": int, "app_status": str, "dose": float, "unit": str, "delay_min": int,
+            "strength": str, "note": str},
+    text_max=None,
+)

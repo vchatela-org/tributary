@@ -144,6 +144,12 @@ class Connector:
     def import_file(self, path: Path) -> Union[Iterable[Point], FileImport]:
         raise NotImplementedError
 
+    def upload_label(self, filename: str) -> str:
+        """How an uploaded file is named in its run's message (stored, shown,
+        logged): its name, unless that holds something personal (an account
+        number) the connector masks."""
+        return filename
+
     # -- Schedule ------------------------------------------------------------
 
     def interval_seconds(self) -> float:

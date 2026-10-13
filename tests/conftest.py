@@ -23,6 +23,9 @@ os.environ.update({
     "TRIBUTARY_MYTHERAPY_WATCH_DIR": "",
     "TRIBUTARY_MYTHERAPY_NAMES": "",
     "TRIBUTARY_MYTHERAPY_START_DATE": "",
+    "TRIBUTARY_MEDISAFE_NAMES": "",
+    "TRIBUTARY_MEDISAFE_NOTES": "false",
+    "TRIBUTARY_MEDISAFE_END_DATE": "",
 })
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.chdir(Path(__file__).resolve().parents[1])  # templates/ and static/ are relative
@@ -132,6 +135,15 @@ def todoist_connector():
 @pytest.fixture()
 def myfitnesspal_connector():
     return connectors.get("myfitnesspal")
+
+
+@pytest.fixture()
+def medisafe_connector(monkeypatch):
+    """Medisafe as configured by nothing: no mapping, no notes, no end date."""
+    connector = connectors.get("medisafe")
+    for name, value in (("names", None), ("notes", False), ("end_date", None)):
+        monkeypatch.setattr(connector.settings, name, value)
+    return connector
 
 
 @pytest.fixture()

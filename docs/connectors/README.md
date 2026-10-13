@@ -7,6 +7,7 @@
 | [Todoist](todoist.md) | `todoist` | API, daily | `TodoistStats`: `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` |
 | [MyTherapy](mytherapy.md) | `mytherapy` | export file, uploaded in the UI | `BodyStats`: `medication` |
 | [MyFitnessPal](myfitnesspal.md) | `myfitnesspal` | export file, uploaded in the UI | `BodyStats`: `body_composition`, `nutrition`, `exercise` |
+| [Medisafe](medisafe.md) | `medisafe` | export file, uploaded in the UI | `BodyStats`: `medication` |
 
 ## Before writing one
 
@@ -53,11 +54,14 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
   Span(first, last)}`, the days (`TRIBUTARY_TZ`, both included) the file
   covers of each series. Only those are replaced, for the connector's source
   and `TRIBUTARY_INFLUXDB_USER` (`DELETE FROM ... WHERE "source" = '<key>' AND
-  "user" = '<user>' AND time >= ... AND time < ...`), so an export of the last
-  month never empties the years before it; a measurement without a span is
-  left as it is. Bare points mean the whole history (the whole series is
+  "user" = '<user>' AND time >= ... AND time < ...`; without a user the
+  import is refused), so an export of the last month never empties the years
+  before it; a measurement without a span is left as it is. Bare points mean the whole history (the whole series is
   replaced). Such a connector takes uploads only (its `watch_dir` is `None`):
   a folder of range exports is not a whole history.
+- `upload_label(filename)`: how a run names the uploaded file (stored, shown,
+  logged). The name by default; a connector masks what it holds that is
+  personal (Medisafe: the account number of `Doses_<account>_000.csv`).
 
 Points are `Point(measurement, time, tags, fields)`, time in UTC. The core
 adds `source` (unless the measurement is declared `tagged_source=False`),
