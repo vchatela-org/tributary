@@ -120,7 +120,8 @@ reminder app. No *local time*.
   alias; the app's own name for `medisafe`, renamed or left out per
   `TRIBUTARY_MEDISAFE_NAMES`), `status` the contract word for what happened
   (`taken`, `missed`, `skipped`, and `unlogged` for a Medisafe reminder
-  nobody answered), `taken` 1 when the dose was taken and 0 otherwise
+  nobody answered or a Medisafe dose the app reports as deleted), `taken` 1
+  when the dose was taken and 0 otherwise
   (`app_status` keeps the app's own word). `dose` and `unit` are there when
   the export carries them ("pill(s)" becomes "pills"); `delay_min` only for
   a taken dose: the scheduled time to the moment it was answered, negative
