@@ -62,11 +62,6 @@ EXTERNAL_TOOLS: Dict[str, Tuple[ExternalTool, ...]] = {
 }
 
 
-def category_of(connector) -> str:
-    """The category a connector belongs to, checked by a test."""
-    return connector.category
-
-
 # One Bootstrap icon per category, for the section headings.
 CATEGORY_ICONS: Dict[str, str] = {
     "Body & health": "bi-person-standing",

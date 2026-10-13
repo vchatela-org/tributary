@@ -194,22 +194,24 @@ def _after_upload(db: Session, connector: Connector, file: Optional[str], dry_ru
       - a check that succeeded: kept, as this connector's staged upload (the
         TTL applies; an import or a discard removes it);
       - a check that failed: deleted -- there is nothing to import;
-      - an import: the staged row and the file go once it wrote; a failed import
-        keeps them, so "Import for real" can be retried without uploading again.
+      - an import: the check it applied -- and only that one -- is consumed once
+        it wrote; a failed import keeps it, so "Import for real" can be retried
+        without uploading again. A direct import of another file leaves a check
+        still waiting for its own file alone.
     """
     if not file:
         return
+    row = db.get(StagedUpload, connector.key)
     if dry_run:
         if not ok:
-            row = db.get(StagedUpload, connector.key)
             if row is not None and row.path == str(file):
                 discard_staged(db, connector)
             _unlink(file)
         return
-    if ok:
+    consumed = ok and row is not None and row.path == str(file)
+    if consumed:
         discard_staged(db, connector)
-    row = db.get(StagedUpload, connector.key)
-    if row is None or row.path != str(file):
+    if not consumed and (row is None or row.path != str(file)):
         _unlink(file)
 
 

@@ -60,7 +60,7 @@ def state_of(connector, last: Optional[SyncRun], staged: Optional[StagedUpload],
     return "failing" if last.status == "error" else "ok"
 
 
-def card(db: Session, connector: Connector, hidden: bool = False, runs: int = 0,
+def card(db: Session, connector: Connector, hidden: bool = False,
          pending_keys: Optional[set] = None, running_keys: Optional[set] = None) -> Dict[str, Any]:
     resolved = scheduler.resolved_for(db, connector)
     last = (crud.latest_runs(db, connector.key, limit=1) or [None])[0]
@@ -93,11 +93,10 @@ def card(db: Session, connector: Connector, hidden: bool = False, runs: int = 0,
         "last_run": last,
         "staged": staged,
         "hidden": hidden,
-        "runs": runs,
     }
 
 
-def sections(db: Session, show_hidden: bool = False) -> List[Dict[str, Any]]:
+def sections(db: Session) -> List[Dict[str, Any]]:
     """Tributary's connectors grouped by category, each with the compatible
     tools that feed the same databases.
 

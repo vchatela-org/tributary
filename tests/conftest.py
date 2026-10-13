@@ -57,6 +57,9 @@ def _clean_state():
             session.query(table).delete()
         session.commit()
     yield
+    # A test that saved a schedule starts the thread (app/scheduler.reschedule);
+    # stop it, so it cannot consume the next test's queue.
+    scheduler.stop()
     while not scheduler._requests.empty():
         scheduler._requests.get_nowait()
     scheduler._pending.clear()

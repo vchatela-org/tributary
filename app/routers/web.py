@@ -8,6 +8,7 @@ back on the page it came from (`safe_back`), never on a separate one.
 from datetime import timedelta
 from math import ceil
 from typing import List, Optional
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -165,11 +166,37 @@ def runs_partial(request: Request, connector: Optional[str] = None, status: Opti
 # Writes (each one ends back on the page it came from)
 # ────────────────────────────────────────────────
 
+# A refusal a form may hit (nothing checked, a check out of date, a bad cron, a
+# file too big): the write ends back on the page that posted it, with the reason
+# shown there, never as a raw JSON body.
+_REFUSALS = (400, 409, 413)
+
+
+def _back(request: Request, default: str = "/") -> RedirectResponse:
+    return RedirectResponse(safe_back(request, default), status_code=303)
+
+
+def _refused(request: Request, exc: HTTPException, default: str = "/") -> RedirectResponse:
+    path = safe_back(request, default)
+    separator = "&" if "?" in path else "?"
+    return RedirectResponse(f"{path}{separator}{urlencode({'notice': str(exc.detail)})}", status_code=303)
+
+
+def _write(request: Request, work, default: str = "/") -> RedirectResponse:
+    """Run one form's write; a refusal returns to the page it came from."""
+    try:
+        work()
+    except HTTPException as exc:
+        if exc.status_code in _REFUSALS:
+            return _refused(request, exc, default)
+        raise
+    return _back(request, default)
+
+
 @router.post("/connectors/{key}/run", dependencies=[Depends(same_origin)])
 def run_now(request: Request, key: str, dry_run: bool = Form(False), full: bool = Form(False)):
     """The "Run now" / "Dry run" / "Full resync" buttons: queue, back to the page."""
-    queue_run(connector_or_404(key), dry_run=dry_run, full=full)
-    return RedirectResponse(safe_back(request), status_code=303)
+    return _write(request, lambda: queue_run(connector_or_404(key), dry_run=dry_run, full=full))
 
 
 @router.post("/connectors/{key}/check", dependencies=[Depends(same_origin)])
@@ -177,24 +204,21 @@ def check_file(request: Request, key: str, file: UploadFile = File(...)):
     """Check an export: import nothing, keep the file, show what it would write.
     Then either "Import for real" or "Discard". Back to the page, so the next
     card's file picker is right there."""
-    queue_upload(connector_or_404(key), file, dry_run=True)
-    return RedirectResponse(safe_back(request), status_code=303)
+    return _write(request, lambda: queue_upload(connector_or_404(key), file, dry_run=True))
 
 
 @router.post("/connectors/{key}/import", dependencies=[Depends(same_origin)])
 def import_checked(request: Request, key: str):
-    """Import what was checked, without uploading the file again. A check that
-    no longer stands (the file changed, a setting did, it expired) is refused
-    here with a 409 saying so, and no run is queued."""
-    queue_promote(connector_or_404(key))
-    return RedirectResponse(safe_back(request), status_code=303)
+    """Import what was checked, without uploading the file again. A check that no
+    longer stands (the file changed, a setting did, it expired) is refused, with
+    the reason shown back on the page and no run queued."""
+    return _write(request, lambda: queue_promote(connector_or_404(key)))
 
 
 @router.post("/connectors/{key}/discard", dependencies=[Depends(same_origin)])
 def discard_checked(request: Request, key: str):
     """Drop a checked upload; the file goes with it."""
-    discard_staged(connector_or_404(key))
-    return RedirectResponse(safe_back(request), status_code=303)
+    return _write(request, lambda: discard_staged(connector_or_404(key)))
 
 
 @router.post("/connectors/{key}/schedule", dependencies=[Depends(same_origin)])
@@ -202,8 +226,10 @@ def set_schedule(request: Request, key: str, preset: str = Form(""), at: str = F
                  weekday: str = Form(""), custom: str = Form(""), cron: str = Form(""),
                  reset: bool = Form(False)):
     """Save a schedule from the editor: a preset with its time, a custom cron, or
-    *Manual only*. An expression that does not parse is refused with a 400."""
+    *Manual only*. An expression that does not parse comes back as a notice on the
+    page."""
     connector = connector_or_404(key)
+    default = f"/connectors/{key}"
     if reset:
         # "Reset to default": forget the saved value, so the environment or the
         # connector's own default applies again.
@@ -213,19 +239,16 @@ def set_schedule(request: Request, key: str, preset: str = Form(""), at: str = F
                 db.delete(row)
                 db.commit()
         scheduler.reschedule(connector.key)
-        return RedirectResponse(safe_back(request, f"/connectors/{key}"), status_code=303)
-    if preset:
-        try:
+        return _back(request, default)
+    try:
+        if preset:
             saved = schedule.build_cron(preset, at, weekday, custom) or ""
-        except schedule.CronError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from None
-    elif cron:
-        try:
+        elif cron:
             saved = schedule.validate(cron)
-        except schedule.CronError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from None
-    else:
-        raise HTTPException(status_code=400, detail="Pick how often it should run.")
+        else:
+            raise schedule.CronError("Pick how often it should run.")
+    except schedule.CronError as exc:
+        return _refused(request, HTTPException(status_code=400, detail=str(exc)), default)
     with SessionLocal() as db:
         row = db.get(ConnectorSchedule, connector.key) or ConnectorSchedule(connector=connector.key)
         row.cron, row.updated_at = saved, utcnow()
@@ -234,7 +257,7 @@ def set_schedule(request: Request, key: str, preset: str = Form(""), at: str = F
     # The thread re-plans this connector: the new schedule applies now, not
     # after the previous deadline.
     scheduler.reschedule(connector.key)
-    return RedirectResponse(safe_back(request, f"/connectors/{key}"), status_code=303)
+    return _back(request, default)
 
 
 @router.post("/settings", dependencies=[Depends(same_origin)])
@@ -248,4 +271,4 @@ def save_settings(request: Request, visible: List[str] = Form(default=[]), reset
         visible = known
     preferences.set_hidden_connectors(db, [key for key in known if key not in set(visible)], known)
     db.commit()
-    return RedirectResponse(safe_back(request, "/settings"), status_code=303)
+    return _back(request, "/settings")

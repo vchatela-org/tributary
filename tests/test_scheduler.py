@@ -95,6 +95,18 @@ def test_a_schedule_a_connector_set_to_manual_only_is_not_scheduled(ticker, db):
     assert scheduler.scheduled(db, ticker) is None
 
 
+def test_saving_a_schedule_starts_the_thread(monkeypatch):
+    """A schedule set from the UI must run even when nothing was scheduled at
+    startup, so `reschedule` starts the thread `start()` then left unstarted."""
+    scheduler.stop()
+    assert scheduler._thread is None
+    try:
+        scheduler.reschedule("audiobookshelf")
+        assert scheduler._thread is not None and scheduler._thread.is_alive()
+    finally:
+        scheduler.stop()
+
+
 def test_requests_are_queued_once(ticker, no_thread):
     assert scheduler.request("ticker", trigger="manual")
     assert scheduler.request("ticker", trigger="manual")

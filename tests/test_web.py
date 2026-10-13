@@ -143,6 +143,28 @@ def test_no_show_hidden_link_before_anything_is_hidden(client):
     assert "Show the hidden sources" not in client.get("/").text
 
 
+def test_a_page_without_live_regions_does_not_poll(client):
+    """Settings, and a run's own page, carry no data-region: they must not re-fetch
+    themselves every 15 s for nothing."""
+    assert 'data-poll=""' in client.get("/settings").text
+    assert 'data-poll="/partials/status"' in client.get("/").text
+
+
+def test_a_refused_write_returns_to_the_page_with_the_reason(client, steps, no_thread):
+    """A form refusal ends back on the page that posted it, with the reason shown
+    there -- never as a raw JSON body."""
+    response = client.post("/connectors/csvsteps/import", follow_redirects=False,
+                           headers={"referer": "/connectors/csvsteps"})
+    assert response.status_code == 303
+    assert response.headers["location"].startswith("/connectors/csvsteps?notice=")
+    assert "Nothing was checked yet" in client.get(response.headers["location"]).text
+
+    bad = client.post("/connectors/audiobookshelf/schedule", data={"preset": "custom", "custom": "nope"},
+                      follow_redirects=False, headers={"referer": "/connectors/audiobookshelf"})
+    assert bad.status_code == 303 and "notice=" in bad.headers["location"]
+    assert "5 fields" in client.get(bad.headers["location"]).text
+
+
 # -- The schedule editor -----------------------------------------------------------------
 
 def test_the_editor_saves_a_custom_expression(client, abs_api, no_thread):

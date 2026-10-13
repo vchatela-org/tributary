@@ -20,8 +20,9 @@
 {% set path = request.url.path %}
 {# data-poll: the fragment this page re-reads in place. It replaces the status
    bits and the action buttons only -- never a form, so a run in flight cannot
-   take a file picker away from the user. #}
-<body data-poll="{% block poll %}{{ path }}{% endblock %}">
+   take a file picker away from the user. Empty by default: a page with no live
+   region (Settings, a run's own page) must not re-fetch itself for nothing. #}
+<body data-poll="{% block poll %}{% endblock %}">
 <nav class="topbar py-2">
   <div class="container tb-wrap d-flex align-items-center gap-4">
     <a class="brand d-flex align-items-center" href="/"><i class="bi bi-water me-2"></i>Tributary</a>
@@ -34,6 +35,13 @@
   </div>
 </nav>
 <main class="container tb-wrap py-4">
+  {# A refused write (nothing checked, a check out of date, a bad cron) comes back
+     here as ?notice=, rather than landing on a raw error body. #}
+  {% if request.query_params.get('notice') %}
+  <div class="tb-strip warn" role="alert">
+    <i class="bi bi-exclamation-triangle"></i>{{ request.query_params.get('notice') }}
+  </div>
+  {% endif %}
   {% block content %}{% endblock %}
 </main>
 </body>

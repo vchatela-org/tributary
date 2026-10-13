@@ -130,8 +130,11 @@ def request(key: str, **options: Any) -> bool:
 
 def reschedule(key: str) -> None:
     """The UI saved a schedule for `key`: drop its deadline so the thread plans
-    it again (and wake the thread)."""
+    it again (and wake the thread). Start the thread if nothing scheduled at
+    startup left it unstarted -- a schedule set from the UI must run, not wait
+    for a restart."""
     _requests.put((_REPLAN, (key,)))
+    _ensure_thread()
 
 
 def _ensure_thread() -> bool:

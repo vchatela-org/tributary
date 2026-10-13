@@ -221,6 +221,23 @@ def test_an_expired_check_is_refused_even_before_a_sweep(db, steps, influx, tmp_
     assert influx.stored() == [] and runner.staged_upload(db, steps) is None
 
 
+def test_a_direct_import_leaves_another_waiting_check_alone(db, steps, influx, tmp_path):
+    """Importing another file straight away must not consume a check of a
+    different file that is still waiting for its import."""
+    first = upload(tmp_path, b"2025-01-01,1\n", "a.csv")
+    checked = runner.run(db, steps, trigger="upload", dry_run=True, file=str(first), filename="a.csv")
+    assert checked.status == "ok" and runner.staged_upload(db, steps) is not None
+
+    other = tmp_path / "b.csv"
+    other.write_text("2025-01-02,2\n")
+    assert runner.run(db, steps, trigger="upload", file=str(other), filename="b.csv").status == "ok"
+
+    stage = runner.staged_upload(db, steps)
+    assert stage is not None and Path(stage.path) == first and first.exists()
+    imported = runner.promote(db, steps)                      # the check still works
+    assert imported.status == "ok" and imported.promoted_from == checked.id
+
+
 def test_a_fresh_check_survives_a_purge_and_a_restart(db, steps, influx, tmp_path):
     """The file and its row live on the data volume: a restart does not lose
     them, and does not treat them as expired."""

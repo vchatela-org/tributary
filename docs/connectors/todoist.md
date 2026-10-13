@@ -19,7 +19,8 @@ export only hold active tasks, not completed ones or archived projects.
    | `TRIBUTARY_TODOIST_TOKEN` | The API token. |
    | `TRIBUTARY_TODOIST_TASK_TEXT` | `true` to also write each task's name and labels (default `false`), see [Privacy](#privacy). |
    | `TRIBUTARY_TODOIST_LOOKBACK_DAYS` | Days read again before the last sync, for a task ticked off on a phone that synced later (default 3). |
-   | `TRIBUTARY_TODOIST_INTERVAL_MINUTES` | Minutes between two syncs (default 1440, once a day). |
+   | `TRIBUTARY_TODOIST_SCHEDULE` | A 5-field cron expression, in `TRIBUTARY_TZ` (default: daily at 00:30). Set it on the source's page instead, when you can: see [Scheduling](../scheduling.md). |
+   | `TRIBUTARY_TODOIST_INTERVAL_MINUTES` | Deprecated: minutes between two syncs, counted from the start. Superseded by the schedule; still honoured so an existing deployment keeps working. |
 
    Local days (`late_days`, the daily karma and stats points) are in
    `TRIBUTARY_TZ`.
