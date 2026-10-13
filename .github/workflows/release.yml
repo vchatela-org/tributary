@@ -19,6 +19,9 @@ permissions:
 
 jobs:
   release:
+    # Only here: a fork must not open release PRs, tag or publish images.
+    if: github.repository == 'vchatela-org/tributary'
     uses: vchatela-org/shared-workflows/.github/workflows/release-please.yml@v1
     with:
-      build_workflows: docker-build-push.yml ghcr-publish.yml
+      # tests.yml too, so each release tag has its own test run.
+      build_workflows: docker-build-push.yml ghcr-publish.yml tests.yml

@@ -107,14 +107,14 @@ Releases are cut by [release-please](https://github.com/googleapis/release-pleas
 [conventional commits](https://www.conventionalcommits.org/) on `main`. It keeps one release PR
 open, `chore(main): release X.Y.Z`, with the next version and its `CHANGELOG.md` entry; every
 `feat`, `fix`, `perf`, `revert` or `deps` change merged since the last release joins it, so several
-can ship together. Merge it when you want to ship: that tags `vX.Y.Z`, publishes the GitHub Release
-(the notes Renovate shows in the homelab's bump PR) and builds the image on the tag: Harbor (`vX.Y.Z` and `latest`, then the vulnerability scan) and GHCR (semver tags).
-Don't bump `app/__version__.py` or push a tag by hand.
+can ship together. Merging it tags `vX.Y.Z`, publishes the GitHub Release (the notes Renovate and
+Dependabot show when they bump the image) and builds the image on the tag: GHCR (`X.Y.Z`, `X.Y` and
+`latest`) and the owner's Harbor. Don't bump `app/__version__.py` or push a tag by hand.
 
 PRs are **squash-merged**, with the PR title as the commit subject and an empty body (the merge
 dialog's prefill: keep it). The title is the PR's one line in the notes and decides the bump: `feat`
-makes a minor, the other listed types a patch, a breaking change (`feat!:`) a major (a minor while in
-0.x); `docs`, `chore`, `ci`, `test`, `refactor`, `build` and `style` stay out of the notes. So keep the
+makes a minor, the other listed types a patch, a breaking change (`feat!:`) a minor while in 0.x;
+`docs`, `chore`, `ci`, `test`, `refactor`, `build` and `style` stay out of the notes. So keep the
 title a conventional commit; the "PR title" check says when it is not. Details, and how to force a
 version: [shared-workflows](https://github.com/vchatela-org/shared-workflows#reusable-workflow-release-pr-release-please).
 

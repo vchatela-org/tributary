@@ -19,12 +19,18 @@ updates:
     commit-message:
       prefix: "deps"
 
+  # The compose file pins the demo stack (InfluxDB, Grafana), not the Tributary image:
+  # its bumps change no release, so "chore". Tributary writes through the InfluxDB 1.x
+  # API, so a 2.x major is never proposed.
   - package-ecosystem: "docker-compose"
     directory: "/"
     schedule:
       interval: "weekly"
     commit-message:
-      prefix: "deps"
+      prefix: "chore"
+    ignore:
+      - dependency-name: "influxdb"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
