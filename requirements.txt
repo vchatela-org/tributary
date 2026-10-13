@@ -8,5 +8,8 @@ python-multipart==0.0.32
 # Schedule parsing (app/schedule.py): a maintained 5-field cron parser and
 # evaluator, no dependencies of its own and no scheduler framework.
 cronsim==2.7
+# The IANA time-zone database, for zoneinfo (TRIBUTARY_TZ): the base image
+# ships none, and a pinned package keeps it updated with the code.
+tzdata==2026.5
 # The Renpho connector: the app's encrypted API (pulls requests and pycryptodome).
 renpho-api==0.2.0

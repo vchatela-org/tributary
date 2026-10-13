@@ -58,6 +58,9 @@ Tributary isn't Kubernetes-specific: it's the same container.
   Use the `Recreate` strategy so two never overlap during an upgrade.
 - **A small persistent volume** at `/app/data`. The image runs as uid
   10001: set `securityContext.fsGroup: 10001` so it can write there.
+- **No shell in the image.** It is Python and the app on a minimal base
+  (Chainguard's), with no shell or package manager: probes are HTTP, and
+  `kubectl exec` runs `python`, not `sh`.
 - **Probes** on `GET /api/health`. Startup never blocks: the server
   listens at once, and the first scheduled run comes
   `TRIBUTARY_FIRST_RUN_DELAY` seconds later, in the background.
