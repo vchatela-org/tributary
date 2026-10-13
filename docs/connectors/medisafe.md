@@ -19,7 +19,13 @@ they are. The run says which days it replaced.
 1. In Medisafe, export your dose history (`Doses_<account>_000.csv`, or a
    zip holding it). If the app splits it into parts (`_000`, `_001`...),
    import the zip holding them all: they are read as one export, whereas a
-   part alone would replace the days it shares with the others.
+   part alone would replace the days it shares with the others. Its first
+   line names the columns:
+   `"group_id","name","condition","Scheduled for",...`. A re-save with `;` or
+   tabs between them, or the names padded or cased differently, reads the
+   same. Any other file is refused, and the run says what it holds instead:
+   empty, a web page (a failed download), the columns it has, or a first line
+   that isn't column names.
 2. Optionally, curate the names and the notes:
 
    | Variable | |
@@ -76,7 +82,9 @@ The export holds your medications' names, the notes you typed, the schedules'
 ids and, in its file name, your account number. Only the doses' numbers and
 times, the app's own words (status, unit, strength), the `med` name (as the
 export gives it or as your mapping renames it) and, if you ask for it, the
-note reach InfluxDB. The schedule ids never do, and no name is ever logged.
+note reach InfluxDB. The schedule ids never do, and no name is ever logged: a
+refused file's message quotes its first line only when it reads as column
+names, never a row.
 The account number is masked in the run's message (`Doses_<account>_000.csv`):
 it is neither stored, shown nor logged.
 

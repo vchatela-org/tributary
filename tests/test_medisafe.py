@@ -1,5 +1,7 @@
 """Medisafe: the exact series the one-off import script wrote (docs/porting.md),
 from an export imported in the UI."""
+import csv
+import io
 import json
 import zipfile
 
@@ -9,11 +11,14 @@ from fastapi.testclient import TestClient
 from app import runner, schema
 from app.config import settings
 from app.connectors import medisafe
+from app.connectors.base import ConnectorError
 from app.main import app
-from tests.fakes import MEDISAFE_NOTE, epoch, medisafe_row, write_medisafe_export
+from tests.fakes import MEDISAFE_COLUMNS, MEDISAFE_NOTE, epoch, medisafe_row, write_medisafe_export
 
 # The `user` tag: the script's --user, TRIBUTARY_INFLUXDB_USER here.
 USER = "alice"
+# Where a file that isn't the export sends the user.
+THE_EXPORT = "The doses export is Doses_<account>_000.csv, or the zip holding it."
 
 
 @pytest.fixture()
@@ -30,6 +35,25 @@ def _import(db, connector, tmp_path, rows, name="Doses_00012345_000.csv", zipped
 
 def _drops(influx):
     return [q for _db, q in influx.queries if q.startswith(("DROP", "DELETE"))]
+
+
+def _upload(db, connector, tmp_path, text, name="000 (1).csv"):
+    """Upload a file that holds `text`, whatever it is, as the UI does."""
+    path = tmp_path / name
+    path.write_text(text, encoding="utf-8")
+    return runner.run(db, connector, file=str(path), filename=name, trigger="upload")
+
+
+def _resaved(path, rows, delimiter, header):
+    """The export as a tool re-saves it: `header` -- (the name written, the
+    export's column), in the order written -- over its rows, `delimiter`
+    between the columns, behind a BOM."""
+    out = io.StringIO(newline="")
+    writer = csv.writer(out, delimiter=delimiter)
+    writer.writerow([written for written, _column in header])
+    writer.writerows([row[column] for _written, column in header] for row in rows)
+    path.write_text(out.getvalue(), encoding="utf-8-sig")
+    return path
 
 
 def test_an_import_writes_the_scripts_exact_lines(connector, influx, db, tmp_path):
@@ -273,6 +297,81 @@ def test_a_file_that_is_not_an_export_names_what_is_missing(connector, influx, d
     path.write_text("name,when\nx,2026-01-01\n", encoding="utf-8")
     run = runner.run(db, connector, file=str(path), filename="other.csv", trigger="upload")
     assert run.status == "error" and "not a Medisafe doses export: no column 'Scheduled for'" in run.message
+
+
+A_DOSE = ",".join(medisafe_row(notes=MEDISAFE_NOTE).values()) + "\n"
+
+
+@pytest.mark.parametrize("text, says", [
+    ("", "the file is empty."),
+    ("\r\n  \n", "the file is empty."),
+    ("<!DOCTYPE html>\n<html><head><title>Link expired</title></head></html>\n",
+     "the file is a web page (HTML or XML), not a CSV: a download that failed or expired? "
+     "Download the export again."),
+    ('<?xml version="1.0" encoding="UTF-8"?>\n<Error><Code>AccessDenied</Code></Error>\n',
+     "the file is a web page (HTML or XML), not a CSV"),
+    ("Medication,Amount,Measure,Taken at,Outcome,Comment,Reason\n" + A_DOSE,
+     f"its columns are 'Medication', 'Amount', 'Measure', 'Taken at', 'Outcome' and 2 more, none of them a "
+     f"doses export's. {THE_EXPORT}"),
+    ("|".join(MEDISAFE_COLUMNS) + "\n", f"its first line has no comma, semicolon or tab to separate columns. "
+                                        f"{THE_EXPORT}"),
+    (A_DOSE + A_DOSE, f"its first line (10 columns) doesn't read as column names. {THE_EXPORT}"),
+])
+def test_a_file_that_is_not_an_export_says_what_it_holds(connector, influx, db, tmp_path, text, says):
+    """Not one of the export's columns: the run says what the file is instead
+    -- empty, a web page (a download that failed), another CSV (its column
+    names, capped) or a first line that isn't column names --, so the user can
+    tell which file they picked, and where the right one is."""
+    run = _upload(db, connector, tmp_path, text)
+    assert run.status == "error" and run.message.startswith(f"000 (1).csv: not a Medisafe doses export: {says}")
+    assert _drops(influx) == [] and influx.written_lines() == []
+
+
+@pytest.mark.parametrize("first_line", [
+    A_DOSE,                                               # the export without its header: a dose
+    "Medication report of Alpha med\n",                   # a title
+    "Medication,Alpha med\n",                             # a label and its value
+    f"Alpha med,pills,{MEDISAFE_NOTE} taken with food\n",  # a note: longer than a column name
+    "Alpha med,pills,alice@example.com\n",                # an address
+    "Alpha med,pills,with food\nBeta med,drops,at night\n",  # a list of names, no header
+])
+def test_a_first_line_that_may_be_data_is_described_never_quoted(connector, influx, db, tmp_path, first_line):
+    """A run's message is stored, shown and logged: the first line is quoted
+    only when it reads as column names, never when it may be a row (a name, a
+    note)."""
+    run = _upload(db, connector, tmp_path, first_line + A_DOSE)
+    assert run.status == "error" and "its first line" in run.message
+    assert "Alpha" not in run.message and MEDISAFE_NOTE not in run.message and "@" not in run.message
+
+
+@pytest.mark.parametrize("delimiter, header", [
+    (";", [(column, column) for column in MEDISAFE_COLUMNS]),   # a spreadsheet's re-save, French locale
+    ("\t", [(column, column) for column in MEDISAFE_COLUMNS]),
+    (",", [("\ufeffName", "name")] + [(f" {column.upper()} ", column)  # a second BOM, padded, cased
+                                        for column in MEDISAFE_COLUMNS if column != "name"]),
+])
+def test_a_resaved_export_is_read_as_the_export(connector, tmp_path, delimiter, header):
+    """A semicolon or a tab between the columns, their names padded, cased
+    or behind a second BOM: a tool's re-save, read as the export it was."""
+    rows = [medisafe_row(scheduled="2026-01-15 11:00:00", recorded="2026-01-15 11:05:00", strength="10 mg",
+                         notes=MEDISAFE_NOTE),
+            medisafe_row(scheduled="2026-01-16 19:30:00", status="missed", dosage="0.5", unit="ml")]
+    exported = connector.import_file(write_medisafe_export(tmp_path / "Doses_1_000.csv", rows))
+    resaved = connector.import_file(_resaved(tmp_path / "resaved.csv", rows, delimiter, header))
+    assert len(resaved.points) == 2
+    assert resaved.points == exported.points and resaved.spans == exported.spans
+
+
+def test_an_exact_name_is_read_first_and_a_doubtful_one_never_guessed(connector, tmp_path):
+    """The export's own names win, so it is read as it always was; a column
+    two names could be (`Name`, `NAME`) is missing rather than guessed."""
+    rows = [medisafe_row()]
+    exact = [("name", "name"), ("Name", "unit")] + [(c, c) for c in MEDISAFE_COLUMNS if c != "name"]
+    imported = connector.import_file(_resaved(tmp_path / "exact.csv", rows, ",", exact))
+    assert [p.tags["med"] for p in imported.points] == ["Alpha med"]
+    doubtful = [("Name", "name"), ("NAME", "unit")] + [(c, c) for c in MEDISAFE_COLUMNS if c != "name"]
+    with pytest.raises(ConnectorError, match=r"^not a Medisafe doses export: no column 'name'\.$"):
+        connector.import_file(_resaved(tmp_path / "doubtful.csv", rows, ",", doubtful))
 
 
 def test_an_export_holding_no_dose_is_refused_rather_than_empty_the_series(connector, influx, db, tmp_path):
