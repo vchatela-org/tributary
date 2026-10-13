@@ -1,0 +1,792 @@
+{
+  "uid": "tributary-medication",
+  "title": "Medication",
+  "description": "Scheduled doses in InfluxDB BodyStats (medication), from every source that writes them: what was taken, missed or skipped, per medication and per dose.",
+  "tags": [
+    "tributary",
+    "medication"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "time": {
+    "from": "now-1y",
+    "to": "now"
+  },
+  "refresh": "",
+  "links": [],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "body",
+        "label": "InfluxDB BodyStats",
+        "query": "influxdb",
+        "regex": "/BodyStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "query",
+        "name": "user",
+        "label": "User",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"medication\" WITH KEY = \"user\"",
+        "query": "SHOW TAG VALUES FROM \"medication\" WITH KEY = \"user\"",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "source",
+        "label": "Source",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"medication\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"medication\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*"
+      },
+      {
+        "type": "query",
+        "name": "med",
+        "label": "Medication",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"medication\" WITH KEY = \"med\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/",
+        "query": "SHOW TAG VALUES FROM \"medication\" WITH KEY = \"med\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Medications",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Doses taken",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"taken\") AS \"Doses taken\" FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "Doses logged as taken in the range."
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Logged as taken",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT mean(\"taken\") AS \"Logged as taken\" FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "Share of scheduled doses logged as taken. A dose never answered in the app (unlogged) counts as not taken."
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Missed or skipped",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT count(\"taken\") AS \"Missed or skipped\" FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND (\"status\" = 'missed' OR \"status\" = 'skipped') AND $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "Doses the app marked missed, or that were skipped (the reason, if any, is in the dose table)."
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Days with a dose taken",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT count(\"t\") AS \"Days with a dose taken\" FROM (SELECT max(\"taken\") AS \"t\" FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND \"taken\" = 1 AND $timeFilter GROUP BY time(1d) fill(none)) WHERE $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value",
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "Days with at least one dose of the selected medications logged as taken."
+    },
+    {
+      "id": 6,
+      "type": "state-timeline",
+      "title": "Every medication: share of scheduled doses logged as taken",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 12
+      },
+      "interval": "1d",
+      "maxDataPoints": 500,
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT mean(\"taken\") FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND $timeFilter GROUP BY time($__interval), \"med\" fill(null)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "$tag_med"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^(.{34}).{4,}$",
+            "renamePattern": "$1…"
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#1c5cab",
+                "value": null
+              },
+              {
+                "color": "#3987e5",
+                "value": 0.5
+              },
+              {
+                "color": "#86b6ef",
+                "value": 0.9
+              }
+            ]
+          },
+          "mappings": [],
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 90,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "never",
+        "alignValue": "left",
+        "rowHeight": 0.8,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "description": "One row per medication. Colour = share of the doses scheduled in each bucket logged as taken; blank = nothing scheduled. Zoom in for one bucket per day."
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Per medication",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 17,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT count(\"taken\") AS \"Scheduled\", sum(\"taken\") AS \"Taken\", mean(\"taken\") AS \"Taken %\" FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND $timeFilter GROUP BY \"med\"",
+          "rawQuery": true,
+          "resultFormat": "table"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT first(\"taken\") AS \"f\" FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND $timeFilter GROUP BY \"med\"",
+          "rawQuery": true,
+          "resultFormat": "table"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT last(\"taken\") AS \"l\" FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND $timeFilter GROUP BY \"med\"",
+          "rawQuery": true,
+          "resultFormat": "table"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT last(\"dose\") AS \"Dose\" FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND $timeFilter GROUP BY \"med\"",
+          "rawQuery": true,
+          "resultFormat": "table"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT last(\"unit\") AS \"Unit\" FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND $timeFilter GROUP BY \"med\"",
+          "rawQuery": true,
+          "resultFormat": "table"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT last(\"strength\") AS \"Strength\" FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND $timeFilter GROUP BY \"med\"",
+          "rawQuery": true,
+          "resultFormat": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "filter": {
+            "id": "byRefId",
+            "options": "B"
+          },
+          "options": {
+            "excludeByName": {
+              "f": true
+            },
+            "renameByName": {
+              "Time": "First dose"
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "filter": {
+            "id": "byRefId",
+            "options": "C"
+          },
+          "options": {
+            "excludeByName": {
+              "l": true
+            },
+            "renameByName": {
+              "Time": "Last dose"
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "filter": {
+            "id": "byRefId",
+            "options": "/^[ADEF]$/"
+          },
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "med",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "renameByName": {
+              "med": "Medication"
+            },
+            "indexByName": {
+              "med": 0,
+              "First dose": 1,
+              "Last dose": 2,
+              "Scheduled": 3,
+              "Taken": 4,
+              "Taken %": 5,
+              "Dose": 6,
+              "Unit": 7,
+              "Strength": 8
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "First dose",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Taken %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "First dose|Last dose"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:YYYY-MM-DD"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Medication"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 480
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "description": "Within the range: first and last scheduled dose, doses scheduled and taken, and the dose of the latest entry."
+    },
+    {
+      "id": 8,
+      "type": "row",
+      "title": "Every dose",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 24,
+        "h": 1
+      },
+      "panels": [
+        {
+          "id": 9,
+          "type": "table",
+          "title": "Every dose",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 76,
+            "w": 24,
+            "h": 14
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "influxdb",
+                "uid": "${body}"
+              },
+              "query": "SELECT \"med\" AS \"Medication\", \"status\" AS \"Status\", \"dose\" AS \"Dose\", \"unit\" AS \"Unit\", \"strength\" AS \"Strength\", \"delay_min\" AS \"Delay\", \"note\" AS \"Note\", \"source\" AS \"Source\" FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 5000",
+              "rawQuery": true,
+              "resultFormat": "table"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "cellOptions": {
+                  "type": "auto"
+                }
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Delay"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "suffix: min"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Time"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "time:YYYY-MM-DD HH:mm"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 150
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Medication"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 480
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "footer": {
+              "show": false
+            }
+          },
+          "description": "Time = scheduled time. Status: taken, missed (the app marked it), skipped (dismissed, reason in Note), unlogged (never answered). Delay = minutes between the schedule and marking it taken."
+        }
+      ],
+      "description": "Time = scheduled time. Status: taken, missed (the app marked it), skipped (dismissed, reason in Note), unlogged (never answered). Delay = minutes between the schedule and marking it taken."
+    }
+  ]
+}

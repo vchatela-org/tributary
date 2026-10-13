@@ -1,0 +1,1501 @@
+{
+  "uid": "tributary-todoist",
+  "title": "Todoist",
+  "description": "Completed Todoist tasks in InfluxDB TodoistStats: completions per day and project, due dates, priority, streak and karma.",
+  "tags": [
+    "tributary",
+    "productivity"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-1y",
+    "to": "now"
+  },
+  "refresh": "",
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "todoist",
+        "label": "InfluxDB TodoistStats",
+        "query": "influxdb",
+        "regex": "/TodoistStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "textbox",
+        "name": "tz",
+        "label": "Time zone",
+        "description": "IANA time zone the days and weeks are cut in (TRIBUTARY_TZ).",
+        "query": "Europe/Paris",
+        "current": {
+          "text": "Europe/Paris",
+          "value": "Europe/Paris"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "Europe/Paris",
+            "value": "Europe/Paris"
+          }
+        ],
+        "hide": 0
+      },
+      {
+        "type": "query",
+        "name": "project",
+        "label": "Project",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${todoist}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"todoist_completion\" WITH KEY = \"project\"",
+        "query": "SHOW TAG VALUES FROM \"todoist_completion\" WITH KEY = \"project\"",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "id": 1,
+      "title": "Overview",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "id": 2,
+      "title": "Completions",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"todoist_completion\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "Every completion in the range, recurring tasks included."
+    },
+    {
+      "type": "stat",
+      "id": 3,
+      "title": "Tasks per day",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"n\") FROM (SELECT sum(\"count\") AS \"n\" FROM \"todoist_completion\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/ GROUP BY time(1d) fill(0) tz('$tz'))"
+        }
+      ],
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "Average over every day of the range, days with nothing done included."
+    },
+    {
+      "type": "stat",
+      "id": 4,
+      "title": "Active days",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT 100 * mean(\"a\") FROM (SELECT ceil(sum(\"count\") / (sum(\"count\") + 1)) AS \"a\" FROM \"todoist_completion\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/ GROUP BY time(1d) fill(0) tz('$tz'))"
+        }
+      ],
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "Share of days with at least one completion."
+    },
+    {
+      "type": "stat",
+      "id": 5,
+      "title": "Daily streak (now)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT last(\"current_daily_streak\") AS \"Current\", last(\"max_daily_streak\") AS \"Best\" FROM \"todoist_stats\""
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "Todoist's own streak of days meeting the daily goal, as of the last run; ignores the time picker. Best = longest ever."
+    },
+    {
+      "type": "stat",
+      "id": 6,
+      "title": "Karma (now)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT last(\"karma\") FROM \"todoist_stats\""
+        }
+      ],
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "As of the last run; ignores the time picker."
+    },
+    {
+      "type": "stat",
+      "id": 7,
+      "title": "Lifetime completions",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT last(\"completed_count\") FROM \"todoist_stats\""
+        }
+      ],
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "Todoist's own count since the account was created; ignores the time picker and the project filter."
+    },
+    {
+      "type": "row",
+      "id": 8,
+      "title": "Rhythm",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "id": 9,
+      "title": "Tasks completed per day",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"n\") FROM (SELECT sum(\"count\") AS \"n\" FROM \"todoist_completion\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/ GROUP BY time(1d) fill(0) tz('$tz')) WHERE $timeFilter GROUP BY time($__interval) fill(none) tz('$tz')",
+          "alias": "Per day"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"count\"), 30) FROM \"todoist_completion\" WHERE time >= ${__from}ms - 30d AND time <= ${__to}ms AND \"project\" =~ /^${project:regex}$/ GROUP BY time(1d) fill(0) tz('$tz')",
+          "alias": "30-day average"
+        }
+      ],
+      "interval": "1d",
+      "maxDataPoints": 300,
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1,
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8e8e8e"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "lineInterpolation": "linear",
+            "showPoints": "never",
+            "pointSize": 4,
+            "barAlignment": 0,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "insertNulls": 1296000000,
+            "axisPlacement": "auto",
+            "axisBorderShow": false,
+            "axisWidth": 60,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Per day"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 45
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "30-day average"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "mean"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none",
+          "hideZeros": false
+        }
+      },
+      "description": "Bars: completions per day, averaged over each bar's span (a day on short ranges, a week or more on long ones). Line: trailing 30-day average."
+    },
+    {
+      "type": "timeseries",
+      "id": 10,
+      "title": "Tasks per day, by project",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"n\") FROM (SELECT sum(\"count\") AS \"n\" FROM \"todoist_completion\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/ GROUP BY time(1d), \"project\" fill(0) tz('$tz')) WHERE $timeFilter GROUP BY time($__interval), \"project\" fill(none) tz('$tz')",
+          "alias": "$tag_project"
+        }
+      ],
+      "interval": "7d",
+      "maxDataPoints": 300,
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 16,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1,
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "lineInterpolation": "linear",
+            "showPoints": "never",
+            "pointSize": 4,
+            "barAlignment": 0,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "insertNulls": 1296000000,
+            "axisPlacement": "auto",
+            "axisBorderShow": false,
+            "axisWidth": 60,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "mean",
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": true
+        }
+      },
+      "description": "Completions per day, stacked by project, averaged per bar."
+    },
+    {
+      "type": "bargauge",
+      "id": 11,
+      "title": "Completions by project",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"todoist_completion\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/ GROUP BY \"project\"",
+          "alias": "$tag_project"
+        }
+      ],
+      "gridPos": {
+        "x": 16,
+        "y": 14,
+        "w": 8,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "min": 0,
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#8e8e8e",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "text",
+        "namePlacement": "left",
+        "showUnfilled": true,
+        "sizing": "auto",
+        "minVizHeight": 16,
+        "maxVizHeight": 24,
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Value",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "description": "Total over the range."
+    },
+    {
+      "type": "row",
+      "id": 12,
+      "title": "Due dates (one-off tasks)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "id": 13,
+      "title": "Done by the due date",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"late_days\") FROM \"todoist_task_completed\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/ AND \"late_days\" <= 0",
+          "hide": true
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"late_days\") FROM \"todoist_task_completed\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/ AND \"late_days\" > -100000",
+          "hide": true
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$A / $B * 100"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "Share of tasks with a due date completed on or before it. Recurring tasks are not in todoist_task_completed, so these are one-off tasks only."
+    },
+    {
+      "type": "stat",
+      "id": 14,
+      "title": "Done late",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"late_days\") FROM \"todoist_task_completed\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/ AND \"late_days\" > 0"
+        }
+      ],
+      "gridPos": {
+        "x": 6,
+        "y": 24,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "Tasks completed after their due date (one-off tasks only)."
+    },
+    {
+      "type": "stat",
+      "id": 15,
+      "title": "Median lead time",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"lead_time_hours\") / 24 FROM \"todoist_task_completed\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "Time from creating a task to completing it, median (one-off tasks only)."
+    },
+    {
+      "type": "stat",
+      "id": 16,
+      "title": "Postponements per task",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"postponed_count\") FROM \"todoist_task_completed\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/"
+        }
+      ],
+      "gridPos": {
+        "x": 18,
+        "y": 24,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "description": "How many times a task's due date was pushed back, on average (one-off tasks only)."
+    },
+    {
+      "type": "timeseries",
+      "id": 17,
+      "title": "On time vs late",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"late_days\") FROM \"todoist_task_completed\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/ AND \"late_days\" <= 0 GROUP BY time($__interval) fill(0) tz('$tz')",
+          "alias": "On time"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"late_days\") FROM \"todoist_task_completed\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/ AND \"late_days\" > 0 GROUP BY time($__interval) fill(0) tz('$tz')",
+          "alias": "Late"
+        }
+      ],
+      "interval": "7d",
+      "maxDataPoints": 300,
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8e8e8e"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "lineInterpolation": "linear",
+            "showPoints": "never",
+            "pointSize": 4,
+            "barAlignment": 0,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "insertNulls": 1296000000,
+            "axisPlacement": "auto",
+            "axisBorderShow": false,
+            "axisWidth": 60,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "On time"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#0ca30c"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Late"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#ec835a"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": true
+        }
+      },
+      "description": "Tasks with a due date, per bar (one-off tasks only)."
+    },
+    {
+      "type": "bargauge",
+      "id": 18,
+      "title": "Completions by priority",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"todoist_task_completed\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/ GROUP BY \"priority\"",
+          "alias": "$tag_priority"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 28,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8e8e8e"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#8e8e8e",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p1"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#e66767"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p2"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p3"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p4"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8e8e8e"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "text",
+        "namePlacement": "left",
+        "showUnfilled": true,
+        "sizing": "auto",
+        "minVizHeight": 16,
+        "maxVizHeight": 24,
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Value",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "description": "p1 = urgent, p4 = no priority, as in the app (one-off tasks only)."
+    },
+    {
+      "type": "row",
+      "id": 19,
+      "title": "Every completion",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 24,
+        "h": 1
+      },
+      "panels": [
+        {
+          "type": "table",
+          "id": 20,
+          "title": "Every completion (latest 1000)",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "influxdb",
+                "uid": "${todoist}"
+              },
+              "rawQuery": true,
+              "resultFormat": "table",
+              "query": "SELECT \"content\", \"project\" FROM \"todoist_completion\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/ ORDER BY time DESC LIMIT 1000"
+            }
+          ],
+          "gridPos": {
+            "x": 0,
+            "y": 59,
+            "w": 24,
+            "h": 14
+          },
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "auto",
+                "filterable": true
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Time"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 180
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "project"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Project"
+                  },
+                  {
+                    "id": "custom.width",
+                    "value": 200
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "content"
+                },
+                "properties": [
+                  {
+                    "id": "displayName",
+                    "value": "Task"
+                  }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "showHeader": true,
+            "cellHeight": "sm",
+            "sortBy": [
+              {
+                "displayName": "Time",
+                "desc": true
+              }
+            ]
+          },
+          "description": "Task names are only there when TRIBUTARY_TODOIST_TASK_TEXT is on."
+        }
+      ]
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": []
+}
