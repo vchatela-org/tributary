@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/vchatela-org/tributary/compare/v0.8.0...v0.8.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* **ui:** show a compatible tool's databases as code, not with backticks ([#21](https://github.com/vchatela-org/tributary/issues/21)) ([c664797](https://github.com/vchatela-org/tributary/commit/c664797c3afd7bb9ac9022ef9c753b985664e150))
+
 ## [0.8.0](https://github.com/vchatela-org/tributary/compare/v0.7.0...v0.8.0) (2026-10-13)
 
 
