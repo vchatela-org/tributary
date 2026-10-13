@@ -208,13 +208,12 @@ def test_no_myfitnesspal_member_name_or_note_is_kept(myfitnesspal_connector, inf
 
 def test_no_medisafe_note_or_account_is_kept(medisafe_connector, influx, db, monkeypatch, caplog, tmp_path):
     """A dose's note (free text) never leaves unless TRIBUTARY_MEDISAFE_NOTES
-    asks for it; the account number in the export's name never reaches
-    InfluxDB nor the logs."""
+    asks for it; the account number in the export's name is masked
+    everywhere: InfluxDB, the stored runs, the API, the pages, the logs."""
     from app.config import settings
 
     caplog.set_level(logging.DEBUG)
     monkeypatch.setattr(settings, "influxdb_user", "alice")
-    monkeypatch.setattr(medisafe_connector.settings, "notes", False)
     name = f"Doses_{MEDISAFE_ACCOUNT}_000.csv"
     for dry_run in (True, False):
         path = write_medisafe_export(tmp_path / name, [medisafe_row(strength="10 mg", notes=MEDISAFE_NOTE)])
@@ -223,5 +222,6 @@ def test_no_medisafe_note_or_account_is_kept(medisafe_connector, influx, db, mon
     seen = {**_everything_seen(influx), "logs": caplog.text}
     for where, text in seen.items():
         assert MEDISAFE_NOTE not in text, where
-    assert MEDISAFE_ACCOUNT not in seen["influxdb"] and MEDISAFE_ACCOUNT not in seen["logs"]
+        assert MEDISAFE_ACCOUNT not in text, where
+    assert "Doses_&lt;account&gt;_000.csv" in seen["pages"] or "Doses_<account>_000.csv" in seen["api"]
     assert 'strength="10 mg"' in seen["influxdb"]

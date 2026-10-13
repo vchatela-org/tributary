@@ -193,22 +193,28 @@ def test_rebuild_own_source_drops_only_its_own_series(influx, db, tmp_path):
         connectors.unregister("csvsteps")
 
 
-def test_an_upload_with_a_span_replaces_those_days_only(influx, db, tmp_path):
+class RangeSteps(CsvSteps):
+    """A file connector whose files cover 2025-01-02 to 2025-01-03."""
+
+    def import_file(self, path):
+        from datetime import date
+
+        from app.connectors.base import FileImport, Span
+
+        return FileImport(list(super().import_file(path)), {"steps": Span(date(2025, 1, 2), date(2025, 1, 3))})
+
+
+def test_an_upload_with_a_span_replaces_those_days_only(influx, db, tmp_path, monkeypatch):
     """FileImport.spans: an export of a date range replaces the connector's
-    own series over those days (local midnights, TRIBUTARY_TZ) and nothing
-    outside them."""
-    from datetime import date
+    own series over those days (local midnights, TRIBUTARY_TZ), for this
+    user, and nothing outside them."""
+    from app.config import settings
 
-    from app.connectors.base import FileImport, Span
-
-    class RangeSteps(CsvSteps):
-        def import_file(self, path):
-            return FileImport(list(super().import_file(path)), {"steps": Span(date(2025, 1, 2), date(2025, 1, 3))})
-
+    monkeypatch.setattr(settings, "influxdb_user", "alice")
     connector = connectors.register(RangeSteps(rebuild=True))
     try:
         for day in (1, 2, 3, 4):  # midnight UTC, i.e. 01:00 in Paris
-            influx.points[("ActivityStats", "steps", (("device", "watch"), ("source", "csvsteps")),
+            influx.points[("ActivityStats", "steps", (("device", "watch"), ("source", "csvsteps"), ("user", "alice")),
                            int(datetime(2025, 1, day, tzinfo=timezone.utc).timestamp()))] = {"steps": "1i"}
         upload = tmp_path / "range.csv"
         upload.write_text("2025-01-03T12:00:00+00:00,300\n")
@@ -216,12 +222,50 @@ def test_an_upload_with_a_span_replaces_those_days_only(influx, db, tmp_path):
         assert run.message == ("Imported range.csv: 1 point(s) written (ActivityStats 1), "
                                "after dropping its own series from 2025-01-02 to 2025-01-03.")
         assert [q for _db, q in influx.queries if q.startswith(("DROP", "DELETE"))] == [
-            "DELETE FROM \"steps\" WHERE \"source\" = 'csvsteps' "
+            "DELETE FROM \"steps\" WHERE \"source\" = 'csvsteps' AND \"user\" = 'alice' "
             "AND time >= '2025-01-01T23:00:00Z' AND time < '2025-01-03T23:00:00Z'"]
         assert [(ts, f["steps"]) for _t, f, ts in influx.stored("steps")] == [
             (int(datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp()), "1i"),
             (int(datetime(2025, 1, 3, 12, tzinfo=timezone.utc).timestamp()), "300i"),
             (int(datetime(2025, 1, 4, tzinfo=timezone.utc).timestamp()), "1i")]
+    finally:
+        connectors.unregister("csvsteps")
+
+
+def test_a_span_without_a_user_is_refused(influx, db, tmp_path):
+    """Without TRIBUTARY_INFLUXDB_USER a span would reach every user's points,
+    and the rewritten ones would carry no user tag: the import fails first,
+    dry run included."""
+    connector = connectors.register(RangeSteps(rebuild=True))
+    try:
+        upload = tmp_path / "range.csv"
+        for dry_run in (True, False):
+            upload.write_text("2025-01-03T12:00:00+00:00,300\n")
+            run = runner.run(db, connector, dry_run=dry_run, file=str(upload), filename="range.csv",
+                             trigger="upload")
+            assert run.status == "error" and "TRIBUTARY_INFLUXDB_USER is not set" in run.message
+        assert influx.written_lines() == []
+        assert not [q for _db, q in influx.queries if q.startswith(("DROP", "DELETE"))]
+    finally:
+        connectors.unregister("csvsteps")
+
+
+def test_a_connector_may_mask_an_uploads_name(influx, db, tmp_path, client):
+    """upload_label: what a run calls the file (stored, shown, logged), for a
+    name that holds an account number."""
+    class Masked(CsvSteps):
+        def upload_label(self, filename):
+            return filename.replace("12345", "<account>")
+
+    connectors.register(Masked())
+    try:
+        response = client.post("/api/connectors/csvsteps/upload",
+                               files={"file": ("steps_12345.csv", b"2025-01-03T12:00:00+00:00,300\n")})
+        assert response.json()["file"] == "steps_<account>.csv"
+        upload = tmp_path / "steps_12345.csv"
+        upload.write_text("2025-01-03T12:00:00+00:00,300\n")
+        run = runner.run(db, connectors.get("csvsteps"), file=str(upload), filename=upload.name, trigger="upload")
+        assert run.message.startswith("Imported steps_<account>.csv") and "12345" not in run.message
     finally:
         connectors.unregister("csvsteps")
 

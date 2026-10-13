@@ -54,7 +54,8 @@ from pydantic_settings import SettingsConfigDict
 
 from app.config import settings as app_settings
 from app.connectors.base import Connector, ConnectorError, ConnectorSettings
-from app.points import Measurement, Point
+from app.points import Point
+from app.schema import MEDICATION
 
 PREFIX = "TRIBUTARY_MYTHERAPY_"
 SOURCE = "mytherapy"
@@ -64,14 +65,10 @@ COLUMNS = ("actual_date", "scheduled_date", "type", "name", "value", "unit", "st
 # The app's status -> the contract's.
 STATUS = {"confirmed": "taken", "rejected": "skipped", "auto skipped": "missed"}
 
-# The job's measurement, as it wrote it: `source` and `user` on every point
-# (the core adds them; `user` is TRIBUTARY_INFLUXDB_USER, the job's one
-# account). `note` and `strength` exist in the database, written by Medisafe's
-# import: this connector writes neither.
-MEDICATION = Measurement(
-    database="BodyStats", name="medication", tags=("med", "status"),
-    fields={"taken": int, "app_status": str, "dose": float, "unit": str, "delay_min": int},
-)
+# The job's measurement (app/schema.py, shared with Medisafe), as it wrote it:
+# `source` and `user` on every point (the core adds them; `user` is
+# TRIBUTARY_INFLUXDB_USER, the job's one account). `note` and `strength` are
+# Medisafe's: this connector writes neither.
 
 
 class MyTherapySettings(ConnectorSettings):

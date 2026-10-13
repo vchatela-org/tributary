@@ -6,7 +6,7 @@ import zipfile
 import pytest
 from fastapi.testclient import TestClient
 
-from app import runner
+from app import runner, schema
 from app.config import settings
 from app.connectors import medisafe
 from app.main import app
@@ -19,8 +19,6 @@ USER = "alice"
 @pytest.fixture()
 def connector(medisafe_connector, monkeypatch):
     monkeypatch.setattr(settings, "influxdb_user", USER)
-    monkeypatch.setattr(medisafe_connector.settings, "names", None)
-    monkeypatch.setattr(medisafe_connector.settings, "notes", False)
     return medisafe_connector
 
 
@@ -43,7 +41,8 @@ def test_an_import_writes_the_scripts_exact_lines(connector, influx, db, tmp_pat
                      dosage="0.5", unit="ml"),
     ])
     assert run.status == "ok" and run.points == 2
-    assert run.message == ("Imported Doses_00012345_000.csv: 2 point(s) written (BodyStats 2), "
+    # The account number of the file's name is masked (stored, shown, logged).
+    assert run.message == ("Imported Doses_<account>_000.csv: 2 point(s) written (BodyStats 2), "
                            "after dropping its own series from 2026-01-15 to 2026-01-15.")
     assert influx.written_lines() == [
         f'medication,med=Alpha\\ med,source=medisafe,status=taken,user={USER} app_status="taken",delay_min=5i,'
@@ -129,17 +128,18 @@ def test_a_bad_mapping_fails_the_import(connector, influx, db, tmp_path, monkeyp
     assert _drops(influx) == []
 
 
-def test_the_note_is_written_only_when_asked_for(connector, influx, db, tmp_path, monkeypatch):
+def test_the_note_is_written_only_when_asked_for_and_whole(connector, influx, db, tmp_path, monkeypatch):
     """A dose's note is free text the user typed: TRIBUTARY_MEDISAFE_NOTES
-    opts in (the script wrote it, and the Medication dashboard shows it)."""
-    rows = [medisafe_row(notes=MEDISAFE_NOTE)]
+    opts in (the script wrote it, and the Medication dashboard shows it),
+    and then whole, as the script wrote it."""
+    rows = [medisafe_row(notes=MEDISAFE_NOTE + " " + "x" * 300)]
     _import(db, connector, tmp_path, rows)
     (_tags, fields, _ts), = influx.stored("medication")
     assert "note" not in fields
     monkeypatch.setattr(connector.settings, "notes", True)
     _import(db, connector, tmp_path, rows)
     (_tags, fields, _ts), = influx.stored("medication")
-    assert fields["note"] == f'"{MEDISAFE_NOTE}"'
+    assert fields["note"] == f'"{MEDISAFE_NOTE} {"x" * 300}"'
 
 
 def test_an_import_replaces_its_own_series_over_the_days_it_covers_only(connector, influx, db, tmp_path):
@@ -167,13 +167,53 @@ def test_an_import_replaces_its_own_series_over_the_days_it_covers_only(connecto
         ("medisafe", "bob", "taken", inside), ("mytherapy", USER, "taken", inside)]
 
 
-def test_the_span_counts_the_doses_left_out(connector, tmp_path, monkeypatch):
-    """The export covers its left-out medications' days too."""
+def test_the_span_counts_the_doses_left_out_but_never_fails_on_them(connector, tmp_path, monkeypatch):
+    """The export covers its left-out medications' days too; their rows are
+    not read otherwise (as the script skipped them), so an odd one is no
+    error."""
     monkeypatch.setattr(connector.settings, "names", json.dumps({"Syrup": None}))
     path = write_medisafe_export(tmp_path / "d.csv", [medisafe_row(name="Syrup", scheduled="2026-01-01 08:00:00"),
+                                                      medisafe_row(name="Syrup", scheduled="", status="odd"),
                                                       medisafe_row(scheduled="2026-01-05 08:00:00")])
     imported = connector.import_file(path)
     assert [str(day) for day in imported.spans["medication"]] == ["2026-01-01", "2026-01-05"]
+
+
+def test_doses_after_the_end_date_are_not_imported_nor_replaced(connector, influx, db, tmp_path, monkeypatch):
+    """TRIBUTARY_MEDISAFE_END_DATE: the day another app took over. A later
+    dose (a reminder left running) is not written, and the replace stops at
+    that day, so the other app's doses are never doubled."""
+    monkeypatch.setattr(connector.settings, "end_date", "2026-02-11")
+    run = _import(db, connector, tmp_path, [
+        medisafe_row(scheduled="2026-02-10 08:00:00"),
+        medisafe_row(scheduled="2026-02-11 22:30:00"),               # 23:30 in Paris: still the 11th
+        medisafe_row(scheduled="2026-02-11 23:30:00", status="missed"),  # 00:30 on the 12th in Paris
+    ])
+    assert run.points == 2
+    assert run.message.endswith("after dropping its own series from 2026-02-10 to 2026-02-11.")
+
+
+def test_a_bad_end_date_fails_the_import(connector, influx, db, tmp_path, monkeypatch):
+    monkeypatch.setattr(connector.settings, "end_date", "the 11th of February")
+    run = _import(db, connector, tmp_path, [medisafe_row()])
+    assert run.status == "error" and "TRIBUTARY_MEDISAFE_END_DATE must be a date" in run.message
+
+
+def test_a_blank_dosage_or_record_time_is_left_out_not_an_error(connector, influx, db, tmp_path):
+    """The user can't fix the app's export: a blank dosage writes no dose, a
+    taken dose without a record time no delay."""
+    _import(db, connector, tmp_path, [medisafe_row(dosage=" ", recorded="")])
+    (_tags, fields, _ts), = influx.stored("medication")
+    assert "dose" not in fields and "delay_min" not in fields and fields["taken"] == "1i"
+
+
+def test_without_a_user_tag_an_import_is_refused(medisafe_connector, influx, db, tmp_path):
+    """The replace is per user: without TRIBUTARY_INFLUXDB_USER it would reach
+    every user's doses, and rewrite them with no user tag."""
+    path = write_medisafe_export(tmp_path / "d.csv", [medisafe_row()])
+    run = runner.run(db, medisafe_connector, file=str(path), filename="d.csv", trigger="upload")
+    assert run.status == "error" and "TRIBUTARY_INFLUXDB_USER is not set" in run.message
+    assert _drops(influx) == [] and influx.written_lines() == []
 
 
 def test_a_dry_run_drops_nothing(connector, influx, db, tmp_path):
@@ -189,13 +229,31 @@ def test_a_zip_holding_the_csv_is_read(connector, influx, db, tmp_path):
     assert run.status == "ok" and run.points == 1
 
 
-def test_a_zip_needs_exactly_one_doses_csv(connector, influx, db, tmp_path):
-    path = tmp_path / "two.zip"
+def test_a_zip_of_parts_is_read_as_one_export(connector, influx, db, tmp_path):
+    """Doses_<account>_000.csv, _001...: one export, read in order (the
+    one-second shift depends on it), so a part never replaces another's
+    days on its own."""
+    first = write_medisafe_export(tmp_path / "a.csv", [medisafe_row(scheduled="2026-01-15 08:00:00",
+                                                                    recorded="2026-01-15 08:10:00")])
+    second = write_medisafe_export(tmp_path / "b.csv", [medisafe_row(scheduled="2026-01-15 08:00:00",
+                                                                     recorded="2026-01-15 08:20:00")])
+    path = tmp_path / "parts.zip"
     with zipfile.ZipFile(path, "w") as archive:
-        archive.writestr("Doses_1_000.csv", "name\n")
-        archive.writestr("Doses_1_001.csv", "name\n")
-    run = runner.run(db, connector, file=str(path), filename="two.zip", trigger="upload")
-    assert run.status == "error" and "expected one Doses_*.csv in the archive, found 2" in run.message
+        archive.writestr("Doses_1_001.csv", second.read_text(encoding="utf-8"))
+        archive.writestr("Doses_1_000.csv", first.read_text(encoding="utf-8"))
+        archive.writestr("__MACOSX/._Doses_1_000.csv", b"\x00\x05")
+    run = runner.run(db, connector, file=str(path), filename="parts.zip", trigger="upload")
+    assert run.status == "ok" and run.points == 2, run.message
+    assert [(f["delay_min"], ts) for _t, f, ts in influx.stored("medication")] == [
+        ("10i", epoch(2026, 1, 15, 8, 0)), ("20i", epoch(2026, 1, 15, 8, 0) + 1)]
+
+
+def test_a_zip_without_a_doses_csv_is_refused(connector, influx, db, tmp_path):
+    path = tmp_path / "other.zip"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("Report.csv", "name\n")
+    run = runner.run(db, connector, file=str(path), filename="other.zip", trigger="upload")
+    assert run.status == "error" and "no Doses_*.csv in the archive" in run.message
 
 
 def test_a_file_that_is_not_an_export_names_what_is_missing(connector, influx, db, tmp_path):
@@ -213,6 +271,7 @@ def test_an_export_holding_no_dose_is_refused_rather_than_empty_the_series(conne
 
 def test_the_declared_series_is_the_scripts(connector):
     assert medisafe.MedisafeConnector.key == "medisafe"
+    assert medisafe.MEDICATION is schema.MEDICATION  # shared with MyTherapy
     assert medisafe.MEDICATION.tag_keys == ("source", "user", "med", "status")
     assert medisafe.MEDICATION.field_types == {"taken": int, "app_status": str, "dose": float, "unit": str,
                                                "delay_min": int, "strength": str, "note": str}
