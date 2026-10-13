@@ -229,6 +229,7 @@ class MedisafeConnector(Connector):
     description = ("The scheduled doses (taken, missed, skipped, unlogged) of a Medisafe export, imported in "
                    "the UI: the days it covers, renamed per TRIBUTARY_MEDISAFE_NAMES.")
     icon = "bi-capsule-pill"
+    category = "Medication"
     settings_class = MedisafeSettings
     measurements = (MEDICATION,)
     file_types = (".zip", ".csv")
@@ -236,6 +237,13 @@ class MedisafeConnector(Connector):
     # as the script's --replace did: a dose whose status changed is another
     # series, and the old point would stay.
     rebuild_own_source = True
+
+    def import_fingerprint(self) -> Dict[str, Any]:
+        """Renaming a medication, writing the notes or moving the end date all
+        change what an import writes: any of them invalidates a checked
+        upload."""
+        return {"names": self.settings.names, "notes": self.settings.notes,
+                "end_date": self.settings.end_date}
 
     @property
     def watch_dir(self) -> Optional[Path]:

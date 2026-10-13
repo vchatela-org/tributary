@@ -303,4 +303,4 @@ def test_it_takes_an_upload_in_the_ui_and_never_watches_a_folder(connector, tmp_
         connector.settings.watch_dir = None
     page = TestClient(app).get("/").text
     section, = [part for part in page.split("<section") if 'id="medisafe"' in part]
-    assert 'action="/connectors/medisafe/upload"' in section
+    assert 'action="/connectors/medisafe/check"' in section

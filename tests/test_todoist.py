@@ -3,6 +3,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from app import schedule
 from app import runner
 from app.config import settings
 from app.connectors import todoist
@@ -259,7 +260,15 @@ def test_configured_only_with_a_token(todoist_connector, monkeypatch):
     assert not todoist_connector.api_configured()
     monkeypatch.setattr(todoist_connector.settings, "token", SecretStr("  "))
     assert not todoist_connector.api_configured()
-    assert todoist_connector.settings.interval_minutes == 1440
+    # Nothing to read without a token, so nothing is scheduled either.
+    assert schedule.resolve(todoist_connector, None, "Europe/Paris").cron is None
+    monkeypatch.setattr(todoist_connector.settings, "token", SecretStr("a-token"))
+    assert todoist_connector.api_configured()
+    # Deprecated and unset: the connector's own default schedule decides
+    # (app/schedule.py), once a day at 00:30 like the CronJob this replaced.
+    assert todoist_connector.settings.interval_minutes is None
+    runs = schedule.resolve(todoist_connector, None, "Europe/Paris")
+    assert (runs.cron, runs.label, runs.source) == ("30 0 * * *", "Daily at 00:30", "default")
 
 
 # -- Parsing edges ------------------------------------------------------------------------

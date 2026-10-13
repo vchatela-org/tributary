@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  {% if busy %}<meta http-equiv="refresh" content="5" />{% endif %}
   <title>{% block title %}Integrations{% endblock %} – Tributary</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0b0b'/%3E%3Cpath d='M6 9c4 0 6 3 10 3s6-3 10-3v3c-4 0-6 3-10 3S10 12 6 12zm0 7c4 0 6 3 10 3s6-3 10-3v3c-4 0-6 3-10 3s-6-3-10-3z' fill='%23fff'/%3E%3C/svg%3E" />
   <script>
@@ -16,18 +15,33 @@
   <link rel="stylesheet" href="/static/bootstrap.min.css" />
   <link rel="stylesheet" href="/static/bootstrap-icons.min.css" />
   <link rel="stylesheet" href="/static/style.css" />
+  <script defer src="/static/app.js"></script>
 </head>
-<body>
-<nav class="topbar">
-  <div class="container d-flex align-items-center gap-4">
-    <a class="brand" href="/"><i class="bi bi-water me-2"></i>Tributary</a>
-    {% set path = request.url.path %}
+{% set path = request.url.path %}
+{# data-poll: the fragment this page re-reads in place. It replaces the status
+   bits and the action buttons only -- never a form, so a run in flight cannot
+   take a file picker away from the user. Empty by default: a page with no live
+   region (Settings, a run's own page) must not re-fetch itself for nothing. #}
+<body data-poll="{% block poll %}{% endblock %}">
+<nav class="topbar py-2">
+  <div class="container tb-wrap d-flex align-items-center gap-4">
+    <a class="brand d-flex align-items-center" href="/"><i class="bi bi-water me-2"></i>Tributary</a>
     <a class="nav-link {% if path == '/' %}active{% endif %}" href="/">Integrations</a>
     <a class="nav-link {% if path.startswith('/runs') %}active{% endif %}" href="/runs">Run history</a>
-    <span class="ms-auto small text-body-secondary">v{{ app_version }}</span>
+    <a class="nav-link {% if path.startswith('/settings') %}active{% endif %}" href="/settings">Settings</a>
+    <span class="ms-auto small text-body-secondary">
+      <noscript><a href="{{ path }}">Refresh</a> · </noscript>v{{ app_version }}
+    </span>
   </div>
 </nav>
-<main class="container py-4">
+<main class="container tb-wrap py-4">
+  {# A refused write (nothing checked, a check out of date, a bad cron) comes back
+     here as ?notice=, rather than landing on a raw error body. #}
+  {% if request.query_params.get('notice') %}
+  <div class="tb-strip warn" role="alert">
+    <i class="bi bi-exclamation-triangle"></i>{{ request.query_params.get('notice') }}
+  </div>
+  {% endif %}
   {% block content %}{% endblock %}
 </main>
 </body>

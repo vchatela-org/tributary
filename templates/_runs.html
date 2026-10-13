@@ -1,0 +1,15 @@
+{# The runs table of a page, on its own so app.js can re-render it while a run is
+   going without touching the rest of the document. #}
+{% import "_macros.html" as m %}
+<div data-region="runs">
+  {{ m.runs_table(runs, show_connector=not current, connectors_by_key=connectors_by_key) }}
+  {% if pages > 1 %}
+  <nav class="mt-3 small d-flex align-items-center gap-3">
+    {% set base = "/runs?" ~ ("connector=" ~ current.key ~ "&" if current else "")
+                  ~ ("status=" ~ status ~ "&" if status else "") %}
+    {% if page > 1 %}<a href="{{ base }}page={{ page - 1 }}">Newer</a>{% endif %}
+    <span class="text-body-secondary">Page {{ page }} of {{ pages }} · {{ total }} run(s)</span>
+    {% if page < pages %}<a href="{{ base }}page={{ page + 1 }}">Older</a>{% endif %}
+  </nav>
+  {% endif %}
+</div>

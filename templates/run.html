@@ -3,18 +3,33 @@
 {% block title %}Run {{ run.id }}{% endblock %}
 {% block content %}
 <p class="small mb-2"><a href="/runs?connector={{ run.connector }}"><i class="bi bi-arrow-left me-1"></i>{{ connector.label if connector else run.connector }} runs</a></p>
-<h1 class="h3 mb-3">Run {{ run.id }} {{ m.status_badge(run) }}</h1>
+<h1 class="h3 mb-3">Run {{ run.id }}
+  <span class="tb-dot {{ run.status }}"></span>{{ m.status_word(run) }}
+  {% if run.dry_run %}<span class="tb-pill tb-pill-mute">Check</span>{% endif %}
+  {% if run.full %}<span class="tb-pill tb-pill-mute">Full resync</span>{% endif %}
+</h1>
 <dl class="row">
-  <dt class="col-sm-2">Connector</dt><dd class="col-sm-10">{{ connector.label if connector else run.connector }}</dd>
-  <dt class="col-sm-2">Trigger</dt><dd class="col-sm-10">{{ m.trigger_label(run) }}</dd>
+  <dt class="col-sm-2">Source</dt><dd class="col-sm-10">{{ connector.label if connector else run.connector }}</dd>
+  <dt class="col-sm-2">How</dt><dd class="col-sm-10">{{ m.trigger_label(run) }}</dd>
   <dt class="col-sm-2">Started</dt><dd class="col-sm-10">{{ run.started_at | localtime(True) }} ({{ tz }})</dd>
   <dt class="col-sm-2">Duration</dt><dd class="col-sm-10">{{ duration(run.started_at, run.finished_at) or "–" }}</dd>
-  <dt class="col-sm-2">Points</dt><dd class="col-sm-10">{{ run.points if run.points is not none else "–" }}{% if run.dry_run %} (would be written){% endif %}</dd>
-  <dt class="col-sm-2">Message</dt><dd class="col-sm-10 run-message">{{ run.message or "–" }}</dd>
+  <dt class="col-sm-2">Points</dt><dd class="col-sm-10">{{ run.points if run.points is not none else "–" }}
+    {% if run.dry_run %}(would be written){% endif %}</dd>
+  {% if promoted_from %}
+  <dt class="col-sm-2">From the check</dt>
+  <dd class="col-sm-10"><a href="/runs/{{ promoted_from.id }}">run {{ promoted_from.id }}</a>
+    — this import applied exactly what that check showed.</dd>
+  {% endif %}
+  {% if run.dry_run %}
+  <dt class="col-sm-2">Next</dt>
+  <dd class="col-sm-10"><a href="/connectors/{{ run.connector }}">Import what this checked →</a></dd>
+  {% endif %}
+  <dt class="col-sm-2">Message</dt><dd class="col-sm-10">{{ run.message or "–" }}</dd>
 </dl>
 {% if run.dry_run and run.preview is not none %}
-<h2 class="h5">Line protocol</h2>
-<p class="small text-body-secondary">What this run would have written, one <code># database</code> line before each database's points. Nothing was written.</p>
-<pre class="preview">{{ run.preview or "(nothing)" }}</pre>
+<h2 class="h5 mt-4">Line protocol</h2>
+<p class="small text-body-secondary">What this run would have written, one <code># database</code> line before
+  each database's points. Nothing was written.</p>
+<pre class="tb-proto tb-proto-lg">{{ run.preview or "(nothing)" }}</pre>
 {% endif %}
 {% endblock %}

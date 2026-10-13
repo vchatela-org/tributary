@@ -47,9 +47,29 @@ def get_db():
         db.close()
 
 
+# A column a later version added to an existing table: `create_all` adds a
+# missing *table*, never a missing *column* of one already there, so an install
+# from before it needs the ALTER, or the first query that names the column breaks.
+_ADDED_COLUMNS = (
+    ("sync_runs", "promoted_from", "INTEGER"),
+)
+
+
+def _ensure_columns(connection) -> None:
+    """Add the columns a later version introduced, idempotently (SQLite)."""
+    for table, column, sql_type in _ADDED_COLUMNS:
+        present = {row[1] for row in connection.exec_driver_sql(f"PRAGMA table_info({table})")}
+        if present and column not in present:
+            logger.info("Database: adding %s.%s to an existing install", table, column)
+            connection.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}")
+
+
 def init_db() -> None:
     from app import models  # noqa: F401 - registers the tables
     Base.metadata.create_all(bind=engine)
+    if settings.db_url.startswith("sqlite:///"):
+        with engine.begin() as connection:
+            _ensure_columns(connection)
 
 
 def uploads_dir() -> Path:

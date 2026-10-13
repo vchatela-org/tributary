@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}{{ item.label }}{% endblock %}
+{# This page keeps two live regions: the buttons (the header is rendered here, not
+   swapped) and its own runs table. #}
+{% block poll %}/partials/status /partials/runs?connector={{ item.key }}{% endblock %}
+{% block content %}
+{% set c = item %}
+<p class="small mb-2"><a href="/">← All integrations</a> · {{ c.category }}</p>
+
+<div class="d-flex flex-wrap align-items-start gap-3 mb-3">
+  <span class="tb-ico" style="width:46px;height:46px;font-size:1.4rem;"><i class="bi {{ c.icon }}"></i></span>
+  <div class="flex-grow-1" style="min-width: 16rem;">
+    <h1 class="h3 mb-1">{{ c.label }} {{ m.pill(c.state, c.state_label) }}</h1>
+    <p class="tb-sub mb-0">{{ c.description }}</p>
+  </div>
+  <div data-region="actions:{{ c.key }}">{{ m.actions(c, show_open=False, resync=True) }}</div>
+</div>
+
+{% if c.accepts_files %}
+<section class="tb-panel{% if c.staged %} hi{% endif %}" id="import">
+  <h2>Import an export</h2>
+  {% if c.staged %}
+    <p class="tb-hint">A file is checked and waiting. Importing applies exactly what the check showed —
+      nothing is written until you say so.</p>
+    <ol class="tb-steps mb-3">
+      <li class="done"><b>Choose the file</b><span class="tb-mono">{{ c.staged.filename }}</span></li>
+      <li class="done"><b>Check it</b><span>Nothing was written. The file is kept for the import.</span></li>
+      <li class="now"><b>Import for real</b><span>Replaces this source's series, as the direct import always did.</span></li>
+    </ol>
+
+    {% if c.last_run and c.last_run.dry_run %}
+    <p class="mb-1"><strong>{{ c.last_run.points if c.last_run.points is not none else 0 }} point(s)</strong>
+      would be written. <a href="/runs/{{ c.last_run.id }}">The check's full line protocol</a>.</p>
+    <p class="tb-hint">{{ c.last_run.message }}</p>
+    {% endif %}
+
+    <div class="tb-actions">
+      <form method="post" action="/connectors/{{ c.key }}/import">
+        <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-box-arrow-in-down me-1"></i>Import for real</button>
+      </form>
+      <form method="post" action="/connectors/{{ c.key }}/discard">
+        <button class="btn btn-sm btn-outline-secondary" type="submit">Discard</button>
+      </form>
+      <span class="tb-hint mb-0 ms-1">Kept until
+        <b>{{ staged_expires | localtime }}</b>; importing applies exactly what was checked. If the file or
+        this connector's settings changed in between, Tributary asks you to check it again.</span>
+    </div>
+  {% else %}
+    <p class="tb-hint">The export this source takes. Tributary checks it first — nothing is written — and then
+      imports exactly what the check showed.</p>
+    <form method="post" action="/connectors/{{ c.key }}/check" enctype="multipart/form-data">
+      <div class="tb-drop">
+        <i class="bi bi-file-earmark-zip"></i>
+        <p class="mb-2">Choose <b>the export</b>, or drop it here.</p>
+        <input class="form-control form-control-sm d-inline-block align-middle" style="max-width: 22rem;"
+               type="file" name="file" accept="{{ c.file_types | join(',') }}" required />
+        <button class="btn btn-sm btn-primary ms-1 align-middle" type="submit">
+          <i class="bi bi-clipboard-check me-1"></i>Check file</button>
+        <p class="mb-0 mt-2 small">{{ c.file_types | join(" or ") }} · up to {{ max_upload_mb }} MB.
+          A checked file is kept {{ staged_ttl_hours | int }} h, then deleted.</p>
+      </div>
+    </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="tb-panel">
+  <h2>Schedule</h2>
+  {% if not c.schedule_capable %}
+    {# An upload-only source: no API and no watched folder, so no schedule could
+       apply to it. Say how it runs instead of offering an editor nothing reads. #}
+    <p class="tb-hint mb-0"><strong>Manual: import a file.</strong> This source reads nothing on its own, so it
+      has no schedule — import a file when you have one, and Tributary checks it before writing.</p>
+  {% else %}
+  {% if resolved and resolved.scheduled %}
+    <p class="tb-hint">Runs <strong>{{ resolved.label }}</strong>, {{ resolved.source_label }}.
+      Times are in {{ tz }}; saving here overrides both the environment and the default.</p>
+  {% elif resolved and resolved.source == "ui" %}
+    <p class="tb-hint">Set to <strong>Manual only</strong> here: nothing is scheduled — you run it or import a
+      file when you want to.</p>
+  {% else %}
+    <p class="tb-hint">Not scheduled. Set how often this source should be read.</p>
+  {% endif %}
+  {% if resolved and resolved.note %}<p class="tb-note">{{ resolved.note }}</p>{% endif %}
+
+  <form method="post" action="/connectors/{{ c.key }}/schedule">
+    <div class="d-flex flex-wrap align-items-end gap-3">
+      <div>
+        <label class="form-label mb-1 tb-lab" for="preset-{{ c.key }}">Repeat</label>
+        <select class="form-select form-select-sm" id="preset-{{ c.key }}" name="preset" style="min-width: 13rem;">
+          {% for p in presets %}
+          <option value="{{ p.key }}" {% if p.chosen %}selected{% endif %}>{{ p.label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label mb-1 tb-lab" for="at-{{ c.key }}">Time</label>
+        <input class="form-control form-control-sm" type="time" id="at-{{ c.key }}" name="at" value="{{ clock }}">
+      </div>
+      <div>
+        <label class="form-label mb-1 tb-lab" for="weekday-{{ c.key }}">Day (weekly)</label>
+        <select class="form-select form-select-sm" id="weekday-{{ c.key }}" name="weekday">
+          {% for number, name in [(0, "Sunday"), (1, "Monday"), (2, "Tuesday"), (3, "Wednesday"),
+                                  (4, "Thursday"), (5, "Friday"), (6, "Saturday")] %}
+          <option value="{{ number }}" {% if weekday | string == number | string %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="form-label mb-1 tb-lab" for="custom-{{ c.key }}">Custom (cron)</label>
+        <input class="form-control form-control-sm tb-mono" id="custom-{{ c.key }}" name="custom" value=""
+               placeholder="{{ c.connector.default_schedule or '0 3 * * *' }}" style="min-width: 10rem;">
+      </div>
+      <button class="btn btn-sm btn-primary" type="submit">Save</button>
+    </div>
+    <p class="tb-hint mt-2 mb-0">A custom expression is used as typed when the <em>Custom</em> repeat is chosen,
+      and it wins over the fields beside it. Five fields: minute hour day-of-month month day-of-week.</p>
+  </form>
+
+  <form method="post" action="/connectors/{{ c.key }}/schedule" class="mt-1">
+    <input type="hidden" name="reset" value="true">
+    <button class="btn btn-sm btn-outline-secondary" type="submit">Reset to default
+      ({{ default_label }})</button>
+  </form>
+
+  <p class="tb-next">
+    {% if next_runs %}
+      <b>{{ resolved.label }}</b> — the next runs
+      <ul>{% for moment in next_runs %}<li class="tb-mono">{{ moment | localtime }}</li>{% endfor %}</ul>
+    {% else %}
+      <b>Nothing scheduled</b> — it runs when you ask, or when you import a file.
+    {% endif %}
+  </p>
+  {% endif %}
+</section>
+
+<section class="tb-panel">
+  <h2>What it writes</h2>
+  <p class="tb-hint">Into InfluxDB <code class="tb-mono">{{ c.measurements[0].database if c.measurements | length == 1
+      else c.measurements | map(attribute='database') | unique | join(', ') }}</code>, every point tagged
+    <code class="tb-mono">source={{ c.key }}</code>. Other tools write the same databases and line up with
+    these points.</p>
+  <div class="d-flex flex-wrap gap-2">
+    {% for ms in c.measurements %}
+    <span class="btn btn-sm btn-outline-secondary tb-mono" style="cursor: default;">{{ ms.database }}.{{ ms.name }}</span>
+    {% endfor %}
+  </div>
+  {% if c.required_env %}
+  <p class="tb-next"><b>Setup</b> — the environment variables this source reads:
+    <ul>{% for name in c.required_env %}<li><code class="tb-mono">{{ name }}</code></li>{% endfor %}</ul>
+  </p>
+  {% else %}
+  <p class="tb-next">Nothing to set in the environment: this source only reads the file you import.</p>
+  {% endif %}
+</section>
+
+<section class="tb-panel">
+  <h2>Runs <span class="tb-count">{{ total_runs }}</span></h2>
+  <div data-region="runs">
+    {{ m.runs_table(runs) }}
+  </div>
+  <p class="tb-next mb-0"><a href="/runs?connector={{ c.key }}">Every run of {{ c.label }} →</a>
+    {% if c.staged %} · <a href="/runs/{{ c.staged.dry_run_id }}">the check</a>{% endif %}</p>
+</section>
+{% endblock %}

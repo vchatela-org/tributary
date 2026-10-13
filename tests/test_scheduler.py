@@ -1,23 +1,25 @@
 import time
+from datetime import timedelta
 
 import pytest
 
-from app import connectors, scheduler
+from app import connectors, schedule, scheduler
 from app.config import settings
-from app.connectors.base import Connector, ConnectorSettings
-from app.models import SyncRun
+from app.connectors.base import Connector
+from app.models import SyncRun, utcnow
 
 
 class Ticker(Connector):
-    """A connector that is configured and counts its runs."""
+    """A connector that is configured, runs daily at 03:10."""
     key = "ticker"
     label = "Ticker"
+    category = "Productivity"
+    default_schedule = "10 3 * * *"
     required_env = ()
 
     def __init__(self, configured=True):
         super().__init__()
         self.configured = configured
-        self.settings = ConnectorSettings(interval_minutes=60)
 
     def api_configured(self):
         return self.configured
@@ -48,16 +50,61 @@ def test_unconfigured_connectors_are_not_scheduled(ticker):
     assert scheduler._next({}, time.monotonic()) == (None, None)
 
 
-def test_a_run_restarts_the_timer_but_not_a_dry_run_or_an_upload(ticker):
-    due = {"ticker": 10.0}
-    scheduler._after_run("ticker", (("dry_run", True), ("trigger", "manual")), due)
-    scheduler._after_run("ticker", (("file", "/tmp/x.csv"), ("trigger", "upload")), due)
-    assert due == {"ticker": 10.0}
-    scheduler._after_run("ticker", (("trigger", "manual"),), due)
-    assert 3590 < due["ticker"] - time.monotonic() <= 3600
-    due["ticker"] = 0.0
-    scheduler._after_run("ticker", (), due)  # the scheduled run itself
-    assert due["ticker"] > time.monotonic() + 3590
+def test_a_fresh_connector_runs_once_after_the_start_delay(ticker, db):
+    """A fresh install sees data shortly after it starts, never at the very
+    start (a slow first sync must not hold up the liveness probe)."""
+    db.query(SyncRun).delete()
+    db.commit()
+    assert scheduler.plan(db, ticker, 100.0, 60.0) == 160.0
+
+
+def test_a_scheduled_run_lands_on_the_next_occurrence_not_a_countdown(ticker, db):
+    """The schedule is a time of day: a run does not push tomorrow's run away by
+    a day the way an interval did."""
+    db.add(SyncRun(connector="ticker", trigger="schedule", status="ok", started_at=utcnow()))
+    db.commit()
+    following = schedule.to_utc(schedule.next_run_after("10 3 * * *", "Europe/Paris"))
+    deadline = scheduler.plan(db, ticker, 0.0, 60.0)
+    assert deadline is not None and abs(deadline - (following - utcnow()).total_seconds()) < 1
+
+
+def test_a_missed_run_happens_once_after_the_delay_never_several_times(ticker, db):
+    """The app was down when it should have run: one catch-up, then the cron."""
+    db.add(SyncRun(connector="ticker", trigger="schedule", status="ok",
+                   started_at=utcnow() - timedelta(days=5)))
+    db.commit()
+    assert scheduler.plan(db, ticker, 100.0, 60.0) == 160.0
+
+
+def test_a_manual_run_does_not_move_the_deadline(ticker, db):
+    """Only a run that stands for the scheduled one re-plans; a check, an import
+    or "Run now" leaves the time of day alone."""
+    due = {"ticker": 0.0}
+    scheduler._after_run(db, "ticker", (("dry_run", True), ("trigger", "manual")), due)
+    scheduler._after_run(db, "ticker", (("file", "/tmp/x.csv"), ("trigger", "upload")), due)
+    scheduler._after_run(db, "ticker", (("trigger", "manual"),), due)
+    assert due == {"ticker": 0.0}
+
+
+def test_a_schedule_a_connector_set_to_manual_only_is_not_scheduled(ticker, db):
+    from app.models import ConnectorSchedule
+
+    db.add(ConnectorSchedule(connector="ticker", cron=""))
+    db.commit()
+    assert scheduler.plan(db, ticker, 100.0, 60.0) is None
+    assert scheduler.scheduled(db, ticker) is None
+
+
+def test_saving_a_schedule_starts_the_thread(monkeypatch):
+    """A schedule set from the UI must run even when nothing was scheduled at
+    startup, so `reschedule` starts the thread `start()` then left unstarted."""
+    scheduler.stop()
+    assert scheduler._thread is None
+    try:
+        scheduler.reschedule("audiobookshelf")
+        assert scheduler._thread is not None and scheduler._thread.is_alive()
+    finally:
+        scheduler.stop()
 
 
 def test_requests_are_queued_once(ticker, no_thread):

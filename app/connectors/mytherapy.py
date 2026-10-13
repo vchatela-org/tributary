@@ -207,6 +207,7 @@ class MyTherapyConnector(Connector):
     description = ("The scheduled doses (taken, missed, skipped) of a MyTherapy export, imported in the UI: "
                    "its whole history, per the mapping of TRIBUTARY_MYTHERAPY_NAMES.")
     icon = "bi-capsule"
+    category = "Medication"
     settings_class = MyTherapySettings
     measurements = (MEDICATION,)
     required_env = (f"{PREFIX}NAMES",)
@@ -215,6 +216,12 @@ class MyTherapyConnector(Connector):
     # as the job's own run did. A dose the app no longer has is one the export
     # no longer has either.
     rebuild_own_source = True
+
+    def import_fingerprint(self) -> Dict[str, Any]:
+        """The mapping and the cut-off decide what an import writes: changing
+        either invalidates a checked upload rather than applying a diff the
+        user never saw."""
+        return {"names": self.settings.names, "start_date": self.settings.start_date}
 
     def import_file(self, path: Path) -> Iterable[Point]:
         settings = self.settings

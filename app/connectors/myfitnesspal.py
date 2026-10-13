@@ -355,6 +355,7 @@ class MyFitnessPalConnector(Connector):
     description = ("The weigh-ins, food and exercise of a MyFitnessPal export, imported in the UI: "
                    "the days it covers, per day (a scale already has the weigh-ins the app synced).")
     icon = "bi-activity"
+    category = "Nutrition & fitness"
     settings_class = MyFitnessPalSettings
     measurements = (BODY_COMPOSITION, NUTRITION, EXERCISE)
     file_types = (".zip",)
