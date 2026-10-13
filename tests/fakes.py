@@ -55,6 +55,10 @@ def parse(line: str) -> Tuple[str, Dict[str, str], Dict[str, str], int]:
 # InfluxDB
 # ────────────────────────────────────────────────
 
+def _epoch(rfc3339: str) -> int:
+    return int(datetime.fromisoformat(rfc3339.replace("Z", "+00:00")).timestamp())
+
+
 class FakeInflux:
     """Keeps points by key (database, measurement, tags, time) as InfluxDB
     does -- writing the same key overwrites --, records every /query
@@ -115,12 +119,14 @@ class FakeInflux:
                         and dict(k[2]).get("source") == source]:
                 del self.points[key]
         elif statement.startswith("DELETE FROM"):
-            match = re.match(r'DELETE FROM "(.+)" WHERE "source" = \'(.+)\' '
+            literal = r"'((?:[^'\\]|\\.)*)'"  # an InfluxQL string, escapes included
+            match = re.match(rf'DELETE FROM "(.+)" WHERE "source" = {literal}(?: AND "user" = {literal})? '
                              r"AND time >= '(.+)' AND time < '(.+)'$", statement)
-            measurement, source, start, end = match.groups()
-            start, end = (int(datetime.fromisoformat(t.replace("Z", "+00:00")).timestamp()) for t in (start, end))
+            measurement, source, user, start, end = match.groups()
+            start, end = (_epoch(t) for t in (start, end))
             for key in [k for k in self.points if k[0] == database and k[1] == measurement
-                        and dict(k[2]).get("source") == source and start <= k[3] < end]:
+                        and dict(k[2]).get("source") == source and (user is None or dict(k[2]).get("user") == user)
+                        and start <= k[3] < end]:
                 del self.points[key]
         else:
             result.update(self._select(database, statement))
@@ -128,18 +134,23 @@ class FakeInflux:
 
     def _select(self, database: Optional[str], statement: str) -> Dict:
         """The one SELECT a connector makes today: a single field of a
-        measurement, filtered on two tags (the MyFitnessPal weigh-in dedup).
-        Answers one merged series, no tags, RFC3339 times -- as InfluxDB does
-        without `GROUP BY *` and without `epoch=s`."""
+        measurement, filtered on two tags and a time range (the MyFitnessPal
+        weigh-in dedup). Answers one merged series, no tags, RFC3339 times --
+        as InfluxDB does without `GROUP BY *` and without `epoch=s` -- or
+        InfluxDB's error for a database that doesn't exist."""
         match = re.match(r'SELECT "(\w+)" FROM "(\w+)" WHERE "(\w+)" = \'([^\']*)\''
-                         r' AND "(\w+)" != \'([^\']*)\'$', statement)
+                         r' AND "(\w+)" != \'([^\']*)\' AND time >= \'(.+)\' AND time < \'(.+)\'$', statement)
         if match is None:
             return {}
-        field, measurement, t1, v1, t2, v2 = match.groups()
+        if database not in self.databases and not any(k[0] == database for k in self.points):
+            return {"error": f"database not found: {database}"}
+        field, measurement, t1, v1, t2, v2, start, end = match.groups()
+        start, end = _epoch(start), _epoch(end)
         values = []
         for (db, m, tags, ts), fields in self.points.items():
             tags = dict(tags)
-            if db != database or m != measurement or tags.get(t1) != v1 or tags.get(t2) == v2:
+            if (db != database or m != measurement or tags.get(t1) != v1 or tags.get(t2) == v2
+                    or not start <= ts < end):
                 continue
             if field in fields:
                 raw = fields[field]

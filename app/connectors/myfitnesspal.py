@@ -9,22 +9,25 @@ source=myfitnesspal had that script as its only writer.
 The export is a zip of three CSVs (weigh-ins, food by meal, exercise), in the
 app's language, so each file is recognised by its columns. It covers the date
 range the user picked when exporting, which the app writes in each member's
-name ("...-du-2019-01-01-au-2024-12-31.csv"). An import replaces the three
-series over those days (`rebuild_own_source` + `import_span`: the imported
-file replaces what source=myfitnesspal held then, rather than adding to it or
-overwriting point by point -- a workout the export no longer has is one the
-app doesn't know any more, and a newer export shifts the per-day workout
-timestamps), and leaves the days outside them as they are: an export of the
-last month never empties the years before it. An import that holds nothing
-to write back fails rather than leave the series empty, as the script refused
-to as well. Upload only: a folder of exports, each its own range, is not the
-whole history a watched folder's rebuild would make it.
+name ("...-du-2019-01-01-au-2024-12-31.csv"). An import replaces each series
+over the days its file covers (`rebuild_own_source` + FileImport.spans: the
+range in the file's name, widened to that file's own records), for
+source=myfitnesspal and TRIBUTARY_INFLUXDB_USER, as the script's --replace
+did -- rather than adding to it or overwriting point by point: a workout the
+export no longer has is one the app doesn't know any more, and a newer
+export shifts the per-day workout timestamps. The days outside them are left
+as they are: an export of the last month never empties the years before it.
+An import that holds nothing to write back fails rather than leave the
+series empty, as the script refused to as well. Upload only: a folder of
+exports, each its own range, is not the whole history a watched folder's
+rebuild would make it.
 
 A weigh-in is imported only when no other source has a reading the same local
 day within WEIGHT_TOLERANCE_KG: the app shows the readings the Withings and
 Renpho scales synced into it, and those are in BodyStats under their own
 source already. That reads InfluxDB (app.influxdb.query), as the script did,
-even for a dry run -- and only ever its `user` tag's readings. It is also why
+even for a dry run -- and only ever its `user` tag's readings, over the
+weigh-ins' days. It is also why
 a weigh-in the scales reported on the same day *after* the export was
 imported is not written again: the day's reading belongs to the scale's
 source, and this import drops the copy.
@@ -45,16 +48,19 @@ import io
 import re
 import zipfile
 from datetime import date, datetime, time, timedelta
-from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
+from pathlib import Path, PurePosixPath
+from typing import Dict, List, NamedTuple, Optional, Tuple
 from zoneinfo import ZoneInfo
 
+from pydantic_settings import SettingsConfigDict
+
+from app import influxdb
 from app.config import settings as app_settings
-from app.connectors.base import Connector, ConnectorError, Span
-from app.influxdb import query as influx_query
+from app.connectors.base import Connector, ConnectorError, ConnectorSettings, FileImport, Span
 from app.points import Measurement, Point
 from app.schema import BODY_COMPOSITION
 
+PREFIX = "TRIBUTARY_MYFITNESSPAL_"
 SOURCE = "myfitnesspal"
 NOON = time(12, 0)
 # The app stores weights to 0.1 kg; Withings readings carry more decimals.
@@ -103,19 +109,41 @@ CATEGORIES = (
     ("rafting", "paddle"),
 )
 
+# The columns each file must have: a renamed one fails the import rather than
+# write its values as zeros (the script failed on it too).
+COLUMNS = {
+    "weight": ("Date", "Poids", "Body Fat %"),
+    "food": ("Date", "Repas", *FOOD_FIELDS, *FOOD_FIELDS_NONZERO),
+    "exercise": ("Date", "Exercices", "Calories liées aux exercices", "Minutes d'exercice"),
+}
+
 # The job's measurements, as it wrote them. `source` and `user` are on every
 # point (the core adds them: `user` is TRIBUTARY_INFLUXDB_USER, the job's one
 # account). body_composition is shared, so it is declared once in app/schema.py:
 # this connector sets neither `scale` nor `user_id`, so its weigh-ins key on
 # source+user only.
+# Two rows of one meal on a day share a key: the later one wins, as the
+# script's consecutive writes did.
 NUTRITION = Measurement(
     database="BodyStats", name="nutrition", tags=("meal",),
     fields={name: float for name in (*FOOD_FIELDS.values(), *FOOD_FIELDS_NONZERO.values())},
+    last_wins=True,
 )
 EXERCISE = Measurement(
     database="BodyStats", name="exercise", tags=("category",),
     fields={"activity": str, "energy_kcal": float, "duration_s": int},
 )
+MEASUREMENT_OF = {"weight": BODY_COMPOSITION, "food": NUTRITION, "exercise": EXERCISE}
+
+
+class MyFitnessPalSettings(ConnectorSettings):
+    model_config = SettingsConfigDict(env_prefix=PREFIX, env_file=".env", extra="ignore")
+
+
+class Table(NamedTuple):
+    """One CSV of the export: the range its file name gives, and its rows."""
+    named: Optional[Span]
+    rows: List[Dict[str, str]]
 
 
 def _num(value: Optional[str]) -> Optional[float]:
@@ -126,11 +154,6 @@ def _num(value: Optional[str]) -> Optional[float]:
         return float(value)
     except (TypeError, ValueError):
         raise ConnectorError(f"unreadable number {value!r} in the export.") from None
-
-
-def _quote(value: str) -> str:
-    """An InfluxQL string literal (the `user` tag comes from the settings)."""
-    return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
 def _day(day: str) -> date:
@@ -147,31 +170,41 @@ def noon(day: str, tz: ZoneInfo, offset_s: int = 0) -> datetime:
     return datetime.combine(_day(day), NOON).replace(tzinfo=tz) + timedelta(seconds=offset_s)
 
 
-def _csv_members(archive: zipfile.ZipFile) -> List[str]:
-    return [name for name in archive.namelist()
-            if name.lower().endswith(".csv") and not name.startswith("__MACOSX/")]
+def _named_span(name: str) -> Optional[Span]:
+    """The range a member's file name gives: exactly two dates in its base
+    name. A folder's name is not read: a date there says nothing of the
+    range, and a span too wide would drop days the export doesn't hold."""
+    days = NAMED_DAY.findall(PurePosixPath(name).name)
+    return Span(_day(days[0]), _day(days[1])) if len(days) == 2 else None
 
 
-def read_export(path: Path) -> Dict[str, List[Dict[str, str]]]:
-    """{kind: [row, ...]} for the export's three CSVs, recognised by a header
-    column."""
-    tables: Dict[str, List[Dict[str, str]]] = {}
+def read_export(path: Path) -> Dict[str, Table]:
+    """{kind: Table} for the export's three CSVs, recognised by a header
+    column, each with the columns the import reads."""
+    tables: Dict[str, Table] = {}
     try:
         with zipfile.ZipFile(path) as archive:
-            names = _csv_members(archive)
+            names = [name for name in archive.namelist()
+                     if name.lower().endswith(".csv") and not name.startswith("__MACOSX/")]
             for name in names:
                 reader = csv.DictReader(io.StringIO(archive.read(name).decode("utf-8-sig"), newline=""))
                 columns = reader.fieldnames or []
-                for column, kind in KIND_BY_COLUMN.items():
-                    if column in columns:
-                        # A row with more columns than the header (a stray comma)
-                        # is read for the ones it has, as the script read it.
-                        tables[kind] = [{k: (v or "") for k, v in row.items() if k is not None}
-                                        for row in reader]
-                        break
-    except ConnectorError:
-        raise
-    except (OSError, ValueError, KeyError, zipfile.BadZipFile) as exc:
+                kind = next((kind for column, kind in KIND_BY_COLUMN.items() if column in columns), None)
+                if kind is None:
+                    continue
+                if kind in tables:
+                    # Two exports in one zip: their ranges would be replaced
+                    # with one of them only.
+                    raise ConnectorError(f"the zip holds more than one {kind} CSV: import one export at a time.")
+                missing = [column for column in COLUMNS[kind] if column not in columns]
+                if missing:
+                    raise ConnectorError(f"the {kind} CSV has no column {', '.join(map(repr, missing))}: "
+                                         "has the app changed its export?")
+                # A row with more columns than the header (a stray comma) is
+                # read for the ones it has, as the script read it.
+                tables[kind] = Table(_named_span(name), [{k: (v or "") for k, v in row.items() if k is not None}
+                                                         for row in reader])
+    except (OSError, ValueError, KeyError, csv.Error, zipfile.BadZipFile) as exc:
         raise ConnectorError(f"unreadable ({type(exc).__name__}: {exc}).") from None
     missing = set(KIND_BY_COLUMN.values()) - set(tables)
     if missing:
@@ -180,20 +213,13 @@ def read_export(path: Path) -> Dict[str, List[Dict[str, str]]]:
     return tables
 
 
-def export_span(path: Path) -> Span:
-    """The days an export covers: the range the user picked, which the app
-    writes in each member's name, widened to every record's date (so a name
-    without it falls back to the records' own dates)."""
-    try:
-        with zipfile.ZipFile(path) as archive:
-            named = [day for name in _csv_members(archive) for day in NAMED_DAY.findall(name)]
-    except (OSError, zipfile.BadZipFile) as exc:
-        raise ConnectorError(f"unreadable ({type(exc).__name__}: {exc}).") from None
-    days = sorted({_day(day) for day in named}
-                  | {_day(row["Date"]) for rows in read_export(path).values() for row in rows if row.get("Date")})
-    if not days:
-        raise ConnectorError("This export holds no date: nothing to replace.")
-    return Span(days[0], days[-1])
+def table_span(table: Table) -> Optional[Span]:
+    """The days one CSV covers: the range its name gives, widened to its own
+    records' dates (a name without one: the records' dates alone). None for
+    a CSV with neither: its series is left as it is."""
+    days = sorted({_day(row["Date"]) for row in table.rows if row.get("Date")}
+                  | (set(table.named) if table.named else set()))
+    return Span(days[0], days[-1]) if days else None
 
 
 def local_date(raw: str, tz: ZoneInfo) -> str:
@@ -205,12 +231,23 @@ def local_date(raw: str, tz: ZoneInfo) -> str:
     return moment.astimezone(tz).date().isoformat()
 
 
-def other_weigh_ins(user: str, tz: ZoneInfo) -> Dict[str, List[float]]:
+def other_weigh_ins(user: str, span: Span, tz: ZoneInfo) -> Dict[str, List[float]]:
     """{local date: [weight_kg, ...]} from every source except this one, for
-    this `user`: what the scales already reported, the script's dedup read."""
+    this `user`, over the days of `span`: what the scales already reported,
+    the script's dedup read."""
+    if not influxdb.is_configured():
+        raise ConnectorError("the weigh-in dedup reads the other sources' readings in InfluxDB, even for a "
+                             "dry run: set TRIBUTARY_INFLUXDB_URL.")
+    start, end = span.bounds(tz)
     statement = (f'SELECT "weight_kg" FROM "body_composition" '
-                 f'WHERE "user" = {_quote(user)} AND "source" != {_quote(SOURCE)}')
-    payload = influx_query(statement, BODY_COMPOSITION.database)
+                 f'WHERE "user" = {influxdb.quote(user)} AND "source" != {influxdb.quote(SOURCE)} '
+                 f'AND time >= {influxdb.time_literal(start)} AND time < {influxdb.time_literal(end)}')
+    try:
+        payload = influxdb.query(statement, BODY_COMPOSITION.database)
+    except influxdb.InfluxError as exc:
+        if "database not found" in str(exc):
+            return {}  # a fresh InfluxDB: no other source has a reading yet
+        raise ConnectorError(str(exc)) from None
     days: Dict[str, List[float]] = collections.defaultdict(list)
     for result in payload.get("results") or []:
         for series in result.get("series") or []:
@@ -226,8 +263,10 @@ def other_weigh_ins(user: str, tz: ZoneInfo) -> Dict[str, List[float]]:
 
 
 def weight_points(rows: List[Dict[str, str]], other_days: Dict[str, List[float]], tz: ZoneInfo) -> List[Point]:
-    """The app's own weigh-ins: those no other source already has that day."""
-    points: List[Point] = []
+    """The app's own weigh-ins: those no other source already has that day.
+    Two on one day share a key: the later one's fields win, as the script's
+    consecutive writes did (body_composition is shared, not last_wins)."""
+    by_day: Dict[str, Dict[str, float]] = {}
     for row in rows:
         weight = _num(row.get("Poids"))
         if weight is None:
@@ -238,8 +277,8 @@ def weight_points(rows: List[Dict[str, str]], other_days: Dict[str, List[float]]
         fat = _num(row.get("Body Fat %"))
         if fat is not None:
             fields["body_fat_pct"] = fat
-        points.append(Point(BODY_COMPOSITION, noon(row["Date"], tz), {}, fields))
-    return points
+        by_day.setdefault(row["Date"], {}).update(fields)
+    return [Point(BODY_COMPOSITION, noon(day, tz), {}, fields) for day, fields in by_day.items()]
 
 
 def food_points(rows: List[Dict[str, str]], tz: ZoneInfo) -> List[Point]:
@@ -316,10 +355,11 @@ class MyFitnessPalConnector(Connector):
     description = ("The weigh-ins, food and exercise of a MyFitnessPal export, imported in the UI: "
                    "the days it covers, per day (a scale already has the weigh-ins the app synced).")
     icon = "bi-activity"
+    settings_class = MyFitnessPalSettings
     measurements = (BODY_COMPOSITION, NUTRITION, EXERCISE)
     file_types = (".zip",)
     # The export is the app's history over the days it covers: importing it
-    # replaces the three series over those days (import_span), as the
+    # replaces each series over its file's days (FileImport.spans), as the
     # script's own run did with --replace over the whole history. A record
     # the export no longer has is one the app no longer has either.
     rebuild_own_source = True
@@ -330,10 +370,7 @@ class MyFitnessPalConnector(Connector):
         # them is not the whole history a watched folder's rebuild assumes.
         return None
 
-    def import_span(self, path: Path) -> Span:
-        return export_span(path)
-
-    def import_file(self, path: Path) -> Iterable[Point]:
+    def import_file(self, path: Path) -> FileImport:
         tables = read_export(path)
         user = (app_settings.influxdb_user or "").strip()
         if not user:
@@ -346,11 +383,14 @@ class MyFitnessPalConnector(Connector):
                 "readings for this user, so without it the weigh-ins the scales already reported would "
                 "be imported again. Set it and import again.")
         tz = ZoneInfo(app_settings.tz)
-        other_days = other_weigh_ins(user, tz)
-        points = (weight_points(tables["weight"], other_days, tz)
-                  + food_points(tables["food"], tz)
-                  + exercise_points(tables["exercise"], tz))
+        spans = {MEASUREMENT_OF[kind].name: span for kind, table in tables.items()
+                 if (span := table_span(table)) is not None}
+        weighed = any(_num(row.get("Poids")) is not None for row in tables["weight"].rows)
+        other_days = other_weigh_ins(user, spans[BODY_COMPOSITION.name], tz) if weighed else {}
+        points = (weight_points(tables["weight"].rows, other_days, tz)
+                  + food_points(tables["food"].rows, tz)
+                  + exercise_points(tables["exercise"].rows, tz))
         if not points:
             raise ConnectorError("This export holds nothing to import: nothing to write back, "
                                  "so the series is left as it is.")
-        return points
+        return FileImport(points, spans)

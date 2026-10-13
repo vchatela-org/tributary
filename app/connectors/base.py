@@ -18,18 +18,20 @@ and implements one or both inputs:
     independent parts (several accounts) may report the parts that failed
     in `errors` instead of raising: the others are written and the run shows
     as failed;
-  - files: `file_types` (accepted suffixes) and `import_file(path) -> points`,
-    for an upload in the UI and, when TRIBUTARY_<KEY>_WATCH_DIR is set, the
-    files of a watched folder. With `rebuild_own_source`, a change in the
-    folder drops the connector's own series and rewrites them from every
-    file in it (the folder is then the source of truth), and an uploaded
-    file replaces them: all of them, or only the days the file covers
-    (`import_span`, for an export of a date range the user picked).
+  - files: `file_types` (accepted suffixes) and `import_file(path) -> points`
+    (or a FileImport), for an upload in the UI and, when
+    TRIBUTARY_<KEY>_WATCH_DIR is set, the files of a watched folder. With
+    `rebuild_own_source`, a change in the folder drops the connector's own
+    series and rewrites them from every file in it (the folder is then the
+    source of truth), and an uploaded file replaces them: all of them, or,
+    when import_file returns a FileImport with `spans`, only the days the
+    file covers (an export of a date range the user picked).
 """
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
-from typing import Any, ClassVar, Iterable, List, NamedTuple, Optional, Tuple, Type
+from typing import Any, ClassVar, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type, Union
+from zoneinfo import ZoneInfo
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -52,14 +54,28 @@ class ConnectorSettings(BaseSettings):
 
 
 class Span(NamedTuple):
-    """The days (TRIBUTARY_TZ, both included) of a connector's own series a
-    rebuild replaces. Span(): the whole series."""
-    first: Optional[date] = None
-    last: Optional[date] = None
+    """Days, both included, of a measurement's series an import covers."""
+    first: date
+    last: date
 
-    @property
-    def whole(self) -> bool:
-        return self.first is None
+    def bounds(self, tz: ZoneInfo) -> Tuple[datetime, datetime]:
+        """[start, end): the local midnights around those days."""
+        return (datetime.combine(self.first, time(), tzinfo=tz),
+                datetime.combine(self.last + timedelta(days=1), time(), tzinfo=tz))
+
+
+@dataclass
+class FileImport:
+    """What import_file may return instead of bare points: the points, and
+    `spans`, {measurement name: the days (TRIBUTARY_TZ) the file covers}. With
+    `rebuild_own_source`, an upload then replaces each of those measurements'
+    series over its span only, for this connector's source and
+    TRIBUTARY_INFLUXDB_USER: an export of the last month leaves the years
+    before it as they are, and a measurement with no span is left as it is.
+    None (bare points): the file holds the whole history, and the connector's
+    whole series are replaced."""
+    points: List[Point]
+    spans: Optional[Dict[str, Span]] = None
 
 
 @dataclass
@@ -125,15 +141,8 @@ class Connector:
         between runs, e.g. a time it had to choose for a point."""
         return None
 
-    def import_file(self, path: Path) -> Iterable[Point]:
+    def import_file(self, path: Path) -> Union[Iterable[Point], FileImport]:
         raise NotImplementedError
-
-    def import_span(self, path: Path) -> Span:
-        """With `rebuild_own_source`: the days an uploaded file covers, read
-        after import_file succeeded. Only those are replaced, so an export of
-        a date range the user picked leaves the rest of the history as it
-        was. Span() (the default): the file holds the whole history."""
-        return Span()
 
     # -- Schedule ------------------------------------------------------------
 

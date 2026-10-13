@@ -194,16 +194,16 @@ def test_rebuild_own_source_drops_only_its_own_series(influx, db, tmp_path):
 
 
 def test_an_upload_with_a_span_replaces_those_days_only(influx, db, tmp_path):
-    """`import_span`: an export of a date range replaces the connector's own
-    series over those days (local midnights, TRIBUTARY_TZ) and nothing
+    """FileImport.spans: an export of a date range replaces the connector's
+    own series over those days (local midnights, TRIBUTARY_TZ) and nothing
     outside them."""
     from datetime import date
 
-    from app.connectors.base import Span
+    from app.connectors.base import FileImport, Span
 
     class RangeSteps(CsvSteps):
-        def import_span(self, path):
-            return Span(date(2025, 1, 2), date(2025, 1, 3))
+        def import_file(self, path):
+            return FileImport(list(super().import_file(path)), {"steps": Span(date(2025, 1, 2), date(2025, 1, 3))})
 
     connector = connectors.register(RangeSteps(rebuild=True))
     try:
@@ -222,6 +222,26 @@ def test_an_upload_with_a_span_replaces_those_days_only(influx, db, tmp_path):
             (int(datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp()), "1i"),
             (int(datetime(2025, 1, 3, 12, tzinfo=timezone.utc).timestamp()), "300i"),
             (int(datetime(2025, 1, 4, tzinfo=timezone.utc).timestamp()), "1i")]
+    finally:
+        connectors.unregister("csvsteps")
+
+
+def test_an_upload_spanning_no_measurement_drops_nothing(influx, db, tmp_path):
+    """A file whose spans cover none of the series (an empty export of a
+    rebuild-by-span connector) adds its points and drops nothing."""
+    from app.connectors.base import FileImport
+
+    class NoSpan(CsvSteps):
+        def import_file(self, path):
+            return FileImport(list(super().import_file(path)), {})
+
+    connector = connectors.register(NoSpan(rebuild=True))
+    try:
+        upload = tmp_path / "a.csv"
+        upload.write_text("2025-01-03T12:00:00+00:00,300\n")
+        run = runner.run(db, connector, file=str(upload), filename="a.csv", trigger="upload")
+        assert run.message == "Imported a.csv: 1 point(s) written (ActivityStats 1)."
+        assert not [q for _db, q in influx.queries if q.startswith(("DROP", "DELETE"))]
     finally:
         connectors.unregister("csvsteps")
 

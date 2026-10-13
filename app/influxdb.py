@@ -109,12 +109,15 @@ def write(database: str, lines: List[str]) -> Tuple[int, Optional[str]]:
     return 0, None
 
 
-def _quote(value: str) -> str:
+def quote(value: str) -> str:
+    """An InfluxQL string literal (a tag value in a WHERE clause)."""
     return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
-def _time(value: datetime) -> str:
-    """An InfluxQL time literal, RFC3339 UTC."""
+def time_literal(value: datetime) -> str:
+    """An InfluxQL time literal, RFC3339 UTC, from an aware datetime."""
+    if value.tzinfo is None:
+        raise ValueError("a naive datetime has no instant: give it a time zone")
     return value.astimezone(timezone.utc).strftime("'%Y-%m-%dT%H:%M:%SZ'")
 
 
@@ -123,15 +126,18 @@ def _identifier(value: str) -> str:
 
 
 def drop_source(database: str, measurement: str, source: str,
-                start: Optional[datetime] = None, end: Optional[datetime] = None) -> None:
+                start: Optional[datetime] = None, end: Optional[datetime] = None,
+                user: Optional[str] = None) -> None:
     """Every series of one measurement written by one source: for a
     connector that rebuilds its own source from scratch. Safe only because
     each source has a single writer (docs/schema.md). With `start` and
-    `end`, only its points in [start, end): an import that covers those
-    days only."""
-    where = f"\"source\" = {_quote(source)}"
+    `end`, only its points in [start, end), of `user` when given: an import
+    that covers those days only."""
+    if (start is None) != (end is None):
+        raise ValueError("drop_source takes both start and end, or neither")
+    where = f"\"source\" = {quote(source)}" + (f" AND \"user\" = {quote(user)}" if user else "")
     if start is None:
         query(f"DROP SERIES FROM {_identifier(measurement)} WHERE {where}", database)
         return
     query(f"DELETE FROM {_identifier(measurement)} WHERE {where} "
-          f"AND time >= {_time(start)} AND time < {_time(end)}", database)
+          f"AND time >= {time_literal(start)} AND time < {time_literal(end)}", database)

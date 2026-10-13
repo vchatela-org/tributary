@@ -48,13 +48,16 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
   folder that is the source of truth, where a change in it rebuilds the
   series. Safe only because nothing else writes that source, and a connector
   raises rather than let a rebuild write nothing back.
-- `import_span(path) -> Span(first, last)` when an export covers a date range
-  the user picks (MyFitnessPal): only those days (`TRIBUTARY_TZ`, both
-  included) of the connector's series are replaced (`DELETE FROM ... WHERE
-  "source" = '<key>' AND time >= ... AND time < ...`), so an export of the last
-  month never empties the years before it. The default, `Span()`, is the
-  whole series. Such a connector takes uploads only (its `watch_dir` is
-  `None`): a folder of range exports is not a whole history.
+- `import_file` returns `FileImport(points, spans)` when an export covers a
+  date range the user picks (MyFitnessPal): `spans` is `{measurement name:
+  Span(first, last)}`, the days (`TRIBUTARY_TZ`, both included) the file
+  covers of each series. Only those are replaced, for the connector's source
+  and `TRIBUTARY_INFLUXDB_USER` (`DELETE FROM ... WHERE "source" = '<key>' AND
+  "user" = '<user>' AND time >= ... AND time < ...`), so an export of the last
+  month never empties the years before it; a measurement without a span is
+  left as it is. Bare points mean the whole history (the whole series is
+  replaced). Such a connector takes uploads only (its `watch_dir` is `None`):
+  a folder of range exports is not a whole history.
 
 Points are `Point(measurement, time, tags, fields)`, time in UTC. The core
 adds `source` (unless the measurement is declared `tagged_source=False`),

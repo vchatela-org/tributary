@@ -106,6 +106,20 @@ def test_drop_source_over_a_span_deletes_its_points_in_it_only(influx):
                          datetime(2026, 10, 1, tzinfo=paris), datetime(2026, 10, 5, tzinfo=paris))
     assert influx.queries[-1] == ("BodyStats", "DELETE FROM \"exercise\" WHERE \"source\" = 'it\\'s' "
                                   "AND time >= '2026-09-30T22:00:00Z' AND time < '2026-10-04T22:00:00Z'")
+    influxdb.drop_source("BodyStats", "exercise", "mfp", datetime(2026, 10, 1, tzinfo=paris),
+                         datetime(2026, 10, 2, tzinfo=paris), user="bob")
+    assert influx.queries[-1][1] == ("DELETE FROM \"exercise\" WHERE \"source\" = 'mfp' AND \"user\" = 'bob' "
+                                     "AND time >= '2026-09-30T22:00:00Z' AND time < '2026-10-01T22:00:00Z'")
+
+
+def test_drop_source_refuses_half_a_span_or_a_naive_time(influx):
+    """Half a span would read as "the whole series"; a naive time has no
+    instant (it would be read in the host's zone)."""
+    with pytest.raises(ValueError):
+        influxdb.drop_source("BodyStats", "exercise", "mfp", start=datetime(2026, 10, 1, tzinfo=timezone.utc))
+    with pytest.raises(ValueError):
+        influxdb.drop_source("BodyStats", "exercise", "mfp", datetime(2026, 10, 1), datetime(2026, 10, 2))
+    assert influx.queries == []
 
 
 @pytest.mark.parametrize("body, expected", [

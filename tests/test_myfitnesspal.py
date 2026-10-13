@@ -91,38 +91,137 @@ def test_an_import_replaces_its_own_series_over_the_days_it_covers_only(connecto
     """The export covers the date range the user picked (the app writes it in
     each member's name): over those days a workout it no longer has goes with
     it; the days outside them keep what they had, so an export of the last
-    month never empties the years before it. Another source is never
+    month never empties the years before it. Another source, or another
+    user's points (the script's --replace was per user), are never
     touched."""
     influx.points[("BodyStats", "body_composition",
                    (("source", "renpho"), ("user", USER)), epoch(2026, 3, 10, 8, 0))] = {"weight_kg": "90.0"}
     before, inside, after = epoch(2026, 2, 28, 11, 0), epoch(2026, 3, 20, 11, 0), epoch(2026, 4, 1, 10, 0)
     for ts in (before, inside, after):
         influx.points[_mfp(ts, "exercise", category="run")] = {"activity": '"Course"', "energy_kcal": "300.0"}
+    bob = ("BodyStats", "exercise", (("category", "run"), ("source", "myfitnesspal"), ("user", "bob")), inside)
+    influx.points[bob] = {"energy_kcal": "1.0"}
     run = _import(db, connector, tmp_path, span=("2026-03-01", "2026-03-31"),
                   weight=[mfp_weight_row(day="2026-03-10", weight="70.1")])
     assert run.message == ("Imported export.zip: 1 point(s) written (BodyStats 1), "
                            "after dropping its own series from 2026-03-01 to 2026-03-31.")
     # Local midnights: 2026-03-01 00:00 is CET (+01:00), 2026-04-01 00:00 CEST (+02:00).
     assert [q for _db, q in influx.queries if q.startswith(("DROP", "DELETE"))] == [
-        f'DELETE FROM "{m}" WHERE "source" = \'myfitnesspal\' '
+        f'DELETE FROM "{m}" WHERE "source" = \'myfitnesspal\' AND "user" = \'{USER}\' '
         "AND time >= '2026-02-28T23:00:00Z' AND time < '2026-03-31T22:00:00Z'"
         for m in ("body_composition", "nutrition", "exercise")]
-    assert [ts for _tags, _f, ts in influx.stored("exercise")] == [before, after]
+    assert sorted((tags["user"], ts) for tags, _f, ts in influx.stored("exercise")) == [
+        (USER, before), (USER, after), ("bob", inside)]
     assert sorted((tags["source"], ts) for tags, _f, ts in influx.stored("body_composition")) == [
         ("myfitnesspal", epoch(2026, 3, 10, 11, 0)), ("renpho", epoch(2026, 3, 10, 8, 0))]
 
 
-def test_the_span_is_widened_to_every_record_and_read_from_the_records_without_names(connector, tmp_path):
-    """A record outside the range the names give still lies in the span (it
-    is rewritten, so its day is replaced); an export whose names carry no
-    range spans its records' own dates."""
-    def span_of(name, span):
-        return connector.import_span(write_myfitnesspal_export(
-            tmp_path / name, span=span, weight=[mfp_weight_row(day="2026-04-02")],
-            exercise=[mfp_exercise_row(day="2026-03-05")]))
+def test_each_series_is_replaced_over_its_own_files_days(connector, influx, tmp_path):
+    """A record outside the range the names give widens its own file's span
+    only (it is rewritten, so its day is replaced): a stray weigh-in must not
+    drop meals and workouts the export doesn't hold. Without a range in the
+    names, a file spans its records' own dates; a file with neither leaves
+    its series as it is."""
+    def spans(name, span, **tables):
+        return connector.import_file(write_myfitnesspal_export(tmp_path / name, span=span, **tables)).spans
 
-    assert span_of("a.zip", ("2026-03-01", "2026-03-31")) == (date(2026, 3, 1), date(2026, 4, 2))
-    assert span_of("b.zip", None) == (date(2026, 3, 5), date(2026, 4, 2))
+    weigh_in, workout = [mfp_weight_row(day="2026-04-02")], [mfp_exercise_row(day="2026-03-05")]
+    march = (date(2026, 3, 1), date(2026, 3, 31))
+    assert spans("a.zip", ("2026-03-01", "2026-03-31"), weight=weigh_in, exercise=workout) == {
+        "body_composition": (date(2026, 3, 1), date(2026, 4, 2)), "nutrition": march, "exercise": march}
+    assert spans("b.zip", None, weight=weigh_in, exercise=workout) == {
+        "body_composition": (date(2026, 4, 2), date(2026, 4, 2)), "exercise": (date(2026, 3, 5), date(2026, 3, 5))}
+
+
+def test_a_date_in_a_folder_name_does_not_widen_the_span(connector, influx, tmp_path):
+    """Only a file name's range counts: a folder named after a later date
+    would otherwise drop days the export doesn't hold."""
+    path = write_myfitnesspal_export(tmp_path / "a.zip", span=("2026-03-01", "2026-03-31"),
+                                     weight=[mfp_weight_row(day="2026-03-10")])
+    with zipfile.ZipFile(path) as source, zipfile.ZipFile(tmp_path / "b.zip", "w") as nested:
+        for name in source.namelist():
+            nested.writestr(f"2026-10-20/{name}", source.read(name))
+    assert set(connector.import_file(tmp_path / "b.zip").spans.values()) == {(date(2026, 3, 1), date(2026, 3, 31))}
+
+
+def test_two_exports_in_one_zip_are_refused(connector, influx, db, tmp_path):
+    """Their ranges would be replaced with one of them only."""
+    first = write_myfitnesspal_export(tmp_path / "a.zip", span=("2023-01-01", "2023-12-31"),
+                                      weight=[mfp_weight_row(day="2023-03-10")])
+    with zipfile.ZipFile(first) as source, zipfile.ZipFile(tmp_path / "both.zip", "w") as both:
+        for name in source.namelist():
+            both.writestr(f"2023/{name}", source.read(name))
+            both.writestr(f"2024/{name}", source.read(name))
+    run = runner.run(db, connector, file=str(tmp_path / "both.zip"), filename="both.zip", trigger="upload")
+    assert run.status == "error" and "more than one weight CSV" in run.message
+    assert not [q for _db, q in influx.queries if q.startswith(("DROP", "DELETE"))]
+
+
+def test_a_renamed_column_fails_the_import_rather_than_write_zeros(connector, influx, db, tmp_path):
+    path = tmp_path / "renamed.zip"
+    write_myfitnesspal_export(path, food=[mfp_food_row(**{"Calories": "600"})])
+    with zipfile.ZipFile(path) as source:
+        members = {name: source.read(name).decode() for name in source.namelist()}
+    with zipfile.ZipFile(path, "w") as archive:
+        for name, text in members.items():
+            archive.writestr(name, text.replace("Lipides (g)", "Lipides"))
+    run = runner.run(db, connector, file=str(path), filename="renamed.zip", trigger="upload")
+    assert run.status == "error" and "the food CSV has no column 'Lipides (g)'" in run.message
+    assert influx.stored("nutrition") == []
+
+
+def test_a_malformed_csv_is_a_clear_error(connector, influx, db, tmp_path):
+    """The csv module's own error (a field over its size limit) names the
+    file, like any unreadable export, instead of an unexpected error."""
+    huge = "x" * 200_000
+    run = _import(db, connector, tmp_path, name="huge.zip",
+                  food=[mfp_food_row(**{"Calories": "1", "export_headers.note": huge})])
+    assert run.status == "error" and run.message.startswith("huge.zip: unreadable (Error: field larger")
+
+
+def test_the_dedup_reads_only_the_weigh_ins_days(connector, influx, db, tmp_path):
+    """The other sources' readings of this user, over the days the weigh-ins
+    CSV covers -- not their whole history."""
+    _import(db, connector, tmp_path, span=("2026-03-01", "2026-03-31"), weight=[mfp_weight_row(day="2026-03-10")])
+    selects = [q for _db, q in influx.queries if q.startswith("SELECT")]
+    assert selects == [f'SELECT "weight_kg" FROM "body_composition" WHERE "user" = \'{USER}\' '
+                       f'AND "source" != \'myfitnesspal\' '
+                       "AND time >= '2026-02-28T23:00:00Z' AND time < '2026-03-31T22:00:00Z'"]
+
+
+def test_an_export_without_weigh_ins_reads_no_influxdb(connector, influx, db, tmp_path):
+    run = _import(db, connector, tmp_path, exercise=[mfp_exercise_row()])
+    assert run.status == "ok"
+    assert not [q for _db, q in influx.queries if q.startswith("SELECT")]
+
+
+def test_a_fresh_influxdb_without_bodystats_imports_every_weigh_in(connector, influx, db, tmp_path):
+    """No database yet means no other source's reading: the import creates
+    it, as any first write does."""
+    run = _import(db, connector, tmp_path, weight=[mfp_weight_row()])
+    assert run.status == "ok" and run.points == 1, run.message
+    assert "BodyStats" in influx.databases
+
+
+def test_a_dry_run_without_influxdb_says_the_dedup_needs_it(connector, influx, db, tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "influxdb_url", None)
+    path = write_myfitnesspal_export(tmp_path / "export.zip", weight=[mfp_weight_row()])
+    run = runner.run(db, connector, dry_run=True, file=str(path), filename="export.zip", trigger="upload")
+    assert run.status == "error"
+    assert run.message.startswith("export.zip: the weigh-in dedup reads the other sources' readings in InfluxDB")
+    assert "TRIBUTARY_INFLUXDB_URL" in run.message
+
+
+def test_two_weigh_ins_or_meals_on_one_day_keep_the_later_one(connector, influx, db, tmp_path):
+    """They share a key (noon on the date): the later row wins, as the
+    script's consecutive writes did, instead of the numbers being summed."""
+    _import(db, connector, tmp_path,
+            weight=[mfp_weight_row(weight="70.1", fat="18.0"), mfp_weight_row(weight="70.3")],
+            food=[mfp_food_row(meal="Snacks", **{"Calories": "100"}), mfp_food_row(meal="Snacks", **{"Calories": "150"})])
+    (_tags, weigh_in, _ts), = influx.stored("body_composition")
+    assert weigh_in == {"weight_kg": "70.3", "body_fat_pct": "18.0"}
+    (_tags, meal, _ts), = influx.stored("nutrition")
+    assert meal["energy_kcal"] == "150.0"
 
 
 def test_a_dry_run_of_an_import_drops_nothing(connector, influx, db, tmp_path):
@@ -239,6 +338,7 @@ def test_the_declared_series_is_the_scripts(connector):
     assert myfitnesspal.EXERCISE.tag_keys == ("source", "user", "category")
     assert myfitnesspal.EXERCISE.field_types == {"activity": str, "energy_kcal": float, "duration_s": int}
     assert myfitnesspal.MyFitnessPalConnector.rebuild_own_source is True
+    assert connector.env_prefix == "TRIBUTARY_MYFITNESSPAL_"
 
 
 def test_it_takes_an_upload_in_the_ui(connector):

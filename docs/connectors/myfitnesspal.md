@@ -10,9 +10,16 @@ each file's name: `...-du-2019-01-01-au-2024-12-31.csv`). An import
 **replaces** the connector's three series **over those days**: a workout you
 removed from the app, or a meal it no longer has, follows the export you
 import. The days outside the range keep what they had, so exporting the last
-month only adds it to the history already there. Nothing else in `BodyStats`
-is touched. The run says which days it replaced ("after dropping its own
-series from 2019-01-01 to 2024-12-31").
+month only adds it to the history already there. Each series is replaced over
+its own file's days (the range in the name, widened to that file's records),
+and only `source=myfitnesspal` points of `TRIBUTARY_INFLUXDB_USER`, as the
+script's `--replace` did: nothing else in `BodyStats` is touched. The run says
+which days it replaced ("after dropping its own series from 2019-01-01 to
+2024-12-31").
+
+A zip holding two exports is refused (import one at a time), and so is an
+export whose columns the app renamed: the import fails rather than write a
+missing column's values as zeros.
 
 ## Setup
 
@@ -43,8 +50,9 @@ it the import fails rather than risk importing the scales' readings twice.
   Withings and Renpho scales synced into it, and those are already in
   `BodyStats` under their own `source`. A weigh-in is imported only when no
   other source has a reading the same local day within 0.15 kg. This reads
-  InfluxDB, so an import needs `TRIBUTARY_INFLUXDB_URL` too (as the job did,
-  even for a dry run). It is also why a weigh-in a scale reported on the same
+  InfluxDB (the weigh-ins' days only), so an import needs
+  `TRIBUTARY_INFLUXDB_URL` too (as the job did, even for a dry run; an export
+  without weigh-ins doesn't). It is also why a weigh-in a scale reported on the same
   day *after* you imported the export is not written again: the day's reading
   belongs to the scale, and importing an export that covers that day drops
   the app's copy.
