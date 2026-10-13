@@ -2,7 +2,7 @@
    going without touching the rest of the document. #}
 {% import "_macros.html" as m %}
 <div data-region="runs">
-  {{ m.runs_table(runs, show_connector=not current) }}
+  {{ m.runs_table(runs, show_connector=not current, connectors_by_key=connectors_by_key) }}
   {% if pages > 1 %}
   <nav class="mt-3 small d-flex align-items-center gap-3">
     {% set base = "/runs?" ~ ("connector=" ~ current.key ~ "&" if current else "")

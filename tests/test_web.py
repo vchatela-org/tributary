@@ -19,6 +19,7 @@ class CsvSteps(Connector):
     """A file connector: `date,steps` lines."""
     key = "csvsteps"
     label = "CSV steps"
+    category = "Productivity"
     file_types = (".csv",)
     measurements = (STEPS,)
 
@@ -68,7 +69,11 @@ def test_a_configured_connector_has_its_buttons_and_runs(client, abs_api, abs_co
     page = client.get("/").text
     # Daily, not hourly: an hourly run against the server for nothing is waste.
     assert "Daily at 03:10" in page and 'action="/connectors/audiobookshelf/run"' in page
-    assert "Run now" in page
+    # Run now, a dry run (the line protocol, nothing written), and Open.
+    assert "Run now" in page and "Dry run" in page
+    # The connector page adds the full resync.
+    connector_page = client.get("/connectors/audiobookshelf").text
+    assert "Dry run" in connector_page and "Full resync" in connector_page
     run_id = client.get("/api/runs").json()[0]["id"]
     detail = client.get(f"/runs/{run_id}").text
     assert "Line protocol" in detail and "reading_session,device=Google\\ Pixel\\ 7" in detail
@@ -80,6 +85,36 @@ def test_a_configured_connector_has_its_buttons_and_runs(client, abs_api, abs_co
 
 def test_health_answers_without_anything_configured(client):
     assert client.get("/api/health").json()["status"] == "ok"
+
+
+def test_an_upload_only_connector_reads_as_manual_not_not_configured(client):
+    """A source you import into has nothing to configure and no schedule: its card
+    and its page say "Manual: import a file", never the "not configured" of an API
+    source missing its settings, and its page offers no editor whose value nothing
+    would apply."""
+    page = client.get("/").text
+    assert "MyFitnessPal" in page and "Manual: import a file" in page
+    connector_page = client.get("/connectors/myfitnesspal").text
+    assert "Manual: import a file" in connector_page
+    # No schedule editor: neither the form nor its fields are rendered.
+    assert 'name="preset"' not in connector_page and "Custom (cron)" not in connector_page
+
+
+def test_a_queued_run_is_shown_inline_named_by_its_label(client, steps, no_thread):
+    """Several checks are queueable without the page reloading; the activity line
+    says which source is queued, by its label rather than its key."""
+    client.post("/connectors/csvsteps/check", files={"file": ("a.csv", b"2025-01-01,1\n")})
+    activity = client.get("/").text.split('data-region="activity">', 1)[1].split("</div>", 1)[0]
+    assert "CSV steps" in activity and "queued" in activity and "csvsteps" not in activity
+
+
+def test_the_run_history_names_each_source_by_its_label(client, steps, influx, db, tmp_path):
+    """The run history's Source column reads the connector's name, not its key."""
+    upload = tmp_path / "a.csv"
+    upload.write_text("2025-01-01,1\n")
+    runner.run(db, steps, file=str(upload), filename="a.csv", trigger="upload")
+    table = client.get("/runs").text.split('<div data-region="runs">', 1)[1]
+    assert "CSV steps" in table and ">csvsteps<" not in table
 
 
 # -- Run buttons --------------------------------------------------------------------------

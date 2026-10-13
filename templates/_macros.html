@@ -17,7 +17,7 @@
 {%- endmacro %}
 
 {# The run buttons. Every one is a POST back to the page it was pressed on. #}
-{% macro actions(c, show_open=True) -%}
+{% macro actions(c, show_open=True, resync=False) -%}
 <div class="tb-actions">
   {% if c.state == "running" %}
     <span class="tb-pill tb-pill-info live">Running</span>
@@ -32,10 +32,24 @@
       <button class="btn btn-sm btn-outline-secondary" type="submit">Discard</button>
     </form>
   {% elif c.configured %}
-    {# An API or a watched folder: it can read its source on demand. #}
+    {# An API or a watched folder: it can read its source on demand, or show
+       what it would write without writing anything. #}
     <form method="post" action="/connectors/{{ c.key }}/run">
       <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-arrow-repeat me-1"></i>Run now</button>
     </form>
+    <form method="post" action="/connectors/{{ c.key }}/run">
+      <input type="hidden" name="dry_run" value="true" />
+      <button class="btn btn-sm btn-outline-secondary" type="submit"
+              title="Show the line protocol, write nothing"><i class="bi bi-eye me-1"></i>Dry run</button>
+    </form>
+    {% if resync %}
+    <form method="post" action="/connectors/{{ c.key }}/run">
+      <input type="hidden" name="full" value="true" />
+      <button class="btn btn-sm btn-outline-secondary" type="submit"
+              title="Read everything again, ignoring where the last run stopped; the same points overwrite themselves">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Full resync</button>
+    </form>
+    {% endif %}
     {% if show_open %}<a class="btn btn-sm btn-outline-secondary" href="/connectors/{{ c.key }}">Open</a>{% endif %}
   {% else %}
     {% if c.accepts_files %}
@@ -84,7 +98,10 @@
 {% macro facts(c) -%}
 <dl class="tb-facts">
   <div><dt>Runs</dt>
-    <dd>{% if c.schedule %}{{ c.schedule.label }}{% elif not c.configured %}not configured{% else %}manual only{% endif %}</dd></div>
+    <dd>{% if c.schedule %}{{ c.schedule.label }}
+        {%- elif not c.schedule_capable %}Manual: import a file
+        {%- elif not c.configured %}not configured
+        {%- else %}manual only{% endif %}</dd></div>
   <div><dt>Next</dt>
     <dd>{% if c.schedule and c.schedule.next_run %}{{ c.schedule.next_run | localtime }}{% else %}–{% endif %}</dd></div>
   <div><dt>Last</dt>
@@ -105,7 +122,7 @@
 {% endif %}
 {%- endmacro %}
 
-{% macro runs_table(runs, show_connector=False) -%}
+{% macro runs_table(runs, show_connector=False, connectors_by_key=None) -%}
 {% if runs %}
 <div class="table-responsive">
   <table class="tb-runs">

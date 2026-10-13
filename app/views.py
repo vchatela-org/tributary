@@ -81,6 +81,11 @@ def card(db: Session, connector: Connector, hidden: bool = False, runs: int = 0,
         "schedule": resolved if resolved.scheduled else None,
         "accepts_files": connector.accepts_files,
         "has_api": connector.has_api,
+        # Whether a schedule can apply to this source at all: it reads an API or
+        # a watched folder. An upload-only source cannot: it is imported by hand
+        # when a file arrives, and the page says so instead of offering an editor
+        # whose value nothing would apply.
+        "schedule_capable": connector.has_api or connector.watch_dir is not None,
         "file_types": connector.file_types,
         "required_env": connector.required_env,
         "measurements": connector.measurements,
@@ -129,6 +134,13 @@ def hidden_cards(db: Session) -> List[Dict[str, Any]]:
 def all_ordered() -> List[Connector]:
     from app import connectors
     return connectors.all_connectors()
+
+
+def by_key() -> Dict[str, Connector]:
+    """The registered connectors, by key: what names a run's source in the
+    activity line and the run history, wherever a page shows a run out of its
+    connector's context."""
+    return {connector.key: connector for connector in all_ordered()}
 
 
 def counters(sections_: List[Dict[str, Any]]) -> Dict[str, int]:

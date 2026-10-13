@@ -5,5 +5,8 @@ pydantic==2.14.0
 pydantic-settings==2.15.0
 jinja2==3.1.6
 python-multipart==0.0.32
+# Schedule parsing (app/schedule.py): a maintained 5-field cron parser and
+# evaluator, no dependencies of its own and no scheduler framework.
+cronsim==2.7
 # The Renpho connector: the app's encrypted API (pulls requests and pycryptodome).
 renpho-api==0.2.0

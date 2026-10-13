@@ -37,6 +37,7 @@ def _overview(db: Session) -> dict:
         "active": [{"run": run, "connector": connectors.get(run.connector)}
                    for run in scheduler.running(db)],
         "queued": sorted(scheduler.pending_keys()),
+        "connectors_by_key": views.by_key(),
         "influxdb_configured": influxdb.is_configured(),
         "influxdb_user": settings.influxdb_user,
         "ttl_hours": settings.staged_upload_ttl_hours,
@@ -95,6 +96,7 @@ def runs_page(request: Request, connector: Optional[str] = None, status: Optiona
         "current": current,
         "status": status or "",
         "connectors": connectors.all_connectors(),
+        "connectors_by_key": views.by_key(),
         "runs": crud.latest_runs(db, connector, RUNS_PER_PAGE, (page - 1) * RUNS_PER_PAGE, status),
         "page": page,
         "pages": max(1, ceil(total / RUNS_PER_PAGE)),
@@ -147,6 +149,7 @@ def runs_partial(request: Request, connector: Optional[str] = None, status: Opti
     return templates.TemplateResponse(request, "_runs.html", {
         "current": current,
         "status": status or "",
+        "connectors_by_key": views.by_key(),
         "runs": crud.latest_runs(db, connector, RUNS_PER_PAGE, (page - 1) * RUNS_PER_PAGE, status),
         "page": page,
         "pages": max(1, ceil(total / RUNS_PER_PAGE)),

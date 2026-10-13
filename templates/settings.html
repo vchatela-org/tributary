@@ -34,9 +34,10 @@
                  id="show-{{ c.key }}" {% if not c.hidden %}checked{% endif %} />
           <label class="form-check-label" for="show-{{ c.key }}">{{ c.label }}</label>
           <p>{{ c.description }}
-            {%- if not c.configured %} <em>Not configured yet.</em>{% endif %}
-            {%- if not c.schedule and c.configured %} <em>Imports a file: no schedule.</em>
-            {%- elif c.schedule %} Runs {{ c.schedule.label }}.{% endif %}</p>
+            {%- if c.schedule %} <em>Runs {{ c.schedule.label }}.</em>
+            {%- elif not c.schedule_capable %} <em>Imports a file: no schedule.</em>
+            {%- elif not c.configured %} <em>Not configured yet.</em>
+            {%- else %} <em>Manual only.</em>{% endif %}</p>
         </div>
         <a class="btn btn-sm btn-outline-secondary" href="/connectors/{{ c.key }}">Open</a>
       </div>

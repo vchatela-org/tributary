@@ -14,7 +14,7 @@
     <h1 class="h3 mb-1">{{ c.label }} {{ m.pill(c.state, c.state_label) }}</h1>
     <p class="tb-sub mb-0">{{ c.description }}</p>
   </div>
-  <div data-region="actions:{{ c.key }}">{{ m.actions(c, show_open=False) }}</div>
+  <div data-region="actions:{{ c.key }}">{{ m.actions(c, show_open=False, resync=True) }}</div>
 </div>
 
 {% if c.accepts_files %}
@@ -67,6 +67,12 @@
 
 <section class="tb-panel">
   <h2>Schedule</h2>
+  {% if not c.schedule_capable %}
+    {# An upload-only source: no API and no watched folder, so no schedule could
+       apply to it. Say how it runs instead of offering an editor nothing reads. #}
+    <p class="tb-hint mb-0"><strong>Manual: import a file.</strong> This source reads nothing on its own, so it
+      has no schedule — import a file when you have one, and Tributary checks it before writing.</p>
+  {% else %}
   {% if resolved and resolved.scheduled %}
     <p class="tb-hint">Runs <strong>{{ resolved.label }}</strong>, {{ resolved.source_label }}.
       Times are in {{ tz }}; saving here overrides both the environment and the default.</p>
@@ -74,8 +80,7 @@
     <p class="tb-hint">Set to <strong>Manual only</strong> here: nothing is scheduled — you run it or import a
       file when you want to.</p>
   {% else %}
-    <p class="tb-hint">Not scheduled. An upload source has nothing to read on its own: you import a file when
-      you have one.</p>
+    <p class="tb-hint">Not scheduled. Set how often this source should be read.</p>
   {% endif %}
   {% if resolved and resolved.note %}<p class="tb-note">{{ resolved.note }}</p>{% endif %}
 
@@ -127,6 +132,7 @@
       <b>Nothing scheduled</b> — it runs when you ask, or when you import a file.
     {% endif %}
   </p>
+  {% endif %}
 </section>
 
 <section class="tb-panel">
