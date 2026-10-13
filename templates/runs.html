@@ -2,21 +2,25 @@
 {% block title %}Run history{% endblock %}
 {% block poll %}/partials/runs?connector={{ current.key if current else '' }}&status={{ status }}{% endblock %}
 {% block content %}
-<div class="tb-pagehead d-flex flex-wrap align-items-baseline gap-3">
-  <h1>Run history{% if current %}: {{ current.label }}{% endif %}
-    {% if status %}<span class="tb-pill tb-pill-{{ 'err' if status == 'error' else 'ok' }}">{{ status }}</span>{% endif %}</h1>
-  <nav class="small ms-auto">
-    <a href="/runs" class="{% if not current and not status %}fw-semibold{% endif %}">All</a>
-    {% for c in connectors %} ·
-      <a href="/runs?connector={{ c.key }}" class="{% if current and current.key == c.key %}fw-semibold{% endif %}">{{ c.label }}</a>
-    {% endfor %} ·
-    <a href="/runs?status=error" class="{% if status == 'error' %}fw-semibold{% endif %}">Failures only</a>
-  </nav>
+<div class="tb-pagehead">
+  <div>
+    <h1>Run history{% if current %}: {{ current.label }}{% endif %}</h1>
+    <p class="tb-sub">Every run, newest first. A run in flight updates on its own; the page is never reloaded,
+      so a list you are reading stays where it is.</p>
+  </div>
 </div>
+
+<nav class="tb-chips" aria-label="Filter the runs">
+  <a class="tb-chip {% if not current and not status %}active{% endif %}" href="/runs">All</a>
+  {% for c in connectors %}
+  <a class="tb-chip tb-hue-{{ category_hue(c.category) }} {% if current and current.key == c.key %}active{% endif %}"
+     href="/runs?connector={{ c.key }}"><i class="bi {{ c.icon }} tb-hue-ink"></i>{{ c.label }}</a>
+  {% endfor %}
+  <a class="tb-chip {% if status == 'error' %}active{% endif %}" href="/runs?status=error"><i
+      class="bi bi-x-circle-fill tb-ink-critical"></i>Failures only</a>
+</nav>
 
 <div class="tb-panel">
   {% include "_runs.html" %}
 </div>
-<p class="small text-body-secondary">A run in flight updates on its own; the page is never reloaded, so a list
-  you are reading stays where it is.</p>
 {% endblock %}

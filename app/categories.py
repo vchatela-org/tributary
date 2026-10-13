@@ -75,3 +75,13 @@ CATEGORY_ICONS: Dict[str, str] = {
 
 def icon_for(name: str) -> str:
     return CATEGORY_ICONS.get(name, "bi-grid")
+
+
+# One identity hue per category: slots 1-6 of the dataviz reference palette, in
+# CATEGORIES order (the order is what keeps neighbours apart for colour-blind
+# readers, so a hue follows its category, never its position on a page). The
+# hex values live in static/style.css (`--tb-c1`...), validated light and dark;
+# a hue is always shown beside the category's or the source's name, never alone.
+def hue_for(name: str) -> int:
+    """The category's slot, 1-based; 0 (a neutral grey) for an unknown one."""
+    return CATEGORIES.index(name) + 1 if name in CATEGORIES else 0

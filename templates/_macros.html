@@ -2,10 +2,33 @@
    The status bits live in one macro (status_region) so the server-rendered page
    and the polled fragment cannot drift apart. #}
 
+{# A state's tone and icon. The tones are the fixed status scale (good, warning,
+   critical) plus the accent for a run in flight and a neutral grey for the rest;
+   a tone always comes with its icon and its label, never colour alone. #}
+{% set STATE_LOOK = {
+  "ok": ("good", "bi-check-circle-fill"),
+  "failing": ("critical", "bi-x-circle-fill"),
+  "checked": ("warning", "bi-exclamation-circle-fill"),
+  "running": ("live", "bi-arrow-repeat"),
+  "queued": ("mute", "bi-hourglass-split"),
+  "new": ("mute", "bi-circle"),
+  "unconfigured": ("mute", "bi-gear"),
+} %}
+
 {% macro pill(state, label) -%}
-{% set kind = {"ok": "ok", "failing": "err", "error": "err", "running": "info", "queued": "mute",
-               "checked": "warn", "new": "mute", "unconfigured": "mute"}.get(state, "mute") %}
-<span class="tb-pill tb-pill-{{ kind }}{% if state == 'running' %} live{% endif %}">{{ label }}</span>
+{% set tone, icon = STATE_LOOK.get(state, ("mute", "bi-circle")) %}
+<span class="tb-pill tb-tone-{{ tone }}{% if state == 'running' %} live{% endif %}"><i
+    class="bi {{ icon }}" aria-hidden="true"></i>{{ label }}</span>
+{%- endmacro %}
+
+{# The sidebar's dot: only the states that ask for a look (failing, checked,
+   running, queued). A healthy source needs nothing next to its name. #}
+{% macro state_dot(c) -%}
+{% if c.state in ("failing", "checked", "running", "queued") %}
+{% set tone = STATE_LOOK[c.state][0] %}
+<span class="tb-dot tb-tone-{{ tone }}{% if c.state == 'running' %} running{% endif %}"
+      title="{{ c.state_label }}" role="img" aria-label="{{ c.state_label }}"></span>
+{% endif %}
 {%- endmacro %}
 
 {% macro trigger_label(run) -%}
@@ -16,92 +39,103 @@
 {{ {"ok": "OK", "error": "Failed", "running": "Running"}.get(run.status, run.status) }}
 {%- endmacro %}
 
-{# The run buttons. Every one is a POST back to the page it was pressed on. #}
-{% macro actions(c, show_open=True, resync=False) -%}
+{# How a source runs, in a few words: its schedule, or how it is fed. #}
+{% macro cadence(c) -%}
+{% if c.schedule %}{{ c.schedule.label }}
+{%- elif not c.schedule_capable %}Manual: import a file
+{%- elif not c.configured %}not configured
+{%- else %}manual only{% endif %}
+{%- endmacro %}
+
+{# The run buttons. Every one is a POST back to the page it was pressed on.
+   `page`: the source's own page, which adds Full resync and points "Import a
+   file" at its own import panel rather than unfolding a row. #}
+{% macro actions(c, page=False) -%}
 <div class="tb-actions">
-  {% if c.state == "running" %}
-    <span class="tb-pill tb-pill-info live">Running</span>
-  {% elif c.state == "queued" %}
-    <span class="tb-pill tb-pill-mute" title="Already queued: it runs after the current one">Queued</span>
+  {% if c.state in ("running", "queued") %}
+    {# Nothing to press: the pill says what is going on. #}
+  {% elif c.state == "checked" and page %}
+    {# The page's import panel holds these, right below: not twice. #}
   {% elif c.state == "checked" %}
     <form method="post" action="/connectors/{{ c.key }}/import">
       <button class="btn btn-sm btn-primary" type="submit">
         <i class="bi bi-box-arrow-in-down me-1"></i>Import for real</button>
     </form>
     <form method="post" action="/connectors/{{ c.key }}/discard">
-      <button class="btn btn-sm btn-outline-secondary" type="submit">Discard</button>
+      <button class="btn btn-sm btn-ghost" type="submit">Discard</button>
     </form>
   {% elif c.configured %}
     {# An API or a watched folder: it can read its source on demand, or show
        what it would write without writing anything. #}
     <form method="post" action="/connectors/{{ c.key }}/run">
-      <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-arrow-repeat me-1"></i>Run now</button>
+      <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-arrow-repeat me-1"></i>Run now</button>
     </form>
     <form method="post" action="/connectors/{{ c.key }}/run">
       <input type="hidden" name="dry_run" value="true" />
-      <button class="btn btn-sm btn-outline-secondary" type="submit"
+      <button class="btn btn-sm btn-ghost" type="submit"
               title="Show the line protocol, write nothing"><i class="bi bi-eye me-1"></i>Dry run</button>
     </form>
-    {% if resync %}
+    {% if page %}
     <form method="post" action="/connectors/{{ c.key }}/run">
       <input type="hidden" name="full" value="true" />
-      <button class="btn btn-sm btn-outline-secondary" type="submit"
+      <button class="btn btn-sm btn-ghost" type="submit"
               title="Read everything again, ignoring where the last run stopped; the same points overwrite themselves">
         <i class="bi bi-arrow-counterclockwise me-1"></i>Full resync</button>
     </form>
     {% endif %}
-    {% if show_open %}<a class="btn btn-sm btn-outline-secondary" href="/connectors/{{ c.key }}">Open</a>{% endif %}
-  {% else %}
-    {% if c.accepts_files %}
-    {% if c.state == "unconfigured" %}
-    <a class="btn btn-sm btn-outline-secondary" href="/connectors/{{ c.key }}">Set up</a>
-    {% else %}
-    <a class="btn btn-sm btn-primary" href="/connectors/{{ c.key }}#import">
-      <i class="bi bi-file-earmark-zip me-1"></i>Import a file</a>
-    {% endif %}
-    {% endif %}
-    {% if show_open %}<a class="btn btn-sm btn-outline-secondary" href="/connectors/{{ c.key }}">Open</a>{% endif %}
+  {% elif c.accepts_files and c.state != "unconfigured" %}
+    {# Overview: unfolds the row on its file picker (app.js); without
+       JavaScript, the link goes to the source's own import panel. #}
+    <a class="btn btn-sm btn-outline-primary" href="/connectors/{{ c.key }}#import"
+       {% if not page %}data-expand="{{ c.key }}"{% endif %}>
+      <i class="bi bi-file-earmark-arrow-up me-1"></i>Import a file</a>
+  {% elif not page %}
+    <a class="btn btn-sm btn-ghost" href="/connectors/{{ c.key }}">Set up</a>
   {% endif %}
 </div>
 {%- endmacro %}
 
-{# The part of a card app.js re-renders: the state, what is going on, and the
-   buttons that state changes. Nothing that holds user input. #}
+{# One source's row on the overview, the part app.js re-renders: what it is,
+   how it runs, how it last went, and the buttons that state changes. Nothing
+   that holds user input. #}
 {% macro status_region(c) -%}
-<div class="tb-tile-head">
-  <span class="tb-ico"><i class="bi {{ c.icon }}"></i></span>
-  <div class="tb-tile-id">
-    <h3><a href="/connectors/{{ c.key }}">{{ c.label }}</a></h3>
-    <p>{{ c.description }}</p>
+{# Dimmed only when it cannot run: an upload-only source is never "off". #}
+<span class="tb-ico{% if c.state == 'unconfigured' %} off{% endif %}"><i class="bi {{ c.icon }}"></i></span>
+<div class="tb-src-id">
+  <div class="tb-src-name"><a href="/connectors/{{ c.key }}">{{ c.label }}</a>
+    <span class="tb-src-when">{{ cadence(c) }}</span></div>
+  <div class="tb-src-meta">
+  {% if c.state == "unconfigured" and c.required_env %}
+    Set {% for name in c.required_env %}<code class="tb-mono">{{ name }}</code>{% if not loop.last %},
+    {% endif %}{% endfor %} to run it. A check works without them.
+  {% elif c.state == "running" %}
+    Running now — this page stays where it is.
+  {% elif c.state == "queued" %}
+    Queued: it runs after the current one.
+  {% elif c.state == "checked" and c.staged %}
+    <b>{{ c.staged.filename }}</b> is checked and ready to import —
+    <a href="/runs/{{ c.staged.dry_run_id }}">see what it would write</a>.
+  {% elif c.last_run %}
+    {{ "Last import" if c.last_run.trigger == "upload" else "Last run" }}
+    {{ c.last_run.started_at | localtime }}
+    {%- if c.last_run.points is not none %} · {{ "{:,}".format(c.last_run.points) }} point{{ "" if c.last_run.points == 1 else "s" }}{% endif %}
+    {%- if c.last_run.dry_run %} (check){% endif %}
+    {%- if c.state == "failing" and c.last_run.message %} · <span class="tb-src-err">{{ c.last_run.message }}</span>{% endif %}
+    {%- if c.schedule and c.schedule.next_run %} · next {{ c.schedule.next_run | localtime }}{% endif %}
+  {% else %}
+    {{ "No file imported yet." if c.accepts_files and not c.has_api else "Never run yet." }}
+    {%- if c.schedule and c.schedule.next_run %} First run {{ c.schedule.next_run | localtime }}.{% endif %}
+  {% endif %}
   </div>
-  {{ pill(c.state, c.state_label) }}
 </div>
-{% if c.state == "unconfigured" and c.required_env %}
-<div class="tb-actline"><span class="tb-pill tb-pill-mute">Set up</span>
-  <span>Set {% for name in c.required_env %}<code class="tb-mono">{{ name }}</code>{% if not loop.last %},
-    {% endif %}{% endfor %} to run it. A check works without them.</span></div>
-{% elif c.state == "running" %}
-<div class="tb-actline"><span class="tb-pill tb-pill-info live">Running</span>
-  <span>The run going on right now — this page stays where it is.</span></div>
-{% elif c.state == "queued" %}
-<div class="tb-actline"><span class="tb-pill tb-pill-mute">Queued</span>
-  <span>Already queued: it runs after the current one.</span></div>
-{% elif c.state == "checked" and c.staged %}
-<div class="tb-actline"><span class="tb-pill tb-pill-warn">Checked</span>
-  <span><b>{{ c.staged.filename }}</b> is ready to import.</span></div>
-{% endif %}
+{{ pill(c.state, c.state_label) }}
 {{ actions(c) }}
 {%- endmacro %}
 
-{# What the source accepts and when it runs: enough to decide without leaving
-   the page. #}
+{# What the source accepts and when it runs: the facts behind a row (which
+   already says how it runs). #}
 {% macro facts(c) -%}
 <dl class="tb-facts">
-  <div><dt>Runs</dt>
-    <dd>{% if c.schedule %}{{ c.schedule.label }}
-        {%- elif not c.schedule_capable %}Manual: import a file
-        {%- elif not c.configured %}not configured
-        {%- else %}manual only{% endif %}</dd></div>
   <div><dt>Next</dt>
     <dd>{% if c.schedule and c.schedule.next_run %}{{ c.schedule.next_run | localtime }}{% else %}–{% endif %}</dd></div>
   <div><dt>Last</dt>
@@ -113,12 +147,53 @@
 </dl>
 {%- endmacro %}
 
+{# The connector page's tiles: its state, its schedule, its last run and what
+   it writes, at a glance. Re-rendered in place like the rows. #}
+{% macro kpis(c) -%}
+<div class="tb-kpi">
+  <div class="tb-kpi-label">State</div>
+  <div class="tb-kpi-value">{{ pill(c.state, c.state_label) }}</div>
+  <div class="tb-kpi-sub">
+    {%- if c.state == "failing" and c.last_run and c.last_run.message %}<span class="tb-ink-critical">{{ c.last_run.message }}</span>
+    {%- elif c.state == "checked" and c.staged %}{{ c.staged.filename }} waits for its import
+    {%- elif c.state == "running" %}running now
+    {%- elif c.state == "queued" %}runs after the current one
+    {%- elif c.state == "unconfigured" %}its environment is not set
+    {%- elif c.state == "new" %}nothing yet
+    {%- else %}the last run went through{% endif %}</div>
+</div>
+<div class="tb-kpi">
+  <div class="tb-kpi-label">Runs</div>
+  <div class="tb-kpi-value">{{ cadence(c) }}</div>
+  <div class="tb-kpi-sub">{% if c.schedule and c.schedule.next_run %}next {{ c.schedule.next_run | localtime }}
+    {%- else %}nothing scheduled{% endif %}</div>
+</div>
+<div class="tb-kpi">
+  <div class="tb-kpi-label">Last {{ "import" if c.accepts_files and not c.has_api else "run" }}</div>
+  <div class="tb-kpi-value">{% if c.last_run and c.last_run.points is not none %}{{ "{:,}".format(c.last_run.points) }}
+    <small>point{{ "" if c.last_run.points == 1 else "s" }}</small>{% elif c.last_run %}–{% else %}never{% endif %}</div>
+  <div class="tb-kpi-sub">{% if c.last_run %}<a href="/runs/{{ c.last_run.id }}">{{ c.last_run.started_at | localtime }}</a>
+    {%- else %}–{% endif %}</div>
+</div>
+<div class="tb-kpi">
+  <div class="tb-kpi-label">Writes</div>
+  <div class="tb-kpi-value">{{ c.measurements | length }}
+    <small>measurement{{ "" if c.measurements | length == 1 else "s" }}</small></div>
+  <div class="tb-kpi-sub">{{ c.measurements | map(attribute='database') | unique | join(", ") }} · {{ c.input_label }}</div>
+</div>
+{%- endmacro %}
+
 {% macro external(tools) -%}
 {% if tools %}
-<p class="tb-external"><strong>Also feeding this domain, not run by Tributary:</strong>
-  {% for t in tools %}<span class="tb-chip"><a href="{{ t.url }}" rel="noreferrer"><i
-      class="bi bi-box-arrow-up-right me-1"></i>{{ t.label }}</a><em>{{ t.note }}</em></span>{% endfor %}
-</p>
+<div class="tb-group-foot">
+  <span class="tb-foot-label">Also feeding it, not run by Tributary</span>
+  <div>
+  {% for t in tools %}
+    <div class="tb-tool"><a href="{{ t.url }}" rel="noreferrer">{{ t.label }}<i
+        class="bi bi-box-arrow-up-right ms-1"></i></a> <span>{{ t.note }}</span></div>
+  {% endfor %}
+  </div>
+</div>
 {% endif %}
 {%- endmacro %}
 
@@ -136,14 +211,17 @@
       <tr>
         <td class="tb-when tb-mono"><a href="/runs/{{ run.id }}">{{ run.started_at | localtime }}</a></td>
         {% if show_connector %}
-        <td>{% set c = connectors_by_key.get(run.connector) if connectors_by_key else None %}
-          {{ c.label if c else run.connector }}</td>
+        {% set c = connectors_by_key.get(run.connector) if connectors_by_key else None %}
+        <td class="tb-when">{% if c %}<a class="tb-src-link tb-hue-{{ category_hue(c.category) }}"
+            href="/connectors/{{ c.key }}"><i class="bi {{ c.icon }} tb-hue-ink"></i>{{ c.label }}</a>
+          {%- else %}{{ run.connector }}{% endif %}</td>
         {% endif %}
         <td>{{ trigger_label(run) }}</td>
-        <td class="tb-when"><span class="tb-dot {{ run.status }}"></span>{{ status_word(run) }}
-          {% if run.dry_run %} <span class="tb-pill tb-pill-mute">Check</span>{% endif %}
-          {% if run.full %} <span class="tb-pill tb-pill-mute">Full</span>{% endif %}</td>
-        <td class="tb-num">{{ run.points if run.points is not none else "" }}</td>
+        <td class="tb-when">{% set look = {"ok": "ok", "error": "failing", "running": "running"}.get(run.status) %}
+          {% if look %}<span class="tb-dot tb-tone-{{ STATE_LOOK[look][0] }}{% if run.status == 'running' %} running{% endif %}"></span>{% endif %}{{ status_word(run) }}
+          {% if run.dry_run %} <span class="tb-tag">Check</span>{% endif %}
+          {% if run.full %} <span class="tb-tag">Full</span>{% endif %}</td>
+        <td class="tb-num">{{ "{:,}".format(run.points) if run.points is not none else "" }}</td>
         <td class="tb-mono">{{ duration(run.started_at, run.finished_at) }}</td>
         <td class="tb-msg">{{ run.message or "" }}
           {%- if run.promoted_from %} <a href="/runs/{{ run.promoted_from }}">its check</a>{% endif %}</td>
@@ -157,23 +235,24 @@
 {% endif %}
 {%- endmacro %}
 
-{# What is going on right now, across every source. #}
-{% macro activity(active, queued, connectors_by_key) -%}
-<i class="bi bi-arrow-repeat"></i>
+{# What is going on right now, across every source, and what comes next. #}
+{% macro activity(active, queued, connectors_by_key, next_up=None) -%}
 {% if active or queued %}
   {% for item in active %}
-    <span class="tb-run"><span class="tb-dot running"></span><b>{{ item.connector.label if item.connector else item.run.connector }}</b>
-      — {{ item.run.trigger }}{% if item.run.dry_run %} (check){% endif %}</span>
+    <span class="tb-run"><span class="tb-dot tb-tone-live running"></span><b>{{ item.connector.label if item.connector else item.run.connector }}</b>
+      {{ trigger_label(item.run) | lower }}{% if item.run.dry_run %} (check){% endif %}</span>
   {% endfor %}
   {% for key in queued %}
-    <span class="tb-run"><span class="tb-dot"></span><b>{{ connectors_by_key[key].label if key in connectors_by_key else key }}</b>
-      — queued</span>
+    <span class="tb-run"><span class="tb-dot tb-tone-mute"></span><b>{{ connectors_by_key[key].label if key in connectors_by_key else key }}</b>
+      queued</span>
   {% endfor %}
 {% else %}
-  <span class="tb-run">Nothing running.</span>
+  <span class="tb-run"><i class="bi bi-pause-circle"></i>Nothing running</span>
 {% endif %}
-<span class="tb-soft">Runs go one after another in the background; this page never reloads itself, so you can
-  keep choosing files while one is going.</span>
+{% if next_up %}
+  <span class="tb-run tb-soft"><i class="bi bi-alarm"></i>Next: <b>{{ next_up.card.label }}</b>
+    {{ next_up.at | localtime }}</span>
+{% endif %}
 {%- endmacro %}
 
 {% macro schedule_source(resolved) -%}

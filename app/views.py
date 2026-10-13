@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app import crud, preferences, scheduler
-from app.categories import CATEGORIES, EXTERNAL_TOOLS
+from app.categories import CATEGORIES, EXTERNAL_TOOLS, hue_for
 from app.connectors.base import Connector
 from app.models import StagedUpload, SyncRun
 
@@ -75,6 +75,7 @@ def card(db: Session, connector: Connector, hidden: bool = False,
         "description": connector.description,
         "icon": connector.icon,
         "category": connector.category,
+        "hue": hue_for(connector.category),
         "state": state,
         "state_label": STATES[state],
         "configured": connector.is_configured(),
@@ -121,6 +122,28 @@ def sections(db: Session) -> List[Dict[str, Any]]:
             continue  # nothing under this heading: not even one is shown
         out.append({"name": name, "cards": cards, "tools": tools})
     return out
+
+
+def next_up(sections_: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """The soonest scheduled run among the sources shown, for the activity bar:
+    {"card", "at"}, or None when nothing is scheduled."""
+    upcoming = [(c["schedule"].next_run, c) for section in sections_ for c in section["cards"]
+                if c["schedule"] is not None and c["schedule"].next_run is not None]
+    if not upcoming:
+        return None
+    at, first = min(upcoming, key=lambda pair: pair[0])
+    return {"card": first, "at": at}
+
+
+def nav(db: Session) -> List[Dict[str, Any]]:
+    """The sources the sidebar lists, the shown ones in category order: the
+    same cards as the overview, so a dot there and a pill here agree."""
+    hidden = preferences.hidden_connectors(db)
+    pending_keys = scheduler.pending_keys()
+    running_keys = {run.connector for run in scheduler.running(db)}
+    ordered = sorted((c for c in all_ordered() if c.key not in hidden),
+                     key=lambda c: (hue_for(c.category) or len(CATEGORIES) + 1))
+    return [card(db, c, pending_keys=pending_keys, running_keys=running_keys) for c in ordered]
 
 
 def hidden_cards(db: Session) -> List[Dict[str, Any]]:

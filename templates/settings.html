@@ -3,9 +3,11 @@
 {% block title %}Settings{% endblock %}
 {% block content %}
 <div class="tb-pagehead">
-  <h1>Settings</h1>
-  <p class="tb-sub">Which integrations the overview shows, so a few sources are not buried under the whole
-    catalogue.</p>
+  <div>
+    <h1>Settings</h1>
+    <p class="tb-sub">Which integrations the overview shows, so a few sources are not buried under the whole
+      catalogue.</p>
+  </div>
 </div>
 
 {# Hiding is display only, and the page says so: nobody should read "hide" as
@@ -24,10 +26,10 @@
     {% for category in categories %}
       {% set here = cards | selectattr("category", "equalto", category) | list %}
       {% if here %}
-      <div class="tb-cat-head mt-3"><i class="bi {{ category_icon(category) }}"></i>
-        <h2>{{ category }}</h2><span class="tb-count">{{ here | length }}</span><span class="tb-rule"></span></div>
+      <div class="tb-group-head tb-hue-{{ category_hue(category) }} mt-3"><i class="bi {{ category_icon(category) }} tb-hue-ink"></i>
+        <h2>{{ category }}</h2><span class="tb-count">{{ here | length }}</span></div>
       {% for c in here %}
-      <div class="tb-pick">
+      <div class="tb-pick tb-hue-{{ c.hue }}">
         <span class="tb-ico"><i class="bi {{ c.icon }}"></i></span>
         <div class="form-check flex-grow-1 mb-0">
           <input class="form-check-input" type="checkbox" name="visible" value="{{ c.key }}"
@@ -39,14 +41,14 @@
             {%- elif not c.configured %} <em>Not configured yet.</em>
             {%- else %} <em>Manual only.</em>{% endif %}</p>
         </div>
-        <a class="btn btn-sm btn-outline-secondary" href="/connectors/{{ c.key }}">Open</a>
+        <a class="btn btn-sm btn-ghost" href="/connectors/{{ c.key }}">Open</a>
       </div>
       {% endfor %}
       {% endif %}
     {% endfor %}
     <div class="tb-actions mt-3">
       <button class="btn btn-sm btn-primary" type="submit">Save</button>
-      <button class="btn btn-sm btn-outline-secondary" type="submit" name="reset" value="true">Show all</button>
+      <button class="btn btn-sm btn-ghost" type="submit" name="reset" value="true">Show all</button>
     </div>
   </form>
 </section>
