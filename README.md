@@ -30,6 +30,7 @@ many sources.
 | Todoist | completed tasks and every completion (recurring ones included), karma and streaks → `TodoistStats` | [docs/connectors/todoist.md](docs/connectors/todoist.md) |
 | MyTherapy | the doses of a medication reminder (taken, missed, skipped), from an export imported in the UI → `BodyStats` | [docs/connectors/mytherapy.md](docs/connectors/mytherapy.md) |
 | MyFitnessPal | weigh-ins the scales don't already have, meals' nutrients and workouts, from an export imported in the UI → `BodyStats` | [docs/connectors/myfitnesspal.md](docs/connectors/myfitnesspal.md) |
+| Medisafe | the doses of a medication reminder (taken, missed, skipped, unlogged), from an export imported in the UI → `BodyStats` | [docs/connectors/medisafe.md](docs/connectors/medisafe.md) |
 
 A connector is written only for a source no maintained tool covers: Garmin,
 for instance, is [garmin-grafana](docs/compatible-tools.md)'s.

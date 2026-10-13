@@ -135,6 +135,11 @@ def myfitnesspal_connector():
 
 
 @pytest.fixture()
+def medisafe_connector():
+    return connectors.get("medisafe")
+
+
+@pytest.fixture()
 def mytherapy_connector(monkeypatch):
     """MyTherapy with a mapping (invented aliases): it takes an export upload."""
     import json

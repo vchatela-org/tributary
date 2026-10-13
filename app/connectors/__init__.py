@@ -26,6 +26,7 @@ def all_connectors() -> List[Connector]:
 
 def _register_builtin() -> None:
     from app.connectors.audiobookshelf import AudiobookshelfConnector
+    from app.connectors.medisafe import MedisafeConnector
     from app.connectors.myfitnesspal import MyFitnessPalConnector
     from app.connectors.mytherapy import MyTherapyConnector
     from app.connectors.renpho import RenphoConnector
@@ -36,6 +37,7 @@ def _register_builtin() -> None:
     register(TodoistConnector())
     register(MyTherapyConnector())
     register(MyFitnessPalConnector())
+    register(MedisafeConnector())
 
 
 _register_builtin()

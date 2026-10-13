@@ -53,11 +53,12 @@ what the connectors declare (`app/schema.py`, each connector's
 - **Privacy.** InfluxDB 1.x often runs without authentication. Numbers and
   low-cardinality tags only; the only text fields are book or show titles
   (`title`), Todoist's task text (`content`, `labels`) when you ask for it
-  (`TRIBUTARY_TODOIST_TASK_TEXT`), the words a medication app itself uses
-  for a dose (its status, its unit), and an exercise app's own name for an
-  exercise (`activity`): bounded vocabularies. No message, search, URL,
-  address, email, IP or free-form note otherwise. A test fails on any other
-  text field.
+  (`TRIBUTARY_TODOIST_TASK_TEXT`), a medication dose's note when you ask for
+  it (`TRIBUTARY_MEDISAFE_NOTES`), the words a medication app itself uses
+  for a dose (its status, its unit, the medication's strength), and an
+  exercise app's own name for an exercise (`activity`): bounded
+  vocabularies. No message, search, URL, address, email, IP or free-form
+  note otherwise. A test fails on any other text field.
 - **Databases** are created by Tributary when missing, `WITH SHARD DURATION
   52w` (the default weekly shards make hundreds of tiny shards for a few
   years of history). An existing database is never altered.
@@ -91,7 +92,7 @@ reminder app. No *local time*.
 | `body_composition` | `source`, `user`, `scale`, `user_id` | `weight_kg` (float), `bmi` (float), `body_fat_pct` (float), `body_water_pct` (float), `muscle_pct` (float), `bone_pct` (float), `bmr_kcal` (float), `visceral_fat` (float), `subcutaneous_fat_pct` (float), `protein_pct` (float), `body_age` (float), `lean_body_mass_kg` (float), `fat_free_weight_kg` (float), `heart_rate_bpm` (float), `cardiac_index` (float), `body_shape` (float) | Tributary: `renpho`. Other tools (a scale's history import...) under their own `source`, every field a float |
 | `body_levels` | `source`, `user`, `scale`, `user_id` | `weight_kg` (float), `bmi` (float), `body_fat_pct` (float), `subcutaneous_fat_pct` (float), `visceral_fat` (float), `lean_body_mass_kg` (float), `muscle_pct` (float), `bone_pct` (float), `body_age` (float), `bmr_kcal` (float), `body_water_pct` (float), `protein_pct` (float) | Tributary: `renpho` |
 | `body_thresholds` | `user` | `weight_kg_t1` (float), `weight_kg_t2` (float), `weight_kg_t3` (float), `weight_kg_min` (float), `weight_kg_max` (float), `bmi_t1` (float), `bmi_t2` (float), `bmi_t3` (float), `bmi_min` (float), `bmi_max` (float), `body_fat_pct_t1` (float), `body_fat_pct_t2` (float), `body_fat_pct_t3` (float), `body_fat_pct_t4` (float), `body_fat_pct_min` (float), `body_fat_pct_max` (float), `subcutaneous_fat_pct_t1` (float), `subcutaneous_fat_pct_t2` (float), `subcutaneous_fat_pct_min` (float), `subcutaneous_fat_pct_max` (float), `visceral_fat_t1` (float), `visceral_fat_t2` (float), `visceral_fat_t3` (float), `visceral_fat_min` (float), `visceral_fat_max` (float), `lean_body_mass_kg_t1` (float), `lean_body_mass_kg_t2` (float), `lean_body_mass_kg_min` (float), `lean_body_mass_kg_max` (float), `muscle_pct_t1` (float), `muscle_pct_t2` (float), `muscle_pct_min` (float), `muscle_pct_max` (float), `bone_pct_t1` (float), `bone_pct_t2` (float), `bone_pct_min` (float), `bone_pct_max` (float), `body_age_t1` (float), `body_age_min` (float), `body_age_max` (float), `bmr_kcal_t1` (float), `bmr_kcal_min` (float), `bmr_kcal_max` (float), `body_water_pct_t1` (float), `body_water_pct_t2` (float), `body_water_pct_min` (float), `body_water_pct_max` (float), `protein_pct_t1` (float), `protein_pct_t2` (float), `protein_pct_min` (float), `protein_pct_max` (float) | Tributary: `renpho` |
-| `medication` | `source`, `user`, `med`, `status` | `taken` (int), `app_status` (str), `dose` (float), `unit` (str), `delay_min` (int), `note` (str), `strength` (str) | Tributary: `mytherapy`. Medisafe's one-off import (`source=medisafe`, 2020-05 → 2026-02-11) wrote `note` and `strength` too |
+| `medication` | `source`, `user`, `med`, `status` | `taken` (int), `app_status` (str), `dose` (float), `unit` (str), `delay_min` (int), `note` (str), `strength` (str) | Tributary: `mytherapy`, `medisafe` |
 | `nutrition` | `source`, `user`, `meal` | `energy_kcal` (float), `fat_g` (float), `carbs_g` (float), `protein_g` (float), `saturated_fat_g` (float), `polyunsaturated_fat_g` (float), `monounsaturated_fat_g` (float), `trans_fat_g` (float), `fiber_g` (float), `sugar_g` (float), `cholesterol_mg` (float), `sodium_mg` (float), `potassium_mg` (float) | Tributary: `myfitnesspal` |
 | `exercise` | `source`, `user`, `category` | `activity` (str), `energy_kcal` (float), `duration_s` (int) | Tributary: `myfitnesspal` |
 
@@ -112,18 +113,22 @@ reminder app. No *local time*.
   `user` only, stamped when written (when they change, and at least
   weekly): read the latest.
 - `medication`: one point per scheduled dose, at the time it was scheduled
-  -- local, unlike Medisafe's UTC, so a 12:00 dose stays 12:00 across the
-  DST changes. `med` is the medication's name (from the connector's
-  settings: the app itself holds only a vague alias), `status` the contract
-  word for what happened, `taken` 1 when the dose was taken and 0 otherwise
+  -- local for `mytherapy`, so a 12:00 dose stays 12:00 across the DST
+  changes; UTC for `medisafe`, whose export gives UTC times (its schedules
+  move by an hour on the DST dates). `med` is the medication's name (from
+  the connector's settings for `mytherapy`, whose app holds only a vague
+  alias; the app's own name for `medisafe`, renamed or left out per
+  `TRIBUTARY_MEDISAFE_NAMES`), `status` the contract word for what happened
+  (`taken`, `missed`, `skipped`, and `unlogged` for a Medisafe reminder
+  nobody answered), `taken` 1 when the dose was taken and 0 otherwise
   (`app_status` keeps the app's own word). `dose` and `unit` are there when
   the export carries them ("pill(s)" becomes "pills"); `delay_min` only for
   a taken dose: the scheduled time to the moment it was answered, negative
   when early. Two doses of one medication and status scheduled in the same
   second are a second apart, as the job that first wrote them wrote them.
-  `note` (free text) and `strength` are the Medisafe import's, not the
-  MyTherapy connector's: its exports carry a note column, but no dose is
-  ever written with one.
+  `strength` ("10 mg") and `note` (free text, with
+  `TRIBUTARY_MEDISAFE_NOTES` only) are Medisafe's: MyTherapy's exports
+  carry a note column, but no dose is ever written with one.
 - `nutrition`: one point per logged meal, at noon *local* on the day (the
   export has dates only, and a day must land on the right date whether a
   query groups in UTC or in Paris). `meal` is `breakfast`, `lunch`, `dinner`

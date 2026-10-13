@@ -7,6 +7,7 @@
 | [Todoist](todoist.md) | `todoist` | API, daily | `TodoistStats`: `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` |
 | [MyTherapy](mytherapy.md) | `mytherapy` | export file, uploaded in the UI | `BodyStats`: `medication` |
 | [MyFitnessPal](myfitnesspal.md) | `myfitnesspal` | export file, uploaded in the UI | `BodyStats`: `body_composition`, `nutrition`, `exercise` |
+| [Medisafe](medisafe.md) | `medisafe` | export file, uploaded in the UI | `BodyStats`: `medication` |
 
 ## Before writing one
 

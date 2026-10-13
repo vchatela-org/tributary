@@ -757,6 +757,40 @@ def write_myfitnesspal_export(path, weight=(), food=(), exercise=(), span=None):
     return Path(path)
 
 
+# ────────────────────────────────────────────────
+# Medisafe (its doses export, built by hand)
+# ────────────────────────────────────────────────
+
+# The export's columns, in the app's order. Names, notes and the account are
+# invented.
+MEDISAFE_COLUMNS = ["group_id", "name", "condition", "Scheduled for", "Recorded on", "dose_status", "dosage",
+                    "unit", "med_strength", "notes"]
+MEDISAFE_ACCOUNT = "00012345"
+MEDISAFE_NOTE = "a private dose note"  # ggignore
+
+
+def medisafe_row(name="Alpha med", scheduled="2026-01-15 11:00:00", recorded="2026-01-15 11:05:00",
+                 status="taken", dosage="1", unit="pills", strength="", notes=""):
+    """One dose of the export; times are UTC, as the app writes them."""
+    return {"group_id": "g1", "name": name, "condition": "", "Scheduled for": scheduled, "Recorded on": recorded,
+            "dose_status": status, "dosage": dosage, "unit": unit, "med_strength": strength, "notes": notes}
+
+
+def write_medisafe_export(path, rows, zipped=False):
+    """Doses_<account>_000.csv, or a zip holding it."""
+    out = io.StringIO(newline="")
+    writer = csv.DictWriter(out, fieldnames=MEDISAFE_COLUMNS)
+    writer.writeheader()
+    writer.writerows(rows)
+    member = f"Doses_{MEDISAFE_ACCOUNT}_000.csv"
+    if zipped:
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr(member, out.getvalue())
+    else:
+        Path(path).write_text(out.getvalue(), encoding="utf-8")
+    return Path(path)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="A fake Audiobookshelf server with a few sessions.")
     parser.add_argument("--host", default="127.0.0.1")
