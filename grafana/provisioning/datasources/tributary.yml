@@ -1,5 +1,6 @@
-# One InfluxQL datasource per database Tributary's dashboards read. Add one
-# per domain you graph (BodyStats, SleepStats...), named "InfluxDB <database>".
+# One InfluxQL datasource per database Tributary's dashboards read, named
+# "InfluxDB <database>": each dashboard finds its own by that name. Add one per
+# domain you graph next to them (SleepStats...).
 apiVersion: 1
 
 datasources:
@@ -10,5 +11,25 @@ datasources:
     url: http://influxdb:8086
     jsonData:
       dbName: MediaStats
+      httpMode: POST
+    editable: true
+
+  - name: InfluxDB BodyStats
+    uid: tributary-influxdb-bodystats
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    jsonData:
+      dbName: BodyStats
+      httpMode: POST
+    editable: true
+
+  - name: InfluxDB TodoistStats
+    uid: tributary-influxdb-todoiststats
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    jsonData:
+      dbName: TodoistStats
       httpMode: POST
     editable: true

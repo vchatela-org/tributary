@@ -1,0 +1,2045 @@
+{
+  "uid": "tributary-nutrition",
+  "title": "Nutrition & exercise",
+  "description": "Food diary and exercise log in InfluxDB BodyStats (nutrition, exercise), next to every scale's weigh-ins.",
+  "tags": [
+    "tributary",
+    "nutrition",
+    "fitness"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 39,
+  "time": {
+    "from": "now-2y",
+    "to": "now"
+  },
+  "refresh": "",
+  "links": [
+    {
+      "type": "link",
+      "title": "Body composition",
+      "url": "/d/tributary-body",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "body",
+        "label": "InfluxDB BodyStats",
+        "query": "influxdb",
+        "regex": "/BodyStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "textbox",
+        "name": "tz",
+        "label": "Time zone",
+        "description": "IANA time zone the days and weeks are cut in (TRIBUTARY_TZ).",
+        "query": "Europe/Paris",
+        "current": {
+          "text": "Europe/Paris",
+          "value": "Europe/Paris"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "Europe/Paris",
+            "value": "Europe/Paris"
+          }
+        ],
+        "hide": 0
+      },
+      {
+        "type": "query",
+        "name": "user",
+        "label": "User",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"exercise\" WITH KEY = \"user\"",
+        "query": "SHOW TAG VALUES FROM \"exercise\" WITH KEY = \"user\"",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "source",
+        "label": "Source",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"exercise\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"exercise\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false,
+        "description": "Single-select on purpose: the panels sum per day or week, which would merge two sources into one bar."
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Food days logged",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT count(\"kcal\") FROM (SELECT sum(\"energy_kcal\") AS \"kcal\", count(\"energy_kcal\") AS \"meals\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)) WHERE $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "description": "Days with at least one meal logged in the range."
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Median intake",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT median(\"kcal\") FROM (SELECT sum(\"energy_kcal\") AS \"kcal\", count(\"energy_kcal\") AS \"meals\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)) WHERE \"meals\" >= 3 AND $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kcal",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "description": "Median of the daily calorie totals, counting only days with at least 3 meals logged, so a day with a lone snack logged does not pull it down."
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Median protein",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT median(\"g\") FROM (SELECT sum(\"protein_g\") AS \"g\", count(\"energy_kcal\") AS \"meals\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)) WHERE \"meals\" >= 3 AND $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "massg",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "description": "Median daily protein, on the same days as Median intake."
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Workouts",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT count(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" != 'adjustment' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "description": "Logged workouts, device calorie adjustments excluded."
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Days with a workout",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT count(\"n\") FROM (SELECT count(\"energy_kcal\") AS \"n\" FROM \"exercise\" WHERE \"category\" != 'adjustment' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)) WHERE $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "description": "Days with at least one workout logged."
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Workout time",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" != 'adjustment' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "textMode": "value",
+        "orientation": "auto"
+      },
+      "description": "Total logged workout duration."
+    },
+    {
+      "id": 7,
+      "type": "row",
+      "title": "Intake, workouts and weight",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 1
+      },
+      "fieldConfig": {
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Calories eaten per day, by meal",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"meal\" = 'breakfast' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Breakfast"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"meal\" = 'lunch' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Lunch"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"meal\" = 'dinner' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Dinner"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"meal\" = 'snacks' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Snacks"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kcal",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 90,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisBorderShow": false,
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Breakfast"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Lunch"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Dinner"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Snacks"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none",
+          "hideZeros": true
+        }
+      },
+      "description": "One stacked bar per logged day. A day with nothing logged is blank, not zero; a short bar with a single meal is a partly logged day."
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Workout calories per day, by activity",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'run' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Running"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'bike' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Cycling"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'strength' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Strength"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'aerobic' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Aerobics"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" !~ /^(run|bike|strength|aerobic|adjustment)$/ AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Other"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kcal",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 90,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisBorderShow": false,
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Running"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cycling"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Strength"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Aerobics"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none",
+          "hideZeros": true
+        }
+      },
+      "description": "Calories burned as the app estimates them for each logged workout, per day (device adjustments excluded)."
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Weight, every scale",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT \"weight_kg\" FROM \"body_composition\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY \"source\"",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "$tag_source"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "masskg",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "barAlignment": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "insertNulls": 2592000000,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisBorderShow": false,
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "renpho"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Renpho"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "myfitnesspal"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "MyFitnessPal"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none",
+          "hideZeros": true
+        }
+      },
+      "description": "Every weigh-in in BodyStats, one colour per source."
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Share of calories from protein, carbs and fat",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"protein_g\") * 4 AS \"Protein\", sum(\"carbs_g\") * 4 AS \"Carbs\", sum(\"fat_g\") * 9 AS \"Fat\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "$col"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kcal",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 90,
+            "barAlignment": 0,
+            "showPoints": "never",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "percent",
+              "group": "A"
+            },
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisBorderShow": false,
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Protein"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Carbs"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Fat"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none",
+          "hideZeros": true
+        }
+      },
+      "description": "Per logged day, the energy from each macro as a share of the three: protein and carbs at 4 kcal/g, fat at 9 kcal/g."
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Logged days",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 30,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT count(\"energy_kcal\") AS \"Meals\", sum(\"energy_kcal\") AS \"kcal\", sum(\"protein_g\") AS \"Protein\", sum(\"carbs_g\") AS \"Carbs\", sum(\"fat_g\") AS \"Fat\", sum(\"fiber_g\") AS \"Fiber\", sum(\"sugar_g\") AS \"Sugar\", sum(\"sodium_mg\") AS \"Sodium\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:YYYY-MM-DD"
+              },
+              {
+                "id": "displayName",
+                "value": "Date"
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Meals"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kcal"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "kcal"
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Protein"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: g"
+              },
+              {
+                "id": "custom.width",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Carbs"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: g"
+              },
+              {
+                "id": "custom.width",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Fat"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: g"
+              },
+              {
+                "id": "custom.width",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Fiber"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: g"
+              },
+              {
+                "id": "custom.width",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sugar"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: g"
+              },
+              {
+                "id": "custom.width",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sodium"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: mg"
+              },
+              {
+                "id": "custom.width",
+                "value": 95
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Date",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false
+        }
+      },
+      "description": "Daily totals from the food diary. Fiber, sugar and sodium are only what the logged foods reported, so they are lower bounds."
+    },
+    {
+      "id": 13,
+      "type": "row",
+      "title": "Exercise",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 24,
+        "h": 1
+      },
+      "fieldConfig": {
+        "overrides": []
+      }
+    },
+    {
+      "id": 14,
+      "type": "timeseries",
+      "title": "Workout time per week, by activity",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'run' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Running"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'bike' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Cycling"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'strength' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Strength"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'aerobic' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Aerobics"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" !~ /^(run|bike|strength|aerobic|adjustment)$/ AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Other"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 90,
+            "barAlignment": 1,
+            "showPoints": "never",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisBorderShow": false,
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Running"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cycling"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Strength"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Aerobics"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none",
+          "hideZeros": true
+        }
+      },
+      "description": "Logged workout duration per week (Monday to Sunday)."
+    },
+    {
+      "id": 15,
+      "type": "timeseries",
+      "title": "Workout calories per week, by activity",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'run' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Running"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'bike' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Cycling"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'strength' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Strength"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'aerobic' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Aerobics"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" !~ /^(run|bike|strength|aerobic|adjustment)$/ AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Other"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kcal",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 90,
+            "barAlignment": 1,
+            "showPoints": "never",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisBorderShow": false,
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Running"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cycling"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Strength"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Aerobics"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none",
+          "hideZeros": true
+        }
+      },
+      "description": "Calories burned as the app estimates them for each logged workout, per week: an estimate from activity and duration, not a measurement."
+    },
+    {
+      "id": 16,
+      "type": "timeseries",
+      "title": "Device calorie adjustment per week",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 49,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'adjustment' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "Calorie adjustment"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kcal",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 90,
+            "barAlignment": 1,
+            "showPoints": "never",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "insertNulls": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "gradientMode": "none",
+            "axisPlacement": "auto",
+            "axisBorderShow": false,
+            "axisLabel": "",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Calorie adjustment"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none",
+          "hideZeros": true
+        }
+      },
+      "description": "The extra calories the app added to the daily budget from a linked device: the activity it reported over the app's own estimate, not workouts."
+    },
+    {
+      "id": 17,
+      "type": "table",
+      "title": "Workouts",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 49,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "query": "SELECT \"activity\" AS \"Activity\", \"category\" AS \"Category\", \"duration_s\" / 60 AS \"Minutes\", \"energy_kcal\" AS \"kcal\" FROM \"exercise\" WHERE \"category\" != 'adjustment' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter ORDER BY time DESC LIMIT 2000",
+          "rawQuery": true,
+          "resultFormat": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:YYYY-MM-DD"
+              },
+              {
+                "id": "displayName",
+                "value": "Date"
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "kcal"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "kcal"
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Minutes"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Category"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Date",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false
+        }
+      },
+      "description": "Every logged workout, newest first."
+    }
+  ]
+}

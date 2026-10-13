@@ -73,6 +73,10 @@ Tributary only writes; dashboards read InfluxDB. [grafana/](grafana/) ships:
 | Dashboard | Reads | Panels |
 |---|---|---|
 | [Reading & listening](grafana/dashboards/reading-listening.json) | `MediaStats`: `reading_session`, `book_finished` | time per day and per week by kind and source, sessions, active days, time by device, evening reading (by local hour), books finished |
+| [Body composition](grafana/dashboards/body-composition.json) | `BodyStats`: `body_composition`, `body_levels`, `body_thresholds` | every metric's latest reading coloured by its level, a detail row per metric, the history by source |
+| [Medication](grafana/dashboards/medication.json) | `BodyStats`: `medication` | doses taken, missed or skipped, the share taken per medication over time, a table per medication and per dose |
+| [Nutrition & exercise](grafana/dashboards/nutrition-exercise.json) | `BodyStats`: `nutrition`, `exercise`, `body_composition` | calories per meal and macro split per logged day, workouts per day and week by activity, weight next to them |
+| [Todoist](grafana/dashboards/todoist.json) | `TodoistStats`: `todoist_completion`, `todoist_task_completed`, `todoist_stats` | completions per day and project, due dates kept or missed, priority, streak and karma |
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/grafana-reading-dark.png">
@@ -80,19 +84,19 @@ Tributary only writes; dashboards read InfluxDB. [grafana/](grafana/) ships:
 </picture>
 
 <sub>The Reading & listening dashboard in Grafana, with demo data (Audiobookshelf
-plus Kindle sessions from Takeback).</sub>
+plus Kindle sessions from Takeback). The others are in
+[docs/dashboards.md](docs/dashboards.md).</sub>
 
-- The quick start below provisions it: [grafana/provisioning/](grafana/provisioning/)
-  declares the `InfluxDB MediaStats` datasource and loads `grafana/dashboards/`
-  into a *Tributary* folder.
-- In a Grafana you already run, import the JSON: it uses any InfluxDB
-  datasource whose name contains `MediaStats` ([deployment](docs/deployment.md#docker-compose)).
-- It reads the schema, not a connector: points another tool writes the same
-  way (Kindle sessions from Takeback) show up in the same panels.
-- **No dashboard here yet** for Renpho, MyTherapy, Medisafe, MyFitnessPal or
-  Todoist. Their series are described in [the schema](docs/schema.md); add a
-  datasource per database (`InfluxDB BodyStats`...) as the provisioning file
-  explains.
+- The quick start below provisions them: [grafana/provisioning/](grafana/provisioning/)
+  declares an `InfluxDB <database>` datasource for `MediaStats`, `BodyStats`
+  and `TodoistStats`, and loads `grafana/dashboards/` into a *Tributary* folder.
+- In a Grafana you already run, import the JSON: each dashboard uses any
+  InfluxDB datasource whose name contains its database ([deployment](docs/deployment.md#docker-compose)).
+- They read the schema, not a connector: points another tool writes the same
+  way (Kindle sessions from Takeback, another scale) show up in the same
+  panels.
+- They ship with nothing saved in them: no user, source or medication is
+  selected until your data fills the lists.
 
 ## Quick start
 
