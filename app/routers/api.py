@@ -34,14 +34,15 @@ def health():
 # Reading
 # ────────────────────────────────────────────────
 
-def staged_out(staged: Optional[StagedUpload]) -> Optional[StagedOut]:
+def staged_out(db: Session, staged: Optional[StagedUpload]) -> Optional[StagedOut]:
     if staged is None:
         return None
+    check = crud.get_run(db, staged.dry_run_id) if staged.dry_run_id else None
     return StagedOut(
         filename=staged.filename,
         created_at=staged.created_at,
         expires_at=staged.created_at + timedelta(hours=settings.staged_upload_ttl_hours),
-        points=None,
+        points=check.points if check is not None else None,
     )
 
 
@@ -57,7 +58,7 @@ def connector_out(db: Session, connector) -> ConnectorOut:
         schedule_cron=resolved.cron,
         schedule_source=resolved.source,
         next_run=resolved.next_run,
-        staged=staged_out(db.get(StagedUpload, connector.key)),
+        staged=staged_out(db, db.get(StagedUpload, connector.key)),
         accepts_files=connector.accepts_files, file_types=list(connector.file_types),
         required_env=list(connector.required_env),
         measurements=[MeasurementOut(database=m.database, name=m.name, tags=list(m.tag_keys),

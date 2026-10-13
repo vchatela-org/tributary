@@ -117,6 +117,76 @@ def test_the_run_history_names_each_source_by_its_label(client, steps, influx, d
     assert "CSV steps" in table and ">csvsteps<" not in table
 
 
+# -- The overview's live regions ---------------------------------------------------------
+
+def test_the_overview_re_reads_the_fragment_not_the_whole_page(client):
+    """The page updates in place from the fragment: app.js swaps data-region nodes,
+    which the fragment has at its top level and a whole page does not."""
+    assert 'data-poll="/partials/status"' in client.get("/").text
+    assert 'data-region="status:myfitnesspal"' in client.get("/partials/status").text
+
+
+def test_the_full_resync_button_survives_a_poll(client, abs_api, no_thread):
+    """The connector page renders Run now / Dry run / Full resync, and the polled
+    fragment must render the same buttons or the first swap drops Full resync."""
+    assert "Full resync" in client.get("/connectors/audiobookshelf").text
+    assert "Full resync" in client.get("/partials/status").text
+
+
+def test_a_compatible_tool_shows_what_it_covers(client):
+    """The note is what tells a reader what the external tool does."""
+    assert "from the Garmin API" in client.get("/").text
+
+
+def test_no_show_hidden_link_before_anything_is_hidden(client):
+    """Nothing hidden on a fresh install: the page does not offer to show nothing."""
+    assert "Show the hidden sources" not in client.get("/").text
+
+
+# -- The schedule editor -----------------------------------------------------------------
+
+def test_the_editor_saves_a_custom_expression(client, abs_api, no_thread):
+    """Choosing Custom (cron) and typing an expression saves it -- the field the
+    form posts is the one build_cron expands."""
+    response = client.post("/connectors/audiobookshelf/schedule",
+                           data={"preset": "custom", "custom": "0 5 * * *"}, follow_redirects=False)
+    assert response.status_code == 303
+    body = client.get("/api/connectors/audiobookshelf/schedule").json()
+    assert (body["cron"], body["source"]) == ("0 5 * * *", "ui")
+
+
+def test_a_source_set_to_manual_only_says_so(client):
+    """Manual only is a stored choice, told apart from a source that has no
+    schedule at all."""
+    assert client.post("/connectors/renpho/schedule", data={"preset": "manual"},
+                       follow_redirects=False).status_code == 303
+    assert "Manual only" in client.get("/connectors/renpho").text
+
+
+# -- Settings ----------------------------------------------------------------------------
+
+def test_the_settings_page_shows_a_hidden_source_unchecked(client):
+    """A hidden source stays unchecked, so a later Save does not silently bring it
+    back."""
+    assert client.post("/settings", data={"visible": ["audiobookshelf", "renpho", "todoist"]},
+                       follow_redirects=False).status_code == 303
+    page = client.get("/settings").text
+    assert 'id="show-myfitnesspal"' in page
+    line = next(line for line in page.splitlines() if 'id="show-myfitnesspal"' in line)
+    assert "checked" not in line
+    assert "checked" in next(line for line in page.splitlines() if 'id="show-audiobookshelf"' in line)
+
+
+def test_a_staged_check_reports_the_points_it_would_write(client, steps, db, no_thread):
+    """The API says how many points the waiting check produced, so a script need
+    not go and match the dry run."""
+    client.post("/connectors/csvsteps/check", files={"file": ("a.csv", b"2025-01-01,1\n")})
+    _key, options = scheduler._requests.get_nowait()
+    runner.run(db, steps, **dict(options))
+    staged = next(c["staged"] for c in client.get("/api/connectors").json() if c["key"] == "csvsteps")
+    assert staged is not None and staged["points"] == 1
+
+
 # -- Run buttons --------------------------------------------------------------------------
 
 def test_run_buttons_queue_and_return_to_their_page(client, abs_api, no_thread):

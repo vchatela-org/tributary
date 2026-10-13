@@ -117,7 +117,7 @@
 {% if tools %}
 <p class="tb-external"><strong>Also feeding this domain, not run by Tributary:</strong>
   {% for t in tools %}<span class="tb-chip"><a href="{{ t.url }}" rel="noreferrer"><i
-      class="bi bi-box-arrow-up-right me-1"></i>{{ t.label }}</a><em>{{ t.notes }}</em></span>{% endfor %}
+      class="bi bi-box-arrow-up-right me-1"></i>{{ t.label }}</a><em>{{ t.note }}</em></span>{% endfor %}
 </p>
 {% endif %}
 {%- endmacro %}

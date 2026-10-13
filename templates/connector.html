@@ -108,8 +108,8 @@
         </select>
       </div>
       <div>
-        <label class="form-label mb-1 tb-lab" for="cron-{{ c.key }}">Custom (cron)</label>
-        <input class="form-control form-control-sm tb-mono" id="cron-{{ c.key }}" name="cron" value=""
+        <label class="form-label mb-1 tb-lab" for="custom-{{ c.key }}">Custom (cron)</label>
+        <input class="form-control form-control-sm tb-mono" id="custom-{{ c.key }}" name="custom" value=""
                placeholder="{{ c.connector.default_schedule or '0 3 * * *' }}" style="min-width: 10rem;">
       </div>
       <button class="btn btn-sm btn-primary" type="submit">Save</button>

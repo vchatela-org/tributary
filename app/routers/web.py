@@ -46,20 +46,22 @@ def _overview(db: Session) -> dict:
 
 def _connector_page(db: Session, connector) -> dict:
     item = views.card(db, connector)
-    resolved = item["schedule"]
+    # The whole resolution, not just when it is scheduled: the page says whether a
+    # value was saved here (*Manual only*) or none applies at all.
+    resolved = scheduler.resolved_for(db, connector)
     staged = item["staged"]
     return {
         "item": item,
         "connector_obj": connector,
         "resolved": resolved,
-        "presets": schedule.presets_for(resolved.cron if resolved else None),
+        "presets": schedule.presets_for(resolved.cron),
         "default_label": schedule.describe(connector.default_schedule) if connector.default_schedule
         else "Manual only",
-        "clock": schedule.clock_of(resolved.cron if resolved else None),
-        "weekday": schedule.weekday_of(resolved.cron if resolved else None),
-        "custom": (resolved.cron if resolved else None) or (connector.default_schedule or "0 3 * * *"),
+        "clock": schedule.clock_of(resolved.cron),
+        "weekday": schedule.weekday_of(resolved.cron),
+        "custom": resolved.cron or (connector.default_schedule or "0 3 * * *"),
         "next_runs": [schedule.to_utc(moment) for moment in
-                      schedule.next_runs(resolved.cron, settings.tz)] if resolved else [],
+                      schedule.next_runs(resolved.cron, settings.tz)] if resolved.cron else [],
         "runs": crud.latest_runs(db, connector.key, RUNS_PER_PAGE),
         "total_runs": crud.count_runs(db, connector.key),
         "staged_expires": staged.created_at + timedelta(hours=settings.staged_upload_ttl_hours)
@@ -75,9 +77,10 @@ def _connector_page(db: Session, connector) -> dict:
 
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request, show: Optional[str] = None, db: Session = Depends(get_db)):
-    hidden = views.hidden_cards(db) if show == "hidden" else []
+    showing = show == "hidden"
     return templates.TemplateResponse(request, "index.html", {
-        **_overview(db), "hidden_cards": hidden, "showing_hidden": show == "hidden",
+        **_overview(db), "hidden_cards": views.hidden_cards(db) if showing else [],
+        "showing_hidden": showing, "has_hidden": bool(preferences.hidden_connectors(db)),
     })
 
 
@@ -120,8 +123,9 @@ def settings_page(request: Request, db: Session = Depends(get_db)):
     """Which sources are shown, and which are left out. Hiding is display only:
     a hidden connector keeps being scheduled and keeps filling its series, and
     it stays listed here to be brought back."""
+    hidden = preferences.hidden_connectors(db)
     return templates.TemplateResponse(request, "settings.html", {
-        "cards": [views.card(db, c) for c in connectors.all_connectors()],
+        "cards": [views.card(db, c, hidden=c.key in hidden) for c in connectors.all_connectors()],
         "categories": CATEGORIES,
         "tools": EXTERNAL_TOOLS,
         "tools_outside": sorted({t.label for tools in EXTERNAL_TOOLS.values() for t in tools}),

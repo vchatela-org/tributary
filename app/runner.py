@@ -154,6 +154,9 @@ def verify_stage(db: Session, connector: Connector) -> StagedUpload:
     stage = db.get(StagedUpload, connector.key)
     if stage is None:
         raise StaleCheck("Nothing was checked yet: upload the export and check it first.")
+    if stage.created_at is not None and utcnow() - stage.created_at > timedelta(
+            hours=max(0.0, settings.staged_upload_ttl_hours)):
+        raise StaleCheck("The checked file expired: upload it and check it again.")
     if not Path(stage.path).exists():
         raise StaleCheck("The checked file is gone (its lifetime ended, or the data folder changed): "
                          "upload it again.")
@@ -498,6 +501,10 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
         # One place decides what becomes of the uploaded file (app/runner.py
         # _after_upload): a check keeps it for its import, an import consumes it.
         _after_upload(db, connector, file, dry_run, record.status != "error")
+        # And any other check past its TTL goes here too: an upload or an import
+        # is the moment the app is certainly writing, so an expired check never
+        # waits for the next restart to be dropped.
+        purge_staged(db)
         db.commit()
     return record
 

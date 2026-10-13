@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m %}
+{# The cards' status, the buttons and the activity line update in place: the page
+   is served whole, and app.js swaps these regions from the fragment. #}
+{% block poll %}/partials/status{% endblock %}
 {% block content %}
 <div class="tb-pagehead">
   <h1>Integrations</h1>
@@ -102,7 +105,7 @@
   </div>
   <p class="tb-external"><a href="/settings">Bring one back in Settings</a>.</p>
 </section>
-{% elif hidden_cards is defined and not showing_hidden %}
+{% elif has_hidden and not showing_hidden %}
 <p class="small text-body-secondary text-center mt-2">
   <a href="/?show=hidden">Show the hidden sources</a>
 </p>

@@ -10,6 +10,8 @@
 {% for section in sections %}
 {% for c in section.cards %}
 <div data-region="status:{{ c.key }}">{{ m.status_region(c) }}</div>
-<div data-region="actions:{{ c.key }}">{{ m.actions(c, show_open=False) }}</div>
+{# The connector page's buttons: `resync` matches what that page renders, so the
+   poll does not drop the Full resync button. The overview keeps only `status:`. #}
+<div data-region="actions:{{ c.key }}">{{ m.actions(c, show_open=False, resync=True) }}</div>
 {% endfor %}
 {% endfor %}

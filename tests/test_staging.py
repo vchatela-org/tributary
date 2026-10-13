@@ -209,6 +209,18 @@ def test_an_expired_check_is_dropped_with_its_file(db, steps, influx, tmp_path):
         runner.promote(db, steps)
 
 
+def test_an_expired_check_is_refused_even_before_a_sweep(db, steps, influx, tmp_path):
+    """The TTL is enforced when the import is asked for, not only when the process
+    restarts: a check past its life is never applied."""
+    path, _run = check(db, steps, tmp_path)
+    stage = runner.staged_upload(db, steps)
+    stage.created_at = datetime.utcnow() - timedelta(hours=settings.staged_upload_ttl_hours + 1)
+    db.commit()
+    with pytest.raises(ConnectorError, match="expired"):
+        runner.promote(db, steps)
+    assert influx.stored() == [] and runner.staged_upload(db, steps) is None
+
+
 def test_a_fresh_check_survives_a_purge_and_a_restart(db, steps, influx, tmp_path):
     """The file and its row live on the data volume: a restart does not lose
     them, and does not treat them as expired."""
