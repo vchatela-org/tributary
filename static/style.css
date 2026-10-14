@@ -295,6 +295,14 @@ a.btn { text-decoration: none; }
 .tb-tool a { font-weight: 600; text-decoration: none; margin-right: .25rem; }
 .tb-tool .bi { font-size: .7rem; }
 
+/* A compatible tool's freshness line: when its data last arrived. Stale takes
+   the warning pill (its icon and its words); nothing seen stays muted. */
+.tb-fresh { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .15rem .45rem; margin-top: .2rem; color: var(--tb-ink-2); }
+.tb-fresh > .bi, .tb-fresh-none .bi { color: var(--tb-muted); font-size: .8rem; }
+.tb-fresh b { color: var(--tb-ink); font-weight: 600; }
+.tb-fresh .tb-pill { font-size: .72rem; padding: .05rem .5rem .05rem .4rem; }
+.tb-fresh-none { color: var(--tb-muted); display: inline-flex; align-items: center; gap: .35rem; }
+
 /* ── Pills, dots, tags: a tone, its icon, its label ─────────────────── */
 
 .tb-tone-good { --tb-tone: var(--tb-good); }
@@ -461,6 +469,8 @@ pre.tb-proto-lg { max-height: 70vh; }
 .tb-pick p { margin: 0; font-size: .82rem; color: var(--tb-ink-2); }
 .tb-tools { font-size: .84rem; color: var(--tb-ink-2); }
 .tb-tools a { text-decoration: none; }
+.tb-tools-fresh { margin-top: .6rem; padding-top: .5rem; border-top: 1px solid var(--tb-hairline); font-size: .84rem; color: var(--tb-ink-2); }
+.tb-tools-fresh strong { margin-right: .35rem; }
 
 /* Narrow: a row keeps its icon beside its name, and its state and buttons go
    on the line below, under the name. */

@@ -59,6 +59,7 @@ variables it reads and what it deliberately leaves out.
 The **compatible tools** are maintained projects that write into the same
 databases. Tributary does not run them: a connector is written only for a
 source no maintained tool covers ([compatible tools](docs/compatible-tools.md)).
+It only shows, read-only, when garmin-grafana's data last arrived.
 
 | Compatible tool | Category | Writes |
 |---|---|---|
