@@ -260,7 +260,9 @@ def test_run_buttons_queue_and_return_to_their_page(client, abs_api, no_thread):
                       ("audiobookshelf", (("full", True), ("trigger", "manual")))]
 
 
-@pytest.mark.parametrize("referer", ["https://x//evil.example/phish", "https://x/\\evil.example"])
+@pytest.mark.parametrize("referer", ["https://x//evil.example/phish", "https://x/\\evil.example",
+                                     "https://x///evil.example", "https://x/\\/evil.example",
+                                     "https://x/\\\\evil.example"])
 def test_never_redirects_off_site(client, abs_api, no_thread, referer):
     response = client.post("/connectors/audiobookshelf/run", follow_redirects=False, headers={"referer": referer})
     assert response.headers["location"] == "/"

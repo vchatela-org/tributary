@@ -8,10 +8,14 @@ on:
     tags: [ 'v*' ]
   workflow_dispatch:
 
+# Least privilege by default; the reusable workflow requests what it needs.
+permissions:
+  contents: read
+
 jobs:
   docker-build-push-scan:
     if: github.repository == 'vchatela-org/tributary'
-    uses: vchatela-org/shared-workflows/.github/workflows/docker-build-push-harbor.yml@v1
+    uses: vchatela-org/shared-workflows/.github/workflows/docker-build-push-harbor.yml@4cb24e328e87d6f11a53ba4ea81ad2ad89c18d22 # v1.2.0
     with:
       harbor_registry: ${{ vars.HARBOR_REGISTRY }}
       harbor_project: ${{ vars.HARBOR_PROJECT }}
