@@ -495,7 +495,7 @@
         "defaults": {
           "unit": "m",
           "color": {
-            "mode": "palette-classic"
+            "mode": "palette-classic-by-name"
           },
           "custom": {
             "drawStyle": "bars",
@@ -536,7 +536,7 @@
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "#f2a33a"
+                  "fixedColor": "#199e70"
                 }
               }
             ]

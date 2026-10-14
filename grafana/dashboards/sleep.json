@@ -1,0 +1,2639 @@
+{
+  "uid": "tributary-sleep",
+  "title": "Sleep",
+  "description": "Every night from every sleep tracker: time asleep, stages, score, the night's heart rate, HRV, blood oxygen, breathing, recovery and skin temperature, and how regular the nights are. One colour per source; the tiles read the one you pick.",
+  "tags": [
+    "tributary",
+    "sleep"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "refresh": "",
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": [
+    {
+      "type": "link",
+      "title": "Healthspan",
+      "url": "/d/tributary-healthspan",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    },
+    {
+      "type": "link",
+      "title": "Correlations",
+      "url": "/d/tributary-correlations",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "garmin",
+        "label": "InfluxDB GarminStats",
+        "query": "influxdb",
+        "regex": "/GarminStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "datasource",
+        "name": "sleep",
+        "label": "InfluxDB SleepStats",
+        "query": "influxdb",
+        "regex": "/SleepStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "textbox",
+        "name": "tz",
+        "label": "Time zone",
+        "description": "IANA time zone the days and weeks are cut in (TRIBUTARY_TZ).",
+        "query": "Europe/Paris",
+        "current": {
+          "text": "Europe/Paris",
+          "value": "Europe/Paris"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "Europe/Paris",
+            "value": "Europe/Paris"
+          }
+        ],
+        "hide": 0
+      },
+      {
+        "type": "query",
+        "name": "user",
+        "label": "User",
+        "description": "The person, in SleepStats (GarminStats holds one person and has no user tag).",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${sleep}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"user\"",
+        "query": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"user\"",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "nights",
+        "label": "Night sources",
+        "description": "Every source of nights in SleepStats, for the source lists.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${sleep}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "type": "custom",
+        "name": "source",
+        "label": "Sources",
+        "description": "The sources the graphs draw, one colour each.",
+        "query": "${nights:csv},garmin",
+        "hide": 0,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "type": "custom",
+        "name": "from",
+        "label": "Tiles from",
+        "description": "The one source the tiles, the stages and the regularity read.",
+        "query": "${nights:csv},garmin",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Sleep / night",
+      "id": 1,
+      "description": "Median time asleep per night, from the source picked in Tiles from (naps left out).",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Nights tracked",
+      "id": 2,
+      "description": "Nights the source recorded in the range.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"sleepTimeSeconds\") FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"asleep_s\") FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Deep sleep",
+      "id": 3,
+      "description": "Share of the time asleep spent in deep sleep, over the range.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"deepSleepSeconds\") / sum(\"sleepTimeSeconds\") FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"deep_s\") / sum(\"asleep_s\") FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "REM sleep",
+      "id": 4,
+      "description": "Share of the time asleep spent in REM sleep, over the range.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"remSleepSeconds\") / sum(\"sleepTimeSeconds\") FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"rem_s\") / sum(\"asleep_s\") FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Awake / night",
+      "id": 5,
+      "description": "Median time awake between falling asleep and getting up.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: min",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"awakeSleepSeconds\") / 60 FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"awake_s\") / 60 FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Sleep score",
+      "id": 6,
+      "description": "Median of the source's own sleep score (0-100). Each app computes it its own way.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"sleepScore\") FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"score\") FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Every night",
+      "id": 10,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Time asleep per night",
+      "id": 11,
+      "description": "Time asleep each night (points) and its 7-night average (line), one colour per source, naps left out. A night belongs to the day it ends. The dashed line is 7 hours.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "transparent"
+              },
+              {
+                "value": 7,
+                "color": "#8e8e8e"
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^night · /"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 4
+              },
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "night · garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"sleepTimeSeconds\"), 7) / 3600 FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "night · $tag_source"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"asleep_s\"), 7) / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Sleep stages per night · ${from}",
+      "id": 12,
+      "description": "Hours of deep, light and REM sleep and time awake, each night, from the source picked in Tiles from (two sources' stages would not add up).",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 0,
+            "fillOpacity": 85,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "barAlignment": 0
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Deep"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#1c5cab"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Light"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#86b6ef"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "REM"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Awake"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c3c2b7"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"deepSleepSeconds\") / 3600 AS \"Deep\", sum(\"lightSleepSeconds\") / 3600 AS \"Light\", sum(\"remSleepSeconds\") / 3600 AS \"REM\", sum(\"awakeSleepSeconds\") / 3600 AS \"Awake\" FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "$col"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"deep_s\") / 3600 AS \"Deep\", sum(\"light_s\") / 3600 AS \"Light\", sum(\"rem_s\") / 3600 AS \"REM\", sum(\"awake_s\") / 3600 AS \"Awake\" FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "$col"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Sleep score",
+      "id": 13,
+      "description": "Each source's own sleep score (0-100), each night (points) and its 7-night average (line). The scales are the apps' own: compare a source with itself.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^night · /"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 4
+              },
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"sleepScore\") FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "night · garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"sleepScore\"), 7) FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"score\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "night · $tag_source"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"score\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Deep and REM sleep per night",
+      "id": 14,
+      "description": "7-night averages of deep sleep (solid) and REM sleep (dashed), one colour per source.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 21,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^REM · /"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"deepSleepSeconds\"), 7) / 3600 FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "deep · garmin"
+        },
+        {
+          "refId": "DT",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"deep_s\"), 7) / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "deep · $tag_source"
+        },
+        {
+          "refId": "R",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"remSleepSeconds\"), 7) / 3600 FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "REM · garmin"
+        },
+        {
+          "refId": "RT",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"rem_s\"), 7) / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "REM · $tag_source"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Overnight heart, breathing and recovery",
+      "id": 20,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Resting heart rate",
+      "id": 21,
+      "description": "The night's resting heart rate (points) and its 7-night average (line), one colour per source.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: bpm",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^night · /"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 4
+              },
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"restingHeartRate\") FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "night · garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"restingHeartRate\"), 7) FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"resting_hr\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "night · $tag_source"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"resting_hr\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Heart rate variability",
+      "id": 22,
+      "description": "Overnight HRV (RMSSD) each night (points) and its 7-night average (line). Devices measure it differently: read each line against itself.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 31,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^night · /"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 4
+              },
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "night · garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"avgOvernightHrv\"), 7) FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "night · $tag_source"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"hrv_rmssd_ms\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Blood oxygen (SpO₂)",
+      "id": 23,
+      "description": "Average blood oxygen saturation overnight.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^night · /"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 4
+              },
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"averageSpO2Value\") FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "night · garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"averageSpO2Value\"), 7) FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"avg_spo2_pct\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "night · $tag_source"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"avg_spo2_pct\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Breathing rate",
+      "id": 24,
+      "description": "Average breaths per minute overnight.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 39,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: /min",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^night · /"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 4
+              },
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"averageRespirationValue\") FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "night · garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"averageRespirationValue\"), 7) FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"respiration_rate\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "night · $tag_source"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"respiration_rate\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Recovery score",
+      "id": 25,
+      "description": "The source's own morning recovery or readiness score (0-100), each night (points) and its 7-night average (line), from the sources that write recovery_score with the night (garmin-grafana keeps its readiness elsewhere).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${sleep}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 47,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisSoftMin": 0,
+            "axisSoftMax": 100
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^night · /"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 4
+              },
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"recovery_score\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "night · $tag_source"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"recovery_score\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Skin temperature",
+      "id": 26,
+      "description": "Skin temperature overnight, each night (points) and its 7-night average (line), from the sources that write skin_temp_c. Read it against its own usual line: a rise can come with an illness or a hard day. garmin-grafana writes a deviation from the watch's baseline instead, not drawn here.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${sleep}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 47,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^night · /"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 4
+              },
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"skin_temp_c\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "night · $tag_source"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"skin_temp_c\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Regularity",
+      "id": 30,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Usual bedtime",
+      "id": 31,
+      "description": "The average time the source says you fell asleep (local time), from the source picked in Tiles from. Sources that write bedtime_min only: Garmin's summary has no bedtime.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${sleep}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 57,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "clockms",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "noValue": "Not recorded",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT (mean(\"bedtime_min\") + 1440) % 1440 * 60000 FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Usual wake-up",
+      "id": 32,
+      "description": "The average time the night ended (local time), from the source picked in Tiles from.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${sleep}"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 57,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "clockms",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "noValue": "Not recorded",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT (mean(\"wake_min\") + 1440) % 1440 * 60000 FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Bedtime spread",
+      "id": 33,
+      "description": "Standard deviation of the bedtime from night to night: the lower, the more regular.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${sleep}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 61,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: min",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "noValue": "Not recorded",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT stddev(\"bedtime_min\") FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Wake-up spread",
+      "id": 34,
+      "description": "Standard deviation of the wake-up time from night to night.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${sleep}"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 61,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: min",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "noValue": "Not recorded",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT stddev(\"wake_min\") FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Bedtime and wake-up",
+      "id": 35,
+      "description": "When each night began (points) and ended (dashed), in hours from midnight: -1 is 23:00, 7.5 is 07:30. From the sources that write bedtime_min and wake_min (not Garmin's summary).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${sleep}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 57,
+        "w": 16,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^bedtime · /"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 5
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^wake-up · /"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"bedtime_min\") / 60 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "bedtime · $tag_source"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"wake_min\") / 60 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "wake-up · $tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Night-to-night spread of time asleep, per week",
+      "id": 36,
+      "description": "Standard deviation of the time asleep within each week (Monday to Sunday), one line per source: the lower, the steadier. Every source has it, Garmin's included.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 65,
+        "w": 24,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: min",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT stddev(\"sleepTimeSeconds\") / 60 FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, 4d) fill(none) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT stddev(\"asleep_s\") / 60 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1w, 4d), \"source\" fill(none) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ]
+    }
+  ]
+}

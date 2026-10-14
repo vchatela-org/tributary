@@ -1,0 +1,1735 @@
+{
+  "uid": "tributary-correlations",
+  "title": "Correlations",
+  "description": "One domain against another, paired per day, per evening and the night after, or per week: sleep and HRV against the tasks done, evening reading against the night, training against recovery. Each side reads one source you pick.",
+  "tags": [
+    "tributary",
+    "overview",
+    "sleep",
+    "productivity"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-1y",
+    "to": "now"
+  },
+  "refresh": "",
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": [
+    {
+      "type": "link",
+      "title": "Healthspan",
+      "url": "/d/tributary-healthspan",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    },
+    {
+      "type": "link",
+      "title": "Sleep",
+      "url": "/d/tributary-sleep",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    },
+    {
+      "type": "link",
+      "title": "Todoist",
+      "url": "/d/tributary-todoist",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "garmin",
+        "label": "InfluxDB GarminStats",
+        "query": "influxdb",
+        "regex": "/GarminStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "datasource",
+        "name": "sleep",
+        "label": "InfluxDB SleepStats",
+        "query": "influxdb",
+        "regex": "/SleepStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "datasource",
+        "name": "body",
+        "label": "InfluxDB BodyStats",
+        "query": "influxdb",
+        "regex": "/BodyStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "datasource",
+        "name": "todoist",
+        "label": "InfluxDB TodoistStats",
+        "query": "influxdb",
+        "regex": "/TodoistStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "datasource",
+        "name": "media",
+        "label": "InfluxDB MediaStats",
+        "query": "influxdb",
+        "regex": "/MediaStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "textbox",
+        "name": "tz",
+        "label": "Time zone",
+        "description": "IANA time zone the days and weeks are cut in (TRIBUTARY_TZ).",
+        "query": "Europe/Paris",
+        "current": {
+          "text": "Europe/Paris",
+          "value": "Europe/Paris"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "Europe/Paris",
+            "value": "Europe/Paris"
+          }
+        ],
+        "hide": 0
+      },
+      {
+        "type": "query",
+        "name": "user",
+        "label": "User",
+        "description": "The person: the user tag of BodyStats and SleepStats (GarminStats holds one person and has none).",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES WITH KEY = \"user\"",
+        "query": "SHOW TAG VALUES WITH KEY = \"user\"",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "nights",
+        "label": "Night sources",
+        "description": "Every source of nights in SleepStats, for the Sleep from and Heart from lists.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${sleep}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "type": "query",
+        "name": "days",
+        "label": "Daily activity sources",
+        "description": "Every source of daily totals (steps, strain) in BodyStats.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"daily_activity\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"daily_activity\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "type": "query",
+        "name": "workouts",
+        "label": "Workout sources",
+        "description": "The sources of workouts in BodyStats that write no daily total.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"exercise\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"exercise\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true,
+        "regex": "/^(?!(?:${days:pipe})$).*$/"
+      },
+      {
+        "type": "custom",
+        "name": "sleep_from",
+        "label": "Sleep from",
+        "description": "The source of the time asleep.",
+        "query": "${nights:csv},garmin",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "custom",
+        "name": "heart_from",
+        "label": "Heart from",
+        "description": "The source of the HRV.",
+        "query": "${nights:csv},garmin",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "custom",
+        "name": "activity_from",
+        "label": "Workouts from",
+        "description": "The source of the workouts.",
+        "query": "${days:csv},garmin,${workouts:csv}",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "A night and the day it ends",
+      "id": 1,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "xychart",
+      "pluginVersion": "13.2.3",
+      "title": "Time asleep and the tasks done that day",
+      "id": 2,
+      "description": "Each point is a day: the night that ended that morning (from Sleep from) against the Todoist tasks completed that day. A cloud rising to the right means longer nights, more done.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 9,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "show": "points",
+            "pointSize": {
+              "fixed": 7
+            },
+            "pointShape": "circle",
+            "pointStrokeWidth": 1,
+            "fillOpacity": 45,
+            "axisPlacement": "auto",
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "asleep"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Time asleep"
+              },
+              {
+                "id": "unit",
+                "value": "suffix: h"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tasks"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Tasks completed"
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "mapping": "manual",
+        "series": [
+          {
+            "frame": {
+              "matcher": {
+                "id": "byIndex",
+                "options": 0
+              }
+            },
+            "x": {
+              "matcher": {
+                "id": "byName",
+                "options": "asleep"
+              }
+            },
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "tasks"
+              }
+            }
+          }
+        ],
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "asleep"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "asleep"
+        },
+        {
+          "refId": "K",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"todoist_completion\" WHERE $timeFilter GROUP BY time(1d) fill(0) tz('$tz')",
+          "alias": "tasks"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "inner"
+          }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Tasks / day after < 7 h",
+      "id": 3,
+      "description": "Average tasks completed on the days that followed a night of less than 7 hours asleep.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "/^tasks$/",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "asleep"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "asleep"
+        },
+        {
+          "refId": "K",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"todoist_completion\" WHERE $timeFilter GROUP BY time(1d) fill(0) tz('$tz')",
+          "alias": "tasks"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "inner"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "fieldName": "asleep",
+                "config": {
+                  "id": "lower",
+                  "options": {
+                    "value": 7
+                  }
+                }
+              }
+            ],
+            "match": "all",
+            "type": "include"
+          }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Tasks / day after ≥ 7 h",
+      "id": 4,
+      "description": "Average tasks completed on the days that followed a night of 7 hours or more.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 6,
+        "w": 6,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "/^tasks$/",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "asleep"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "asleep"
+        },
+        {
+          "refId": "K",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"todoist_completion\" WHERE $timeFilter GROUP BY time(1d) fill(0) tz('$tz')",
+          "alias": "tasks"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "inner"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "fieldName": "asleep",
+                "config": {
+                  "id": "greaterOrEqual",
+                  "options": {
+                    "value": 7
+                  }
+                }
+              }
+            ],
+            "match": "all",
+            "type": "include"
+          }
+        }
+      ]
+    },
+    {
+      "type": "xychart",
+      "pluginVersion": "13.2.3",
+      "title": "Morning HRV and the tasks done that day",
+      "id": 5,
+      "description": "Each point is a day: the night's HRV (from Heart from), a readiness signal, against the tasks completed that day.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 1,
+        "w": 9,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "show": "points",
+            "pointSize": {
+              "fixed": 7
+            },
+            "pointShape": "circle",
+            "pointStrokeWidth": 1,
+            "fillOpacity": 45,
+            "axisPlacement": "auto",
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "HRV"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "HRV"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tasks"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Tasks completed"
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "mapping": "manual",
+        "series": [
+          {
+            "frame": {
+              "matcher": {
+                "id": "byIndex",
+                "options": 0
+              }
+            },
+            "x": {
+              "matcher": {
+                "id": "byName",
+                "options": "HRV"
+              }
+            },
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "tasks"
+              }
+            }
+          }
+        ],
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE 'garmin' = '${heart_from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "HRV"
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${heart_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "HRV"
+        },
+        {
+          "refId": "K",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"todoist_completion\" WHERE $timeFilter GROUP BY time(1d) fill(0) tz('$tz')",
+          "alias": "tasks"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "inner"
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "An evening and the night after (noon to noon)",
+      "id": 6,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "xychart",
+      "pluginVersion": "13.2.3",
+      "title": "Evening reading and the night that follows",
+      "id": 7,
+      "description": "Each point is a noon-to-noon window: minutes read or listened from 18:00 to 03:00, against the time asleep of the night that ended next morning. Every reading source counts (a session has one).",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 9,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "show": "points",
+            "pointSize": {
+              "fixed": 7
+            },
+            "pointShape": "circle",
+            "pointStrokeWidth": 1,
+            "fillOpacity": 45,
+            "axisPlacement": "auto",
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "reading"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Evening reading"
+              },
+              {
+                "id": "unit",
+                "value": "suffix: min"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "asleep"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Time asleep"
+              },
+              {
+                "id": "unit",
+                "value": "suffix: h"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "mapping": "manual",
+        "series": [
+          {
+            "frame": {
+              "matcher": {
+                "id": "byIndex",
+                "options": 0
+              }
+            },
+            "x": {
+              "matcher": {
+                "id": "byName",
+                "options": "reading"
+              }
+            },
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "asleep"
+              }
+            }
+          }
+        ],
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "R",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${media}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE (\"local_hour\" >= 18 OR \"local_hour\" < 3) AND $timeFilter GROUP BY time(1d, 12h) fill(0) tz('$tz')",
+          "alias": "reading"
+        },
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "alias": "asleep"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "alias": "asleep"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "inner"
+          }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Asleep after reading",
+      "id": 8,
+      "description": "Average time asleep on the nights after an evening with 10 minutes of reading or more.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 12,
+        "w": 6,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "/^asleep$/",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "R",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${media}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE (\"local_hour\" >= 18 OR \"local_hour\" < 3) AND $timeFilter GROUP BY time(1d, 12h) fill(0) tz('$tz')",
+          "alias": "reading"
+        },
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "alias": "asleep"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "alias": "asleep"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "inner"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "fieldName": "reading",
+                "config": {
+                  "id": "greaterOrEqual",
+                  "options": {
+                    "value": 10
+                  }
+                }
+              }
+            ],
+            "match": "all",
+            "type": "include"
+          }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Asleep after no reading",
+      "id": 9,
+      "description": "Average time asleep on the nights after an evening with less than 10 minutes of reading.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 17,
+        "w": 6,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "/^asleep$/",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "R",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${media}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE (\"local_hour\" >= 18 OR \"local_hour\" < 3) AND $timeFilter GROUP BY time(1d, 12h) fill(0) tz('$tz')",
+          "alias": "reading"
+        },
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "alias": "asleep"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "alias": "asleep"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "inner"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "fieldName": "reading",
+                "config": {
+                  "id": "lower",
+                  "options": {
+                    "value": 10
+                  }
+                }
+              }
+            ],
+            "match": "all",
+            "type": "include"
+          }
+        }
+      ]
+    },
+    {
+      "type": "xychart",
+      "pluginVersion": "13.2.3",
+      "title": "Workout time and the night's HRV",
+      "id": 10,
+      "description": "Each point is a noon-to-noon window: minutes of workouts (from Workouts from) against the HRV of the night that ended next morning. Hard sessions often lower it for a night. A morning workout falls in the window of the night before it.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 12,
+        "w": 9,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "show": "points",
+            "pointSize": {
+              "fixed": 7
+            },
+            "pointShape": "circle",
+            "pointStrokeWidth": 1,
+            "fillOpacity": 45,
+            "axisPlacement": "auto",
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "workouts"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Workout time"
+              },
+              {
+                "id": "unit",
+                "value": "suffix: min"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "HRV"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "HRV"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "mapping": "manual",
+        "series": [
+          {
+            "frame": {
+              "matcher": {
+                "id": "byIndex",
+                "options": 0
+              }
+            },
+            "x": {
+              "matcher": {
+                "id": "byName",
+                "options": "workouts"
+              }
+            },
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "HRV"
+              }
+            }
+          }
+        ],
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "W",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"elapsedDuration\") / 60 FROM \"ActivitySummary\" WHERE 'garmin' = '${activity_from}' AND $timeFilter GROUP BY time(1d, 12h) fill(0) tz('$tz')",
+          "alias": "workouts"
+        },
+        {
+          "refId": "X",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"duration_s\") / 60 FROM \"exercise\" WHERE \"source\" = '${activity_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1d, 12h) fill(0) tz('$tz')",
+          "alias": "workouts"
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE 'garmin' = '${heart_from}' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "alias": "HRV"
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${heart_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "alias": "HRV"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "inner"
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Weeks",
+      "id": 11,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "xychart",
+      "pluginVersion": "13.2.3",
+      "title": "Training per week and the week's HRV",
+      "id": 12,
+      "description": "Each point is a week (Monday to Sunday): hours of workouts against the average HRV of its nights. Weekly totals smooth out the day-to-day noise.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 12,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "show": "points",
+            "pointSize": {
+              "fixed": 7
+            },
+            "pointShape": "circle",
+            "pointStrokeWidth": 1,
+            "fillOpacity": 45,
+            "axisPlacement": "auto",
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "workouts"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Workout time"
+              },
+              {
+                "id": "unit",
+                "value": "suffix: h"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "HRV"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "HRV"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "mapping": "manual",
+        "series": [
+          {
+            "frame": {
+              "matcher": {
+                "id": "byIndex",
+                "options": 0
+              }
+            },
+            "x": {
+              "matcher": {
+                "id": "byName",
+                "options": "workouts"
+              }
+            },
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "HRV"
+              }
+            }
+          }
+        ],
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "W",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"elapsedDuration\") / 3600 FROM \"ActivitySummary\" WHERE 'garmin' = '${activity_from}' AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "alias": "workouts"
+        },
+        {
+          "refId": "X",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"source\" = '${activity_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "alias": "workouts"
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE 'garmin' = '${heart_from}' AND $timeFilter GROUP BY time(1w, 4d) fill(none) tz('$tz')",
+          "alias": "HRV"
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${heart_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY time(1w, 4d) fill(none) tz('$tz')",
+          "alias": "HRV"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "inner"
+          }
+        }
+      ]
+    },
+    {
+      "type": "xychart",
+      "pluginVersion": "13.2.3",
+      "title": "Sleep per week and tasks per week",
+      "id": 13,
+      "description": "Each point is a week: the average night against the tasks completed that week.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 23,
+        "w": 12,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "show": "points",
+            "pointSize": {
+              "fixed": 7
+            },
+            "pointShape": "circle",
+            "pointStrokeWidth": 1,
+            "fillOpacity": 45,
+            "axisPlacement": "auto",
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "asleep"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Time asleep"
+              },
+              {
+                "id": "unit",
+                "value": "suffix: h"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tasks"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Tasks completed"
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "mapping": "manual",
+        "series": [
+          {
+            "frame": {
+              "matcher": {
+                "id": "byIndex",
+                "options": 0
+              }
+            },
+            "x": {
+              "matcher": {
+                "id": "byName",
+                "options": "asleep"
+              }
+            },
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "tasks"
+              }
+            }
+          }
+        ],
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1w, 4d) fill(none) tz('$tz')",
+          "alias": "asleep"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"asleep_s\") / count(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1w, 4d) fill(none) tz('$tz')",
+          "alias": "asleep"
+        },
+        {
+          "refId": "K",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"todoist_completion\" WHERE $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "alias": "tasks"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "inner"
+          }
+        }
+      ]
+    }
+  ]
+}

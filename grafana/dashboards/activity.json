@@ -1,0 +1,1836 @@
+{
+  "uid": "tributary-activity",
+  "title": "Activity & fitness",
+  "description": "How much you move and train, every source side by side: steps, strain and calories burned per day, intensity minutes and VO2 max, workouts per week (time, count, calories) and heart-rate zones.",
+  "tags": [
+    "tributary",
+    "fitness"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-90d",
+    "to": "now"
+  },
+  "refresh": "",
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": [
+    {
+      "type": "link",
+      "title": "Healthspan",
+      "url": "/d/tributary-healthspan",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    },
+    {
+      "type": "link",
+      "title": "Nutrition & exercise",
+      "url": "/d/tributary-nutrition",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "body",
+        "label": "InfluxDB BodyStats",
+        "query": "influxdb",
+        "regex": "/BodyStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "datasource",
+        "name": "garmin",
+        "label": "InfluxDB GarminStats",
+        "query": "influxdb",
+        "regex": "/GarminStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "textbox",
+        "name": "tz",
+        "label": "Time zone",
+        "description": "IANA time zone the days and weeks are cut in (TRIBUTARY_TZ).",
+        "query": "Europe/Paris",
+        "current": {
+          "text": "Europe/Paris",
+          "value": "Europe/Paris"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "Europe/Paris",
+            "value": "Europe/Paris"
+          }
+        ],
+        "hide": 0
+      },
+      {
+        "type": "query",
+        "name": "user",
+        "label": "User",
+        "description": "The person, in BodyStats (GarminStats holds one person and has no user tag).",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"exercise\" WITH KEY = \"user\"",
+        "query": "SHOW TAG VALUES FROM \"exercise\" WITH KEY = \"user\"",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "days",
+        "label": "Daily activity sources",
+        "description": "Every source of daily totals (steps, strain) in BodyStats.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"daily_activity\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"daily_activity\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "type": "query",
+        "name": "workouts",
+        "label": "Workout sources",
+        "description": "The sources of workouts in BodyStats that write no daily total.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"exercise\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"exercise\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true,
+        "regex": "/^(?!(?:${days:pipe})$).*$/"
+      },
+      {
+        "type": "custom",
+        "name": "source",
+        "label": "Sources",
+        "description": "The sources the graphs draw, one colour each.",
+        "query": "${days:csv},garmin,${workouts:csv}",
+        "hide": 0,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "type": "custom",
+        "name": "from",
+        "label": "Tiles from",
+        "description": "The one source the tiles and the heart-rate zones read.",
+        "query": "${days:csv},garmin,${workouts:csv}",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Steps / day",
+      "id": 1,
+      "description": "Median steps per day, from the source picked in Tiles from (a source of workouts alone has none).",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "locale",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"totalSteps\") FROM \"DailyStats\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"steps\") FROM \"daily_activity\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Intensity / week",
+      "id": 2,
+      "description": "Moderate minutes plus twice the vigorous ones, per week, averaged over the days the watch recorded. The guideline is 150 or more.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: min",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT (sum(\"moderateIntensityMinutes\") + 2 * sum(\"vigorousIntensityMinutes\")) * 7 / count(\"totalSteps\") FROM \"DailyStats\" WHERE $timeFilter",
+          "alias": "garmin"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "VO₂ max",
+      "id": 3,
+      "description": "The watch's latest VO₂ max estimate (ml/kg/min, running).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT last(\"VO2_max_value\") FROM \"VO2_Max\" WHERE $timeFilter",
+          "alias": "garmin"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Workouts",
+      "id": 4,
+      "description": "Workouts in the range, from the source picked in Tiles from (a workout two apps received is in both).",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"elapsedDuration\") FROM \"ActivitySummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"duration_s\") FROM \"exercise\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Training / week",
+      "id": 5,
+      "description": "Hours of workouts per week over the range, from the source picked in Tiles from.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"elapsedDuration\") / 3600 / ((${__to} - ${__from}) / 604800000) FROM \"ActivitySummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"duration_s\") / 3600 / ((${__to} - ${__from}) / 604800000) FROM \"exercise\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Workout days",
+      "id": 6,
+      "description": "Days with at least one workout, from the source picked in Tiles from.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value_and_name",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"n\") FROM (SELECT count(\"elapsedDuration\") AS \"n\" FROM \"ActivitySummary\" WHERE 'garmin' = '${from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')) WHERE $timeFilter",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"n\") FROM (SELECT count(\"duration_s\") AS \"n\" FROM \"exercise\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')) WHERE $timeFilter GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Movement, every source",
+      "id": 10,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Steps per day",
+      "id": 11,
+      "description": "Steps each day (points) and their 7-day average (line), one colour per source.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "locale",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^daily · /"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 4
+              },
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"totalSteps\") FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "daily · garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"totalSteps\"), 7) FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"steps\" FROM \"daily_activity\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND $timeFilter GROUP BY \"source\"",
+          "alias": "daily · $tag_source"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"steps\", 7) FROM \"daily_activity\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Strain per day",
+      "id": 14,
+      "description": "The day's cardiovascular strain (0-21) from the sources that write it, each day (points) and its 7-day average (line). garmin-grafana has no strain.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "axisSoftMin": 0
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^daily · /"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 4
+              },
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"strain\" FROM \"daily_activity\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND $timeFilter GROUP BY \"source\"",
+          "alias": "daily · $tag_source"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"strain\", 7) FROM \"daily_activity\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Calories burned per day",
+      "id": 15,
+      "description": "Energy spent each day, at rest and moving, as each source estimates it (the watch: resting plus active calories).",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 13,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: kcal",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^daily · /"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "points"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 4
+              },
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": true,
+                  "tooltip": false,
+                  "viz": false
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"activeKilocalories\") + sum(\"bmrKilocalories\") FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "daily · garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"activeKilocalories\"), 7) + moving_average(sum(\"bmrKilocalories\"), 7) FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"energy_kcal\" FROM \"daily_activity\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND $timeFilter GROUP BY \"source\"",
+          "alias": "daily · $tag_source"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"energy_kcal\", 7) FROM \"daily_activity\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY \"source\"",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Intensity minutes per week",
+      "id": 12,
+      "description": "Moderate minutes plus twice the vigorous ones, per week (Monday to Sunday); the dashed line is the 150-minute guideline.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: min",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            },
+            "barAlignment": 0
+          },
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "transparent"
+              },
+              {
+                "value": 150,
+                "color": "#8e8e8e"
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"moderateIntensityMinutes\") + 2 * sum(\"vigorousIntensityMinutes\") FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "alias": "garmin"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "VO₂ max",
+      "id": 13,
+      "description": "The watch's VO₂ max estimates (ml/kg/min), running and cycling (dashed).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 21,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/^cycling · /"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT last(\"VO2_max_value\") FROM \"VO2_Max\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none)",
+          "alias": "running · garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT last(\"VO2_max_value_cycling\") FROM \"VO2_Max\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none)",
+          "alias": "cycling · garmin"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Workouts, every source",
+      "id": 20,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 29,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Workout time per week",
+      "id": 21,
+      "description": "Hours of workouts per week (Monday to Sunday), one line per source: a workout that two apps received is in both lines.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*myfitnesspal$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"elapsedDuration\") / 3600 FROM \"ActivitySummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, 4d), \"source\" fill(0) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Workouts per week",
+      "id": 22,
+      "description": "Workouts per week, one line per source.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 30,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*myfitnesspal$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"elapsedDuration\") FROM \"ActivitySummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"duration_s\") FROM \"exercise\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, 4d), \"source\" fill(0) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Workout calories per week",
+      "id": 23,
+      "description": "Calories the workouts burned, per week, as each source estimates them.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: kcal",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*myfitnesspal$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"calories\") FROM \"ActivitySummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, 4d), \"source\" fill(0) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Time in heart-rate zones per week · ${from}",
+      "id": 24,
+      "description": "Hours of workouts spent in each heart-rate zone, per week, from the source picked in Tiles from (each device draws its own zone boundaries; a diary has none): zone 2 is the easy aerobic base, zones 4 and 5 the hard efforts.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 38,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 0,
+            "fillOpacity": 85,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "barAlignment": 0
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Zone 1"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#86b6ef"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Zone 2"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#5598e7"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Zone 3"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Zone 4"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#1c5cab"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Zone 5"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#104281"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"hrTimeInZone_1\") / 3600 AS \"Zone 1\", sum(\"hrTimeInZone_2\") / 3600 AS \"Zone 2\", sum(\"hrTimeInZone_3\") / 3600 AS \"Zone 3\", sum(\"hrTimeInZone_4\") / 3600 AS \"Zone 4\", sum(\"hrTimeInZone_5\") / 3600 AS \"Zone 5\" FROM \"ActivitySummary\" WHERE 'garmin' = '${from}' AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "alias": "$col"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"zone1_s\") / 3600 AS \"Zone 1\", sum(\"zone2_s\") / 3600 AS \"Zone 2\", sum(\"zone3_s\") / 3600 AS \"Zone 3\", sum(\"zone4_s\") / 3600 AS \"Zone 4\", sum(\"zone5_s\") / 3600 AS \"Zone 5\" FROM \"exercise\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "alias": "$col"
+        }
+      ]
+    }
+  ]
+}
