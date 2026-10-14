@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/vchatela-org/tributary/compare/v0.13.0...v0.14.0) (2026-10-14)
+
+
+### Features
+
+* **whoop:** carry the night's sleep and the day's strain on each journal answer ([#43](https://github.com/vchatela-org/tributary/issues/43)) ([20e0ee2](https://github.com/vchatela-org/tributary/commit/20e0ee2e212e68b8dad67b2a454136adbba64c29))
+
 ## [0.13.0](https://github.com/vchatela-org/tributary/compare/v0.12.0...v0.13.0) (2026-10-14)
 
 
