@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.11.0](https://github.com/vchatela-org/tributary/compare/v0.10.1...v0.11.0) (2026-10-14)
+
+
+### Features
+
+* **grafana:** Healthspan, Sleep, Activity & fitness and Correlations dashboards, one series and one colour per source ([#33](https://github.com/vchatela-org/tributary/issues/33)) ([0453f02](https://github.com/vchatela-org/tributary/commit/0453f02e5b0c6c6d7cb136ae4d3676cb77e185b1))
+* **ui:** show how fresh garmin-grafana's data is ([#32](https://github.com/vchatela-org/tributary/issues/32)) ([38a2f20](https://github.com/vchatela-org/tributary/commit/38a2f209cd645dff9e3e8e8d7622216e2202e0fb))
+* **whoop:** sleep, recovery, cycles, workouts and journal from WHOOP, built on kryoseu's Whoops ([#35](https://github.com/vchatela-org/tributary/issues/35)) ([1ff75a1](https://github.com/vchatela-org/tributary/commit/1ff75a1e6e34eed9e2769c276f6299a9cca13aa1))
+
 ## [0.10.1](https://github.com/vchatela-org/tributary/compare/v0.10.0...v0.10.1) (2026-10-14)
 
 
