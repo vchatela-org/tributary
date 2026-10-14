@@ -89,6 +89,8 @@ def card(db: Session, connector: Connector, hidden: bool = False,
         "schedule_capable": connector.has_api or connector.watch_dir is not None,
         "file_types": connector.file_types,
         "required_env": connector.required_env,
+        # What to do when the variables alone don't say it (connect on the page).
+        "setup_hint": connector.setup_hint() if state == "unconfigured" else None,
         "measurements": connector.measurements,
         "input_label": input_label(connector),
         "last_run": last,
@@ -102,9 +104,9 @@ def sections(db: Session) -> List[Dict[str, Any]]:
     tools that feed the same databases.
 
     A category is shown when it has something under it: a visible connector, or
-    the compatible tools that feed that domain (Sleep has no connector of
-    Tributary's yet -- Garmin and Whoop cover it). A category with neither is
-    left out entirely: never an empty heading."""
+    the compatible tools that feed that domain (a category whose connectors are
+    all hidden still shows garmin-grafana under Sleep). A category with neither
+    is left out entirely: never an empty heading."""
     hidden = preferences.hidden_connectors(db)
     pending_keys = scheduler.pending_keys()
     running_keys = {run.connector for run in scheduler.running(db)}

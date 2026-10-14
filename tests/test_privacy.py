@@ -225,3 +225,67 @@ def test_no_medisafe_note_or_account_is_kept(medisafe_connector, influx, db, mon
         assert MEDISAFE_ACCOUNT not in text, where
     assert "Doses_&lt;account&gt;_000.csv" in seen["pages"] or "Doses_<account>_000.csv" in seen["api"]
     assert 'strength="10 mg"' in seen["influxdb"]
+
+
+def test_no_whoop_token_secret_profile_or_note_is_kept(whoop_api, whoop_connector, influx, db, monkeypatch,
+                                                         caplog, tmp_path):
+    """The app's secret, every token WHOOP issued and the authorization codes
+    never leave: not in InfluxDB, not in plain text in SQLite (the grant is
+    sealed), not in the logs, the API or the pages. Nor would a profile's
+    email if WHOOP ever put one in a record, nor a journal entry's note. The
+    journal's questions are tags, custom ones included."""
+    from urllib.parse import parse_qs, urlparse
+
+    from app import oauth
+    from app.config import settings
+    from app.models import OAuthToken, utcnow
+    from tests.fakes import WHOOP_CLIENT_SECRET, WHOOP_EMAIL, WHOOP_NOTE, write_whoop_export
+
+    caplog.set_level(logging.DEBUG)
+    monkeypatch.setattr(settings, "influxdb_user", "alice")
+    whoop_api.records["sleep"][0]["email"] = WHOOP_EMAIL
+    client = TestClient(app)
+    sent = client.post("/connectors/whoop/connect", headers={"sec-fetch-site": "same-origin"},
+                       follow_redirects=False)
+    state = parse_qs(urlparse(sent.headers["location"]).query)["state"][0]
+    code = whoop_api.new_code()
+    client.get("/connectors/whoop/callback", params={"code": code, "state": state},
+               headers={"sec-fetch-site": "cross-site"}, follow_redirects=False)
+    runner.run(db, whoop_connector, dry_run=True)
+    runner.run(db, whoop_connector)
+    db.query(OAuthToken).update({OAuthToken.expires_at: utcnow()})  # the next run refreshes
+    db.commit()
+    runner.run(db, whoop_connector, full=True)
+    for dry_run in (True, False):
+        path = write_whoop_export(tmp_path / "my_whoop_data.zip")
+        runner.run(db, whoop_connector, dry_run=dry_run, file=str(path), filename=path.name, trigger="upload")
+    assert whoop_api.events.count("token:refresh_token") == 1 and len(whoop_api.issued) == 4
+
+    # Every log but the test client's own request lines (it stands for the
+    # browser, which does hold the callback's address).
+    logs = "\n".join(f"{r.name} {r.getMessage()}" for r in caplog.records if not r.name.startswith("httpx"))
+    seen = {**_everything_seen(influx), "logs": logs,
+            "whoop page": client.get("/connectors/whoop").text + client.get("/settings").text}
+    assert 'question=Read\\ in\\ bed\\ before\\ sleeping?' in seen["influxdb"]
+    assert oauth.load("whoop", "Whoop") is not None
+    for where, text in seen.items():
+        for secret in (*whoop_api.issued, WHOOP_CLIENT_SECRET, code, state, WHOOP_EMAIL, WHOOP_NOTE, "glasses"):
+            assert secret not in text, (where, secret)
+
+    client.post("/connectors/whoop/disconnect", headers={"sec-fetch-site": "same-origin"})
+    assert oauth.load("whoop", "Whoop") is None
+    for secret in whoop_api.issued:
+        assert secret not in _dump_sqlite()
+
+
+def test_a_callback_s_query_is_redacted_in_the_access_log():
+    from app.routers.connections import RedactCallbackQuery
+
+    record = logging.LogRecord("uvicorn.access", logging.INFO, __file__, 1, '%s - "%s %s HTTP/%s" %d',
+                               ("203.0.113.20:5000", "GET", "/connectors/whoop/callback?code=c0de&state=st4te",
+                                "1.1", 303), None)
+    assert RedactCallbackQuery().filter(record)
+    assert record.getMessage() == '203.0.113.20:5000 - "GET /connectors/whoop/callback?<redacted> HTTP/1.1" 303'
+    other = logging.LogRecord("uvicorn.access", logging.INFO, __file__, 1, '"%s %s"', ("GET", "/runs?page=2"), None)
+    RedactCallbackQuery().filter(other)
+    assert other.getMessage() == '"GET /runs?page=2"'

@@ -26,6 +26,12 @@ os.environ.update({
     "TRIBUTARY_MEDISAFE_NAMES": "",
     "TRIBUTARY_MEDISAFE_NOTES": "false",
     "TRIBUTARY_MEDISAFE_END_DATE": "",
+    "TRIBUTARY_WHOOP_CLIENT_ID": "",
+    "TRIBUTARY_WHOOP_CLIENT_SECRET": "",
+    "TRIBUTARY_WHOOP_REDIRECT_URI": "",
+    "TRIBUTARY_SECRET_KEY": "",
+    "TRIBUTARY_SECRET_KEY_FILE": "",
+    "TRIBUTARY_SECRET_KEY_PREVIOUS": "",
 })
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.chdir(Path(__file__).resolve().parents[1])  # templates/ and static/ are relative
@@ -34,7 +40,8 @@ from app import connectors, scheduler  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.main import app  # noqa: E402,F401 -- creates the tables; scheduler off (nothing configured)
 from tests.fakes import MYTHERAPY_NAMES, THRESHOLDS, TODOIST_TOKEN  # noqa: E402
-from tests.fakes import FakeAbs, FakeInflux, FakeRenpho, FakeTodoist  # noqa: E402
+from tests.fakes import WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, WHOOP_REDIRECT  # noqa: E402
+from tests.fakes import FakeAbs, FakeInflux, FakeRenpho, FakeTodoist, FakeWhoop  # noqa: E402
 
 
 @pytest.fixture()
@@ -52,10 +59,10 @@ def _clean_state():
     freshness remembered (a fake InfluxDB's port may be another test's again)."""
     from app import freshness
     from app.database import SessionLocal
-    from app.models import ConnectorSchedule, Cursor, Preference, StagedUpload, SyncRun
+    from app.models import ConnectorSchedule, Cursor, OAuthState, OAuthToken, Preference, StagedUpload, SyncRun
 
     with SessionLocal() as session:
-        for table in (SyncRun, Cursor, ConnectorSchedule, StagedUpload, Preference):
+        for table in (SyncRun, Cursor, ConnectorSchedule, StagedUpload, Preference, OAuthToken, OAuthState):
             session.query(table).delete()
         session.commit()
     freshness.clear()
@@ -183,3 +190,63 @@ def todoist_api(monkeypatch, todoist_connector):
     monkeypatch.setattr(todoist_connector.settings, "lookback_days", 3)
     yield fake
     fake.close()
+
+
+def new_secret_key() -> str:
+    """A TRIBUTARY_SECRET_KEY made for one test: random, never written down."""
+    import base64
+
+    return base64.b64encode(os.urandom(32)).decode("ascii")
+
+
+@pytest.fixture()
+def secret_key(monkeypatch):
+    """TRIBUTARY_SECRET_KEY set (a fresh random key), nothing else."""
+    from pydantic import SecretStr
+
+    key = new_secret_key()
+    monkeypatch.setattr(settings, "secret_key", SecretStr(key))
+    monkeypatch.setattr(settings, "secret_key_file", None)
+    monkeypatch.setattr(settings, "secret_key_previous", None)
+    return key
+
+
+@pytest.fixture()
+def whoop_connector(monkeypatch):
+    """Whoop with its app registered (invented credentials), not connected."""
+    from pydantic import SecretStr
+
+    connector = connectors.get("whoop")
+    monkeypatch.setattr(connector.settings, "client_id", WHOOP_CLIENT_ID)
+    monkeypatch.setattr(connector.settings, "client_secret", SecretStr(WHOOP_CLIENT_SECRET))
+    monkeypatch.setattr(connector.settings, "redirect_uri", WHOOP_REDIRECT)
+    monkeypatch.setattr(connector.settings, "lookback_days", 7)
+    return connector
+
+
+@pytest.fixture()
+def whoop_api(monkeypatch, whoop_connector, secret_key):
+    """WHOOP's token endpoint and API served in-process over HTTP; retries
+    don't wait (`fake.slept` records them); the connector's clock is the
+    fixtures' day (2026-10-03, mid-morning)."""
+    from datetime import datetime, timezone
+
+    from app.connectors import whoop
+    from app.connectors import whoop_api as client
+
+    fake = FakeWhoop()
+    fake.slept = []
+    monkeypatch.setattr(client, "API_ENDPOINT", fake.url)
+    monkeypatch.setattr(client, "_sleep", fake.slept.append)
+    monkeypatch.setattr(whoop, "_now", lambda: datetime(2026, 10, 3, 8, 35, tzinfo=timezone.utc))
+    yield fake
+    fake.close()
+
+
+@pytest.fixture()
+def whoop_connected(whoop_api):
+    """Connected: the grant a completed authorization leaves, stored."""
+    from app import oauth
+
+    oauth.save("whoop", oauth.Grant.from_response(whoop_api.grant(), "Whoop"))
+    return whoop_api

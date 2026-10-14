@@ -26,8 +26,12 @@ and, for an API, how often it runs by default (change it in the UI).
 
 ### Sleep
 
-No connector yet: sleep is covered by
-[the compatible tools](../compatible-tools.md) (garmin-grafana, Whoops).
+| Connector | Source | Input | Writes |
+|---|---|---|---|
+| [**Whoop**](whoop.md), built on kryoseu's [Whoops](https://github.com/kryoseu/whoops) | `whoop` | API (OAuth, connected on its page), daily; and its export file, imported in the UI | `SleepStats`: `sleep_session`, `journal`; `BodyStats`: `daily_activity`, `exercise` |
+
+garmin-grafana, a [compatible tool](../compatible-tools.md), covers Garmin's
+sleep.
 
 ### Reading & media
 
@@ -111,6 +115,18 @@ One module in `app/connectors/`, registered in `app/connectors/__init__.py`
   logged). The name by default; a connector masks what it holds that is
   personal (Medisafe: the account number of `Doses_<account>_000.csv`). The
   masked name is also what a checked upload keeps, never the raw one.
+- A source that grants access in a browser (OAuth 2.0, authorization code)
+  sets `uses_oauth = True` and implements `app/oauth.py`'s hooks:
+  `oauth_problem()` (what its settings lack), `oauth_authorize_url(state)`,
+  `oauth_exchange(code)`, `oauth_refresh(refresh_token)` (raising
+  `GrantRevoked` on `invalid_grant`) and `oauth_revoke(access_token)`. The
+  core does the rest: Connect, the callback at `/connectors/<key>/callback`
+  (and its pasted-address fallback), Disconnect, the single-use `state`, the
+  tokens sealed with `TRIBUTARY_SECRET_KEY` (`app/secretbox.py`) and stored
+  the moment they arrive, the refresh a minute before expiry or after a 401
+  (`oauth.access_token(connector, force_refresh)`), and a lock around it.
+  `setup_hint()` tells the overview what is missing (connect it on its
+  page) when the variables alone don't. [Whoop](whoop.md) is the example.
 
 Points are `Point(measurement, time, tags, fields)`, time in UTC. The core
 adds `source` (unless the measurement is declared `tagged_source=False`),

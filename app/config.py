@@ -4,6 +4,7 @@ Each connector reads its own settings the same way, under its own prefix
 from pathlib import Path
 from typing import Optional
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -45,6 +46,15 @@ class Settings(BaseSettings):
     # than the hours below is marked stale (a warning: Tributary does not run it).
     garmin_grafana_database: str = "GarminStats"
     garmin_grafana_stale_hours: float = 24.0
+
+    # The key that encrypts what Tributary keeps of an OAuth connection (its
+    # tokens, app/secretbox.py): the base64 of 32 random bytes
+    # (`openssl rand -base64 32`), or a file holding it. Without one, no OAuth
+    # source can be connected: tokens are never stored in plain text.
+    # `_PREVIOUS`: the key being rotated out, still read, never written.
+    secret_key: Optional[SecretStr] = None
+    secret_key_file: Optional[str] = None
+    secret_key_previous: Optional[SecretStr] = None
 
     @property
     def db_url(self) -> str:

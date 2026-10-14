@@ -31,6 +31,7 @@ def _register_builtin() -> None:
     from app.connectors.mytherapy import MyTherapyConnector
     from app.connectors.renpho import RenphoConnector
     from app.connectors.todoist import TodoistConnector
+    from app.connectors.whoop import WhoopConnector
 
     register(AudiobookshelfConnector())
     register(RenphoConnector())
@@ -38,6 +39,7 @@ def _register_builtin() -> None:
     register(MyTherapyConnector())
     register(MyFitnessPalConnector())
     register(MedisafeConnector())
+    register(WhoopConnector())
 
 
 _register_builtin()

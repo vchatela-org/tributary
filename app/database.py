@@ -1,6 +1,7 @@
-"""Tributary's own state: run history and connector cursors, in SQLite.
-The measurements themselves live in InfluxDB, and the source (the app, or
-the user's export files) stays the source of truth."""
+"""Tributary's own state: run history and connector cursors, in SQLite, and
+an OAuth connector's tokens, encrypted (app/oauth.py). The measurements
+themselves live in InfluxDB, and the source (the app, or the user's export
+files) stays the source of truth."""
 import logging
 from pathlib import Path
 
@@ -50,6 +51,7 @@ def get_db():
 # A column a later version added to an existing table: `create_all` adds a
 # missing *table*, never a missing *column* of one already there, so an install
 # from before it needs the ALTER, or the first query that names the column breaks.
+# (A new table, like the OAuth ones, needs nothing here: create_all makes it.)
 _ADDED_COLUMNS = (
     ("sync_runs", "promoted_from", "INTEGER"),
 )

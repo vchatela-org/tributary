@@ -28,11 +28,16 @@ COPY --from=build --chown=10001:10001 /app/data /app/data
 COPY app ./app
 COPY templates ./templates
 COPY static ./static
+# The licences travel with the code: Tributary's (MIT), and the Apache 2.0 of
+# the files adapted from Whoops, with the NOTICE naming them.
+COPY LICENSE NOTICE ./
+COPY LICENSES ./LICENSES
 USER 10001:10001
 
 # The venv runs on the runtime stage's interpreter: fail the build here, not at
-# start, if the two stages ever carry different Pythons or the zones are gone.
-RUN ["python", "-c", "import fastapi, uvicorn, sqlalchemy, pydantic_core, renpho, zoneinfo; zoneinfo.ZoneInfo('Europe/Paris')"]
+# start, if the two stages ever carry different Pythons, the zones are gone, or
+# the AES-GCM binding of `cryptography` does not load.
+RUN ["python", "-c", "import fastapi, uvicorn, sqlalchemy, pydantic_core, renpho, zoneinfo; zoneinfo.ZoneInfo('Europe/Paris'); from cryptography.hazmat.primitives.ciphers.aead import AESGCM; AESGCM(bytes(32)).encrypt(bytes(12), b'', b'')"]
 
 EXPOSE 8000
 

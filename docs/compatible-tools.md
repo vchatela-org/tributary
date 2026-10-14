@@ -9,8 +9,13 @@ weight and activity...).
 | Tool | Category it feeds | Source | Writes | Notes |
 |---|---|---|---|---|
 | [garmin-grafana](https://github.com/arpanghosh8453/garmin-grafana) | Body & health, Sleep | Garmin Connect | InfluxDB `GarminStats` | Activity, sleep, heart rate, body battery... from the Garmin API, with its own dashboards. Point it at the same InfluxDB: Tributary's Healthspan, Sleep, Activity & fitness and Correlations dashboards draw it next to the other sources ([what they read](dashboards-design.md#series-written-by-other-tools)). |
-| [Whoops](https://github.com/kryoseu/whoops) | Sleep | Whoop | PostgreSQL | Sleep, recovery, strain. Add a Grafana PostgreSQL datasource next to the InfluxDB ones. |
 | [Takeback](https://github.com/vchatela-org/takeback) | Reading & media, Productivity | GDPR "download your data" archives (Amazon, Google, Meta...) | InfluxDB `MediaStats`, `ShoppingStats`, `DigitalStats` | Browses an archive, and pushes the numbers no dedicated tool provides: Kindle reading sessions (`source=kindle`), Audible, purchases, activity counts. Follows [the schema](schema.md). |
+
+[Whoops](https://github.com/kryoseu/whoops), by kryoseu, used to be listed here
+for Whoop (it writes PostgreSQL). Tributary's own [Whoop connector](connectors/whoop.md)
+is built on it and writes the shared schema in InfluxDB, so a source keeps one
+writer: thank you, kryoseu. Whoops still works on its own, for anyone who wants
+its PostgreSQL tables.
 
 The categories are the ones the UI and the README group every integration under
 ([`app/categories.py`](../app/categories.py)): a tool appears beneath each

@@ -37,6 +37,15 @@ schedule* unfolds the editor: a preset (*Every hour*, *Daily at a time*,
 so a restart does not shift them. Where a schedule comes from, and what a
 missed run does: [scheduling](scheduling.md).
 
+A source you connect in the browser (Whoop) has a *Connection* block first:
+*Connect* sends you to the source's own page to grant access and brings you
+back; then it says *Connected* (never showing a token, which is stored
+encrypted), with *Reconnect* and *Disconnect* (revokes the access, then forgets
+it). What is missing to connect (the app's variables, the secret key) is said
+there instead of the button. For a plain `http://` install, *Back from Whoop,
+on a page that doesn't load?* takes the address the browser landed on
+([Whoop](connectors/whoop.md#a-plain-http-install)).
+
 ![A source's page: its state at a glance, the next five runs and the schedule editor, unfolded](screenshots/schedule-light.png)
 
 ## Importing an export

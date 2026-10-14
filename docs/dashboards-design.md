@@ -69,9 +69,10 @@ dashboards read the following.
   skipped by counting a duration. It is assumed to hold one person: it has no
   `user` tag, and garmin-grafana's optional `User_ID` is not filtered.
   Checked against garmin-grafana's `main` branch, October 2026.
-- `SleepStats` and two `BodyStats` series that the Whoop connector, the next
-  one planned, will write with `source=whoop` and a `user` tag. Any other
-  tool writing the same names is drawn the same way.
+- `SleepStats` and two `BodyStats` series that Tributary's Whoop connector
+  writes with `source=whoop` and a `user` tag ([the schema](schema.md)), listed
+  here for the fields the dashboards read: any other tool writing the same
+  names (a Sleep as Android history in `sleep_session`) is drawn the same way.
 
 | Database | Measurement | Fields the dashboards read | Written by |
 |---|---|---|---|
@@ -80,9 +81,9 @@ dashboards read the following.
 | `GarminStats` | `ActivitySummary` | `elapsedDuration`, `calories`, `hrTimeInZone_1`...`_5` | garmin-grafana |
 | `GarminStats` | `VO2_Max` | `VO2_max_value`, `VO2_max_value_cycling` | garmin-grafana |
 | `GarminStats` | `BodyComposition` | `weight`, `bodyFat`, `bodyWater`, `boneMass`, `bmi`, `visceralFat` | garmin-grafana |
-| `SleepStats` | `sleep_session` | tag `kind` (`night`, `nap`: naps are left out); `asleep_s`, `deep_s`, `light_s`, `rem_s`, `awake_s`, `bedtime_min`, `wake_min` (int); `score`, `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `respiration_rate`, `recovery_score`, `skin_temp_c` (float). One point per sleep, at its end | the Whoop connector (planned) |
-| `BodyStats` | `daily_activity` | `steps` (int); `strain`, `energy_kcal` (float). One point per physiological day, at its start | the Whoop connector (planned) |
-| `BodyStats` | `exercise` | beyond MyFitnessPal's fields: `zone1_s`...`zone5_s` (int, seconds per heart-rate zone) | the Whoop connector (planned), next to `myfitnesspal` |
+| `SleepStats` | `sleep_session` | tag `kind` (`night`, `nap`: naps are left out); `asleep_s`, `deep_s`, `light_s`, `rem_s`, `awake_s`, `bedtime_min`, `wake_min` (int); `score`, `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `respiration_rate`, `recovery_score`, `skin_temp_c` (float). One point per sleep, at its end | Tributary: `whoop`; other tools |
+| `BodyStats` | `daily_activity` | `steps` (int); `strain`, `energy_kcal` (float). One point per physiological day, at its start | Tributary: `whoop` |
+| `BodyStats` | `exercise` | beyond MyFitnessPal's fields: `zone1_s`...`zone5_s` (int, seconds per heart-rate zone) | Tributary: `whoop`, next to `myfitnesspal` |
 
 If a dashboard's datasource does not exist, those series are left out. If the
 database does not exist yet, the panels that read it show a warning and draw
@@ -90,9 +91,9 @@ the other sources.
 
 ### Whoop, without Postgres
 
-No panel reads Whoops' PostgreSQL. Once the Whoop connector writes the
-series above, these panels draw a `whoop` series and list it in their pickers
-with no dashboard change. Until then they show the other sources.
+No panel reads Whoops' PostgreSQL. The Whoop connector writes the series
+above, so these panels draw a `whoop` series and list it in their pickers with
+no dashboard change; without it, they show the other sources.
 - **Sleep:**
   - every graph: time asleep, stages, score, deep and REM, resting heart
     rate, HRV, SpO₂, breathing rate, recovery score, skin temperature;
@@ -136,7 +137,7 @@ described in [dashboards.md](dashboards.md).
 | 4 | **Activity & fitness** | How much you move and train, per device: steps, strain, calories burned, intensity minutes, workouts, heart-rate zones, VO₂ max. | `GarminStats`: `DailyStats`, `ActivitySummary`, `VO2_Max`; `BodyStats`: `daily_activity`, `exercise` | Built |
 | 5 | Weekly review | This week against the four before: sleep, workouts, reading, tasks, doses, weight. | all of the above, `time(1w)` | Proposed |
 | 6 | Energy balance | Intake against the calories burned, and the weight trend that follows. | `BodyStats`: `nutrition`, `daily_activity`, weights; `GarminStats..DailyStats` | Proposed |
-| 7 | Habits and recovery | Which journal answers (an evening habit, a late meal) go with a higher or lower recovery the next morning? | `SleepStats`: `journal` (Whoop export), `sleep_session` | Proposed, once the Whoop connector writes `journal` |
+| 7 | Habits and recovery | Which journal answers (an evening habit, a late meal) go with a higher or lower recovery the next morning? | `SleepStats`: `journal` (Whoop export), `sleep_session` | Proposed: the Whoop connector writes `journal` |
 | 8 | Medication and vitals | Resting heart rate, HRV and blood pressure across the periods a medication was taken. | `BodyStats..medication`, `GarminStats`: `DailyStats`, `BloodPressure` | Proposed |
 | 9 | Stress and body battery | The watch's daytime stress and recovery. | `GarminStats`: `StressIntraday`, `BodyBatteryIntraday` (garmin-grafana's own dashboard covers it) | Proposed |
 | 10 | Shopping and digital life | Takeback's purchases and activity counts. | `ShoppingStats`, `DigitalStats` (not yet in the schema) | Proposed |

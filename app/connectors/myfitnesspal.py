@@ -58,7 +58,7 @@ from app import influxdb
 from app.config import settings as app_settings
 from app.connectors.base import Connector, ConnectorError, ConnectorSettings, FileImport, Span
 from app.points import Measurement, Point
-from app.schema import BODY_COMPOSITION
+from app.schema import BODY_COMPOSITION, EXERCISE
 
 PREFIX = "TRIBUTARY_MYFITNESSPAL_"
 SOURCE = "myfitnesspal"
@@ -129,10 +129,8 @@ NUTRITION = Measurement(
     fields={name: float for name in (*FOOD_FIELDS.values(), *FOOD_FIELDS_NONZERO.values())},
     last_wins=True,
 )
-EXERCISE = Measurement(
-    database="BodyStats", name="exercise", tags=("category",),
-    fields={"activity": str, "energy_kcal": float, "duration_s": int},
-)
+# exercise is shared with WHOOP's workouts (app/schema.py): this connector
+# writes its `activity`, `energy_kcal` and `duration_s` only, as the job did.
 MEASUREMENT_OF = {"weight": BODY_COMPOSITION, "food": NUTRITION, "exercise": EXERCISE}
 
 

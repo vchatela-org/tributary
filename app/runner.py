@@ -299,10 +299,12 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
         # covers (FileImport.spans: an export of a date range). The connector
         # raises before this when the file holds nothing to write back, so the
         # series is never left empty.
-        return imported.points, [f"Imported {label}"], None, _upload_drop(connector, imported), []
+        return (imported.points, [f"Imported {label}"] + list(imported.summary), None,
+                _upload_drop(connector, imported), [])
 
     if not connector.is_configured():
-        raise ConnectorError(f"Not configured: set {', '.join(connector.required_env) or 'its settings'}.")
+        raise ConnectorError(connector.setup_hint()
+                             or f"Not configured: set {', '.join(connector.required_env) or 'its settings'}.")
     points: List[Point] = []
     summary: List[str] = []
     errors: List[str] = []
@@ -340,16 +342,20 @@ def collect(connector: Connector, state: Dict[str, Any], full: bool = False, fil
 # Writing
 # ────────────────────────────────────────────────
 
-def _dropped(drop: Drop) -> str:
-    """The run message's mention of the drop."""
+def _dropped(drop: Drop, connector: Optional[Connector] = None) -> str:
+    """The run message's mention of the drop: "its own series" when it covers
+    every measurement the connector writes, their names otherwise (Whoop's
+    export replaces its journal only)."""
     if drop is None:
         return ""
     spans = set(drop.values())
+    declared = {m.name for m in connector.measurements} if connector is not None else set(drop)
+    what = "series" if set(drop) >= declared else " and ".join(sorted(drop))
     if spans == {None}:
-        return ", after dropping its own series"
+        return f", after dropping its own {what}"
     if len(spans) == 1:
         span, = spans
-        return f", after dropping its own series from {span.first} to {span.last}"
+        return f", after dropping its own {what} from {span.first} to {span.last}"
     return ", after dropping its own series (" + "; ".join(
         f"{name} from {span.first} to {span.last}" if span else f"{name}: all of it"
         for name, span in drop.items()) + ")"
@@ -450,7 +456,7 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
             if total or rebuild is not None:
                 record.message = (f"Dry run. {what}{total} point(s) would be written"
                                   + (f" ({_by_database({d: len(v) for d, v in lines.items()})})" if total else "")
-                                  + _dropped(rebuild) + ".")
+                                  + _dropped(rebuild, connector) + ".")
             else:
                 record.message = "Dry run. Nothing new." if not summary else f"Dry run. {what}nothing to write."
             record.message += failed
@@ -468,7 +474,7 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
             record.stats_json = json.dumps(written)
             if total or rebuild is not None:
                 record.message = f"{what}{record.points} point(s) written" + (
-                    f" ({_by_database(written)})" if written else "") + _dropped(rebuild) + "."
+                    f" ({_by_database(written)})" if written else "") + _dropped(rebuild, connector) + "."
             else:
                 record.message = "Nothing new." if not summary else f"{what}nothing to write."
             if expired:

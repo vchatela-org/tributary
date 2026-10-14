@@ -230,8 +230,9 @@ def test_a_dry_run_of_an_import_drops_nothing(connector, influx, db, tmp_path):
     path = write_myfitnesspal_export(tmp_path / "export.zip", weight=[mfp_weight_row()])
     run = runner.run(db, connector, dry_run=True, file=str(path), filename="export.zip", trigger="upload")
     assert run.status == "ok" and run.points == 1
+    # Only the weigh-ins have a span (the other files are empty): only they are named.
     assert run.message == ("Dry run. Imported export.zip: 1 point(s) would be written (BodyStats 1), "
-                           "after dropping its own series from 2026-03-01 to 2026-03-01.")
+                           "after dropping its own body_composition from 2026-03-01 to 2026-03-01.")
     assert "body_composition,source=myfitnesspal" in run.preview
     assert influx.written_lines() == []
     assert not [q for _db, q in influx.queries if q.startswith(("DROP", "DELETE"))]
@@ -335,8 +336,14 @@ def test_the_declared_series_is_the_scripts(connector):
         "energy_kcal", "fat_g", "carbs_g", "protein_g", "saturated_fat_g", "polyunsaturated_fat_g",
         "monounsaturated_fat_g", "trans_fat_g", "cholesterol_mg", "sodium_mg", "potassium_mg",
         "fiber_g", "sugar_g")}
+    # exercise is shared with WHOOP's workouts now, declared once in
+    # app/schema.py: the script's tags, and its three fields with their types.
+    from app import schema
+    assert myfitnesspal.EXERCISE is schema.EXERCISE
     assert myfitnesspal.EXERCISE.tag_keys == ("source", "user", "category")
-    assert myfitnesspal.EXERCISE.field_types == {"activity": str, "energy_kcal": float, "duration_s": int}
+    assert {name: myfitnesspal.EXERCISE.field_types[name] for name in ("activity", "energy_kcal", "duration_s")} \
+        == {"activity": str, "energy_kcal": float, "duration_s": int}
+    assert (myfitnesspal.EXERCISE.last_wins, myfitnesspal.EXERCISE.text_max) == (False, 250)
     assert myfitnesspal.MyFitnessPalConnector.rebuild_own_source is True
     assert connector.env_prefix == "TRIBUTARY_MYFITNESSPAL_"
 

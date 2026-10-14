@@ -40,12 +40,10 @@ GARMIN_GRAFANA = ExternalTool(
     note="Activity, sleep, heart rate, body battery... from the Garmin API, with its own dashboards.",
     freshness="garmin-grafana",
 )
-WHOOPS = ExternalTool(
-    label="Whoops",
-    url="https://github.com/kryoseu/whoops",
-    writes="PostgreSQL",
-    note="Sleep, recovery, strain. Add a Grafana PostgreSQL datasource next to the InfluxDB ones.",
-)
+# Whoops (kryoseu/whoops) was listed under Sleep until Tributary's own Whoop
+# connector, built on it, replaced it: one writer per source, and it wrote
+# PostgreSQL, which no shipped dashboard reads. It is credited in the README and
+# in docs/connectors/whoop.md.
 TAKEBACK = ExternalTool(
     label="Takeback",
     url="https://github.com/vchatela-org/takeback",
@@ -60,7 +58,7 @@ EXTERNAL_TOOLS: Dict[str, Tuple[ExternalTool, ...]] = {
     "Body & health": (GARMIN_GRAFANA,),
     "Medication": (),
     "Nutrition & fitness": (),
-    "Sleep": (GARMIN_GRAFANA, WHOOPS),
+    "Sleep": (GARMIN_GRAFANA,),
     "Reading & media": (TAKEBACK,),
     "Productivity": (TAKEBACK,),
 }

@@ -99,3 +99,34 @@ class Preference(Base):
     key = Column(String(60), primary_key=True)
     value = Column(Text, nullable=True)
     updated_at = Column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class OAuthToken(Base):
+    """What an OAuth connector keeps of its grant (app/oauth.py): the access and
+    refresh tokens, sealed together (app/secretbox.py, bound to the connector's
+    key), never in plain text. Separate from the cursors on purpose: a cursor is
+    saved only after a run that wrote everything and forgotten by a full resync,
+    while a refresh token that rotates must be saved the moment it arrives --
+    in a dry run, and in a run that fails afterwards -- or the one kept is
+    already dead."""
+    __tablename__ = "oauth_tokens"
+
+    connector = Column(String(50), primary_key=True)
+    # secretbox.seal of {"access_token", "refresh_token"} as JSON.
+    ciphertext = Column(Text, nullable=False)
+    # When the access token expires (naive UTC), and the scopes granted: not
+    # secrets, so the page can show them without opening the box.
+    expires_at = Column(DateTime, nullable=True)
+    scope = Column(String(255), nullable=True)
+    updated_at = Column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+
+
+class OAuthState(Base):
+    """A `state` sent to an authorization page, waiting for the browser to come
+    back with it: single use, 10 minutes. Only its SHA-256 is kept, so the
+    database alone can't complete someone's authorization."""
+    __tablename__ = "oauth_states"
+
+    state_sha256 = Column(String(64), primary_key=True)
+    connector = Column(String(50), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=utcnow)
