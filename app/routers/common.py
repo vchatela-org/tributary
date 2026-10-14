@@ -97,10 +97,13 @@ def discard_staged(connector: Connector) -> bool:
 
 def safe_back(request: Request, default: str = "/") -> str:
     """The page a form was posted from -- its path only, so never out of
-    this app, whatever host the proxy in front of it answers on. "//host"
-    and "/\\host" are paths a browser reads as another site."""
+    this app, whatever host the proxy in front of it answers on. A browser
+    reads "\\" as "/", and "//host" or "///host" as another site."""
     referer = urlparse(request.headers.get("referer") or "")
     back = (referer.path or default) + (f"?{referer.query}" if referer.query else "")
-    if not back.startswith("/") or back.startswith("//") or "\\" in back:
-        return default
-    return back
+    back = back.replace("\\", "/")
+    # The netloc check is redundant after the prefix checks, but it is the
+    # relative-URL guard code scanning recognises.
+    if back.startswith("/") and not back.startswith("//") and not urlparse(back).netloc:
+        return back
+    return default
