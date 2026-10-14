@@ -1,4 +1,5 @@
-# Only app/, templates/, static/ and requirements.txt go into the image.
+# Only app/, templates/, static/, requirements.txt and the licences (LICENSE,
+# NOTICE, LICENSES/) go into the image.
 .git
 .github
 .env

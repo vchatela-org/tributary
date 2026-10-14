@@ -129,9 +129,13 @@ def test_the_readme_says_what_each_connector_writes_and_when_it_runs():
     rows = {_label(row[0]): row for row in _readme_sources() if _label(row[0])}
     for connector in connectors.all_connectors():
         _, _, how, writes, when = rows[connector.label]
-        names, database = writes.split("→")
-        documented = {(db, name) for db in re.findall(r"`([^`]+)`", database)
-                      for name in re.findall(r"`([^`]+)`", names)}
+        # "names → database", or several of them separated by ";" (a source
+        # writing two databases).
+        documented = set()
+        for group in writes.split(";"):
+            names, database = group.split("→")
+            documented |= {(db, name) for db in re.findall(r"`([^`]+)`", database)
+                           for name in re.findall(r"`([^`]+)`", names)}
         assert documented == {(m.database, m.name) for m in connector.measurements}, connector.key
         if connector.default_schedule:
             assert how.startswith("API"), connector.key

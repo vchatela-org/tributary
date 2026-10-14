@@ -107,9 +107,9 @@ def test_only_the_data_time_when_no_upload_was_recorded(client, influx, now):
 
 
 def test_a_tool_without_a_probe_has_no_line(client, garmin):
-    """Whoops and Takeback are listed, with nothing read for them."""
+    """Takeback is listed, with nothing read for it."""
     page = client.get("/").text
-    assert "Whoops" in page and "Takeback" in page
+    assert "Takeback" in page
     assert len(_lines(page)) == 2  # garmin-grafana's two cards only
 
 

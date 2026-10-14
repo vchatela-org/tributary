@@ -1,6 +1,9 @@
 """Test doubles: a fake InfluxDB 1.x, a fake Audiobookshelf server, a fake
-Renpho cloud and a fake Todoist API, real HTTP servers in a thread (the code under test speaks HTTP
-to them).
+Renpho cloud, a fake Todoist API and a fake WHOOP (its OAuth and its API),
+real HTTP servers in a thread (the code under test speaks HTTP to them), and
+the exports of the file sources, built by hand. The WHOOP section holds
+portions adapted from kryoseu/whoops (Apache License 2.0; modified): see
+NOTICE.
 
 The Audiobookshelf one also runs on its own, to try Tributary end to end
 without a real server:
@@ -61,7 +64,8 @@ def _epoch(rfc3339: str) -> int:
 
 class FakeInflux:
     """Keeps points by key (database, measurement, tags, time) as InfluxDB
-    does -- writing the same key overwrites --, records every /query
+    does -- writing the same key overwrites the fields it carries, and keeps
+    the others --, records every /query
     statement and /write body; `fail[path] = (code, body)` makes a path
     answer an error, and `hold` seconds makes /query wait that long before
     answering (cut short when the fake closes)."""
@@ -101,7 +105,10 @@ class FakeInflux:
                 outer.writes.append((params["db"], params["precision"], body.split("\n")))
                 for line in body.split("\n"):
                     measurement, tags, fields, ts = parse(line)
-                    outer.points[(params["db"], measurement, tuple(sorted(tags.items())), ts)] = fields
+                    # The same key again: InfluxDB keeps the union of the two
+                    # field sets, the new values winning.
+                    key = (params["db"], measurement, tuple(sorted(tags.items())), ts)
+                    outer.points[key] = {**outer.points.get(key, {}), **fields}
                 self.send_response(204)
                 self.end_headers()
 
@@ -838,6 +845,320 @@ def write_medisafe_export(path, rows, zipped=False):
             archive.writestr(member, out.getvalue())
     else:
         Path(path).write_text(out.getvalue(), encoding="utf-8")
+    return Path(path)
+
+
+# ────────────────────────────────────────────────
+# WHOOP (its API v2 and OAuth endpoints, and its data export)
+#
+# Portions adapted from kryoseu/whoops (https://github.com/kryoseu/whoops),
+# Apache License 2.0; modified: the export's CSV headers, from its
+# tests/conftest.py. See NOTICE and LICENSES/Apache-2.0.txt.
+# ────────────────────────────────────────────────
+
+# Records written by hand from WHOOP's public API reference samples
+# (developer.whoop.com/api), with readable ids and 2026 dates: nobody's data.
+# The app's credentials and the tokens are invented (the "# ggignore" marks
+# tell secret scanners so).
+WHOOP_CLIENT_ID = "test-app-id"
+WHOOP_CLIENT_SECRET = "test-app-secret"  # ggignore
+WHOOP_REDIRECT = "https://tributary.example/connectors/whoop/callback"
+# What must never leave: the app's secret, every token the fake issues
+# ("access-N", "refresh-N" with a fixed prefix), a profile's email, a note.
+WHOOP_TOKEN_PREFIX = "wt0ken"
+WHOOP_EMAIL = "member@example.com"
+WHOOP_NOTE = "a private journal note"  # ggignore
+
+WHOOP_SLEEPS = [
+    {"id": "sleep-night-1", "cycle_id": 1001, "user_id": 10129, "created_at": "2026-10-02T05:30:00.000Z",
+     "updated_at": "2026-10-02T06:00:00.000Z", "start": "2026-10-01T21:10:00.500Z",
+     "end": "2026-10-02T05:25:44.774Z", "timezone_offset": "+02:00", "nap": False, "score_state": "SCORED",
+     "score": {"stage_summary": {"total_in_bed_time_milli": 30272735, "total_awake_time_milli": 1403507,
+                                 "total_no_data_time_milli": 0, "total_light_sleep_time_milli": 14905851,
+                                 "total_slow_wave_sleep_time_milli": 6630370,
+                                 "total_rem_sleep_time_milli": 5879573, "sleep_cycle_count": 3,
+                                 "disturbance_count": 12},
+               "sleep_needed": {"baseline_milli": 27395716, "need_from_sleep_debt_milli": 352230,
+                                "need_from_recent_strain_milli": 208595, "need_from_recent_nap_milli": -12312},
+               "respiratory_rate": 16.11328125, "sleep_performance_percentage": 98,
+               "sleep_consistency_percentage": 90, "sleep_efficiency_percentage": 91.69533848}},
+    {"id": "sleep-nap-1", "cycle_id": 1001, "user_id": 10129, "created_at": "2026-10-02T13:05:00.000Z",
+     "updated_at": "2026-10-02T13:05:00.000Z", "start": "2026-10-02T12:30:00.000Z",
+     "end": "2026-10-02T13:00:30.000Z", "timezone_offset": "+02:00", "nap": True, "score_state": "SCORED",
+     "score": {"stage_summary": {"total_in_bed_time_milli": 1830000, "total_awake_time_milli": 230000,
+                                 "total_no_data_time_milli": 0, "total_light_sleep_time_milli": 1200000,
+                                 "total_slow_wave_sleep_time_milli": 400000, "total_rem_sleep_time_milli": 0,
+                                 "sleep_cycle_count": 0, "disturbance_count": 1},
+               "sleep_needed": {"baseline_milli": 0, "need_from_sleep_debt_milli": 0,
+                                "need_from_recent_strain_milli": 0, "need_from_recent_nap_milli": 0},
+               "respiratory_rate": 15.5, "sleep_performance_percentage": 30,
+               "sleep_efficiency_percentage": 87.4}},
+    # Tonight's: not scored yet.
+    {"id": "sleep-night-2", "cycle_id": 1002, "user_id": 10129, "created_at": "2026-10-03T05:41:00.000Z",
+     "updated_at": "2026-10-03T05:41:00.000Z", "start": "2026-10-02T21:30:00.250Z",
+     "end": "2026-10-03T05:40:00.000Z", "timezone_offset": "+02:00", "nap": False,
+     "score_state": "PENDING_SCORE"},
+    # A night the strap could not score: its times only.
+    {"id": "sleep-unscorable", "cycle_id": 999, "user_id": 10129, "created_at": "2026-09-29T04:05:00.000Z",
+     "updated_at": "2026-09-29T04:05:00.000Z", "start": "2026-09-28T22:00:00.000Z",
+     "end": "2026-09-29T04:00:00.000Z", "timezone_offset": "+02:00", "nap": False,
+     "score_state": "UNSCORABLE"},
+]
+
+WHOOP_RECOVERIES = [
+    {"cycle_id": 1001, "sleep_id": "sleep-night-1", "user_id": 10129, "created_at": "2026-10-02T05:35:00.000Z",
+     "updated_at": "2026-10-02T05:35:00.000Z", "score_state": "SCORED",
+     "score": {"user_calibrating": False, "recovery_score": 44, "resting_heart_rate": 64,
+               "hrv_rmssd_milli": 31.813562, "spo2_percentage": 95.6875, "skin_temp_celsius": 33.7},
+     "_start": "2026-10-01T21:10:00.500Z"},
+    {"cycle_id": 1002, "sleep_id": "sleep-night-2", "user_id": 10129, "created_at": "2026-10-03T05:45:00.000Z",
+     "updated_at": "2026-10-03T05:45:00.000Z", "score_state": "PENDING_SCORE", "_start": "2026-10-02T21:30:00.250Z"},
+]
+
+WHOOP_CYCLES = [
+    {"id": 1001, "user_id": 10129, "created_at": "2026-10-02T05:30:00.000Z", "updated_at": "2026-10-02T22:00:00.000Z",
+     "start": "2026-10-01T21:10:00.500Z", "end": "2026-10-02T21:30:00.250Z", "timezone_offset": "+02:00",
+     "score_state": "SCORED", "step_count": 8234,
+     "score": {"strain": 12.4, "kilojoule": 8288.297, "average_heart_rate": 68, "max_heart_rate": 141}},
+    # Today's, still open: no end, no duration; written, and read again later.
+    {"id": 1002, "user_id": 10129, "created_at": "2026-10-03T05:41:00.000Z", "updated_at": "2026-10-03T08:00:00.000Z",
+     "start": "2026-10-02T21:30:00.250Z", "timezone_offset": "+02:00", "score_state": "SCORED",
+     "step_count": 3021,
+     "score": {"strain": 5.2951527, "kilojoule": 4184.0, "average_heart_rate": 61, "max_heart_rate": 120}},
+    # Scored later: nothing yet.
+    {"id": 999, "user_id": 10129, "created_at": "2026-09-29T04:05:00.000Z", "updated_at": "2026-09-29T04:05:00.000Z",
+     "start": "2026-09-28T22:00:00.000Z", "end": "2026-09-29T21:00:00.000Z", "timezone_offset": "+02:00",
+     "score_state": "PENDING_SCORE"},
+]
+
+WHOOP_WORKOUTS = [
+    {"id": "workout-run-1", "user_id": 10129, "created_at": "2026-10-02T17:00:00.000Z",
+     "updated_at": "2026-10-02T17:00:00.000Z", "start": "2026-10-02T16:00:00.900Z",
+     "end": "2026-10-02T16:45:30.000Z", "timezone_offset": "+02:00", "sport_name": "running", "sport_id": 0,
+     "score_state": "SCORED",
+     "score": {"strain": 8.2463, "average_heart_rate": 123, "max_heart_rate": 146, "kilojoule": 1569.34033203125,
+               "percent_recorded": 100, "distance_meter": 1772.77035916, "altitude_gain_meter": 46.64384460449,
+               "altitude_change_meter": -0.781372010707855,
+               "zone_durations": {"zone_zero_milli": 300000, "zone_one_milli": 600000, "zone_two_milli": 900000,
+                                  "zone_three_milli": 900000, "zone_four_milli": 600000,
+                                  "zone_five_milli": 300000}}},
+    # Not scorable: the sport and duration only.
+    {"id": "workout-yoga-1", "user_id": 10129, "created_at": "2026-10-01T08:00:00.000Z",
+     "updated_at": "2026-10-01T08:00:00.000Z", "start": "2026-10-01T07:00:00.000Z",
+     "end": "2026-10-01T07:30:00.000Z", "timezone_offset": "+02:00", "sport_name": "yoga", "sport_id": 44,
+     "score_state": "UNSCORABLE"},
+]
+
+WHOOP_RESOURCES = {"cycle": "cycle", "recovery": "recovery", "activity/sleep": "sleep",
+                   "activity/workout": "workout"}
+
+
+class FakeWhoop:
+    """WHOOP's OAuth token endpoint and its API v2, as the connector calls
+    them: client id and secret in the token POST's body; authorization codes
+    single use; refresh tokens that **rotate** (a refresh kills the refresh
+    token it used and every access token issued before); collections paged by
+    `page_size` (nextToken), newest first, filtered by `start` (inclusive);
+    401 for an unknown or dead access token. `fail[path] = [(code, headers,
+    body), ...]` answers those first. Records every request in `events`
+    ("token:<grant>", "GET <path>", "DELETE <path>"), and calls `on_data` (if
+    set) before answering the first data request."""
+
+    def __init__(self, page_size: int = 25):
+        self.page_size = page_size
+        self.records = {"cycle": copy.deepcopy(WHOOP_CYCLES), "recovery": copy.deepcopy(WHOOP_RECOVERIES),
+                        "sleep": copy.deepcopy(WHOOP_SLEEPS), "workout": copy.deepcopy(WHOOP_WORKOUTS)}
+        self.codes: Dict[str, str] = {}             # code -> the redirect_uri it was issued for
+        self.refresh_tokens: set = set()
+        self.access_tokens: set = set()
+        self.issued: List[str] = []                 # every token handed out, for the privacy tests
+        self.revoked = False
+        self.events: List[str] = []
+        self.params: List[Tuple[str, Dict[str, str]]] = []
+        self.user_agents: set = set()
+        self.fail: Dict[str, List[Tuple[int, Dict[str, str], Dict]]] = {}
+        self.on_data = None
+        self.expires_in = 3600
+        self._serial = itertools.count(1)
+        outer = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self):  # noqa: N802
+                body = self.rfile.read(int(self.headers.get("Content-Length") or 0)).decode()
+                form = {k: v[0] for k, v in parse_qs(body).items()}
+                path = urlparse(self.path).path
+                outer.events.append(f"token:{form.get('grant_type')}")
+                if outer.fail.get(path):
+                    code, headers, payload = outer.fail[path].pop(0)
+                    return self._send(code, payload, headers)
+                if path != "/oauth/oauth2/token":
+                    return self._send(404, {"error": "not_found"})
+                code, payload = outer.token(form)
+                self._send(code, payload)
+
+            def do_GET(self):  # noqa: N802
+                url = urlparse(self.path)
+                params = {k: v[0] for k, v in parse_qs(url.query).items()}
+                path = url.path
+                outer.events.append(f"GET {path}")
+                outer.params.append((path, params))
+                outer.user_agents.add(self.headers.get("User-Agent"))
+                if outer.on_data is not None:
+                    hook, outer.on_data = outer.on_data, None
+                    hook()
+                if not outer._authorized(self.headers):
+                    return self._send(401, {"error": "unauthorized"})
+                if outer.fail.get(path):
+                    code, headers, payload = outer.fail[path].pop(0)
+                    return self._send(code, payload, headers)
+                resource = WHOOP_RESOURCES.get(path.removeprefix("/developer/v2/"))
+                if resource is None:
+                    return self._send(404, {"error": "not_found"})
+                self._send(200, outer.page(resource, params))
+
+            def do_DELETE(self):  # noqa: N802
+                path = urlparse(self.path).path
+                outer.events.append(f"DELETE {path}")
+                if not outer._authorized(self.headers):
+                    return self._send(401, {"error": "unauthorized"})
+                outer.revoked = True
+                outer.access_tokens.clear()
+                outer.refresh_tokens.clear()
+                self.send_response(204)
+                self.end_headers()
+
+            def _send(self, code, payload, headers=None):
+                data = json.dumps(payload).encode()
+                self.send_response(code)
+                for name, value in (headers or {}).items():
+                    self.send_header(name, value)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def log_message(self, *args):
+                pass
+
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server.daemon_threads = True
+        threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True).start()
+        self.url = f"http://127.0.0.1:{self.server.server_port}/"
+
+    def _new(self, kind: str) -> str:
+        token = f"{WHOOP_TOKEN_PREFIX}-{kind}-{next(self._serial)}"
+        self.issued.append(token)
+        return token
+
+    def grant(self) -> Dict:
+        """A fresh pair, as the token endpoint answers it."""
+        access, refresh = self._new("access"), self._new("refresh")
+        self.access_tokens.add(access)
+        self.refresh_tokens.add(refresh)
+        return {"access_token": access, "refresh_token": refresh, "expires_in": self.expires_in,
+                "scope": "offline read:recovery read:cycles read:sleep read:workout", "token_type": "bearer"}
+
+    def new_code(self, redirect_uri: str = WHOOP_REDIRECT) -> str:
+        code = f"code-{next(self._serial)}"
+        self.codes[code] = redirect_uri
+        return code
+
+    def token(self, form: Dict[str, str]) -> Tuple[int, Dict]:
+        if form.get("client_id") != WHOOP_CLIENT_ID or form.get("client_secret") != WHOOP_CLIENT_SECRET:
+            return 401, {"error": "invalid_client"}
+        if form.get("grant_type") == "authorization_code":
+            if self.codes.pop(form.get("code"), None) != form.get("redirect_uri"):
+                return 400, {"error": "invalid_grant", "error_description": "The authorization code is invalid"}
+            return 200, self.grant()
+        if form.get("grant_type") == "refresh_token":
+            if form.get("refresh_token") not in self.refresh_tokens or form.get("scope") != "offline":
+                return 400, {"error": "invalid_grant", "error_description": "The refresh token is invalid"}
+            # Rotation: the old refresh token and the access tokens die.
+            self.refresh_tokens.discard(form["refresh_token"])
+            self.access_tokens.clear()
+            return 200, self.grant()
+        return 400, {"error": "unsupported_grant_type"}
+
+    def _authorized(self, headers) -> bool:
+        auth = headers.get("Authorization") or ""
+        return auth.startswith("Bearer ") and auth[len("Bearer "):] in self.access_tokens
+
+    def page(self, resource: str, params: Dict[str, str]) -> Dict:
+        records = self.records[resource]
+        if params.get("start"):
+            lower = datetime.fromisoformat(params["start"].replace("Z", "+00:00"))
+            records = [r for r in records
+                       if datetime.fromisoformat((r.get("start") or r.get("_start")).replace("Z", "+00:00")) >= lower]
+        records = sorted(records, key=lambda r: r.get("start") or r.get("_start"), reverse=True)
+        offset = int(params.get("nextToken") or 0)
+        size = min(int(params.get("limit") or 10), 25, self.page_size)
+        page = [{k: v for k, v in r.items() if not k.startswith("_")} for r in records[offset:offset + size]]
+        more = offset + size < len(records)
+        return {"records": page, "next_token": str(offset + size) if more else None}
+
+    def data_paths(self) -> List[str]:
+        return [e.split(" ", 1)[1] for e in self.events if e.startswith("GET ")]
+
+    def close(self):
+        self.server.shutdown()
+
+
+WHOOP_CYCLES_HEADER = ("Cycle start time,Cycle end time,Cycle timezone,Recovery score %,Resting heart rate (bpm),"
+                       "Heart rate variability (ms),Skin temp (celsius),Blood oxygen %,Day Strain,"
+                       "Energy burned (cal),Max HR (bpm),Average HR (bpm),Sleep onset,Wake onset,"
+                       "Sleep performance %,Respiratory rate (rpm),Asleep duration (min),In bed duration (min),"
+                       "Light sleep duration (min),Deep (SWS) duration (min),REM duration (min),"
+                       "Awake duration (min),Sleep need (min),Sleep debt (min),Sleep efficiency %,"
+                       "Sleep consistency %")
+WHOOP_SLEEPS_HEADER = ("Cycle start time,Cycle end time,Cycle timezone,Sleep onset,Wake onset,Sleep performance %,"
+                       "Respiratory rate (rpm),Asleep duration (min),In bed duration (min),"
+                       "Light sleep duration (min),Deep (SWS) duration (min),REM duration (min),"
+                       "Awake duration (min),Sleep need (min),Sleep debt (min),Sleep efficiency %,"
+                       "Sleep consistency %,Nap")
+WHOOP_WORKOUTS_HEADER = ("Cycle start time,Cycle end time,Cycle timezone,Workout start time,Workout end time,"
+                         "Duration (min),Activity name,Activity Strain,Energy burned (cal),Max HR (bpm),"
+                         "Average HR (bpm),HR Zone 1 %,HR Zone 2 %,HR Zone 3 %,HR Zone 4 %,HR Zone 5 %,"
+                         "GPS enabled")
+WHOOP_JOURNAL_HEADER = "Cycle start time,Cycle end time,Cycle timezone,Question text,Answered yes,Notes"
+
+# The export's headers, as Whoops' tests copied them from a real export; the
+# rows are made up. Times are local, to the second, in the row's time zone.
+# The first night and the run match the API records above (within a second);
+# the night of 2026-03-10 is from before the API was read: written whole.
+WHOOP_EXPORT = {
+    "physiological_cycles.csv": WHOOP_CYCLES_HEADER + "\n"
+    "2026-10-01 23:10:00,2026-10-02 23:30:00,UTC+02:00,44,64,31.8,33.7,95.7,12.4,1981,141,68,"
+    "2026-10-01 23:10:00,2026-10-02 07:25:44,98,16.1,457,505,248,111,98,23,465,6,92,90\n"
+    "2026-03-09 23:00:00,2026-03-10 22:45:00,UTC+01:00,61,50,48,34.5,97.5,9.8,2100,150,66,"
+    "2026-03-09 23:00:00,2026-03-10 06:45:00,85,14.2,420,465,220,110,90,45,480,20,90,81\n",
+    "sleeps.csv": WHOOP_SLEEPS_HEADER + "\n"
+    "2026-10-01 23:10:00,2026-10-02 23:30:00,UTC+02:00,2026-10-01 23:10:01,2026-10-02 07:25:44,98,16.1,457,505,"
+    "248,111,98,23,465,6,92,90,false\n"
+    "2026-03-09 23:00:00,2026-03-10 22:45:00,UTC+01:00,2026-03-09 23:00:00,2026-03-10 06:45:00,85,14.2,420,465,"
+    "220,110,90,45,480,20,90,81,false\n",
+    "workouts.csv": WHOOP_WORKOUTS_HEADER + "\n"
+    "2026-10-01 23:10:00,2026-10-02 23:30:00,UTC+02:00,2026-10-02 18:00:01,2026-10-02 18:45:30,45.5,Running,"
+    "8.2,375,146,123,20,30,30,15,5,true\n"
+    "2026-03-09 23:00:00,2026-03-10 22:45:00,UTC+01:00,2026-03-10 18:00:00,2026-03-10 18:40:00,40,Cycling,"
+    "10.1,450,160,135,10,40,30,15,5,false\n",
+    "journal_entries.csv": WHOOP_JOURNAL_HEADER + "\n"
+    "2026-10-01 23:10:00,2026-10-02 23:30:00,UTC+02:00,Have any alcoholic drinks?,true,\"" + WHOOP_NOTE + "\"\n"
+    "2026-10-01 23:10:00,2026-10-02 23:30:00,UTC+02:00,Read in bed before sleeping?,false,\n"
+    "2026-03-09 23:00:00,2026-03-10 22:45:00,UTC+01:00,Have any alcoholic drinks?,false,\n"
+    "2026-03-09 23:00:00,2026-03-10 22:45:00,UTC+01:00,Have any alcoholic drinks?,false,\n",
+}
+
+
+def write_whoop_export(path, files=None, zipped=True):
+    """The export zip (or, `zipped=False`, the one CSV given) at `path`."""
+    files = WHOOP_EXPORT if files is None else files
+    if zipped:
+        with zipfile.ZipFile(path, "w") as archive:
+            for name, content in files.items():
+                archive.writestr(f"my_whoop_data_2026_10_03/{name}", content)
+    else:
+        (content,) = files.values()
+        Path(path).write_text(content, encoding="utf-8")
     return Path(path)
 
 

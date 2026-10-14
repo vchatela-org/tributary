@@ -13,3 +13,7 @@ cronsim==2.7
 tzdata==2026.5
 # The Renpho connector: the app's encrypted API (pulls requests and pycryptodome).
 renpho-api==0.2.0
+# AES-256-GCM for the tokens of a source connected in the browser (Whoop's
+# OAuth, app/secretbox.py): never stored in plain text. abi3 wheels, cp315
+# included.
+cryptography==50.0.2

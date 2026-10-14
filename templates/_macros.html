@@ -105,7 +105,9 @@
   <div class="tb-src-name"><a href="/connectors/{{ c.key }}">{{ c.label }}</a>
     <span class="tb-src-when">{{ cadence(c) }}</span></div>
   <div class="tb-src-meta">
-  {% if c.state == "unconfigured" and c.required_env %}
+  {% if c.state == "unconfigured" and c.setup_hint %}
+    {{ c.setup_hint }} <a href="/connectors/{{ c.key }}#connection">Its page</a>.
+  {% elif c.state == "unconfigured" and c.required_env %}
     Set {% for name in c.required_env %}<code class="tb-mono">{{ name }}</code>{% if not loop.last %},
     {% endif %}{% endfor %} to run it. A check works without them.
   {% elif c.state == "running" %}

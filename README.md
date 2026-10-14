@@ -12,8 +12,8 @@ sources.
 
 ```mermaid
 flowchart LR
-    api["APIs<br>Renpho, Audiobookshelf, Todoist"] -- on a schedule --> T
-    files["Export files<br>MyTherapy, Medisafe, MyFitnessPal"] -- uploaded in the UI --> T
+    api["APIs<br>Renpho, Audiobookshelf, Todoist, Whoop"] -- on a schedule --> T
+    files["Export files<br>MyTherapy, Medisafe, MyFitnessPal, Whoop"] -- uploaded in the UI --> T
     T["<b>Tributary</b><br>fetch or import, normalise,<br>write: same key, same point"] --> DB[("InfluxDB 1.x<br>a database per domain")]
     tools["Compatible tools<br>garmin-grafana, Takeback..."] -.-> DB
     DB --> G["<b>Grafana</b><br>the dashboards"]
@@ -37,7 +37,8 @@ Light or dark follows your system; the other pages are in [docs/ui.md](docs/ui.m
   write into the same databases, so one Grafana relates them all.
 - **Private by default.** Numbers and a few tags; free text only where it is
   the point (a book's title) or when you ask (task names, dose notes); secrets
-  stay in the environment.
+  stay in the environment, and the tokens of a source you connect in the
+  browser (Whoop) are stored encrypted, never in plain text.
 
 ## Supported sources
 
@@ -47,7 +48,7 @@ Light or dark follows your system; the other pages are in [docs/ui.md](docs/ui.m
 | [**MyTherapy**](docs/connectors/mytherapy.md) | Medication | Export, uploaded in the UI | `medication` → `BodyStats` | none: you import a file |
 | [**Medisafe**](docs/connectors/medisafe.md) | Medication | Export, uploaded in the UI | `medication` → `BodyStats` | none: you import a file |
 | [**MyFitnessPal**](docs/connectors/myfitnesspal.md) | Nutrition & fitness | Export, uploaded in the UI | `body_composition`, `nutrition`, `exercise` → `BodyStats` | none: you import a file |
-| *No connector yet* | Sleep | covered by the compatible tools below | | |
+| [**Whoop**](docs/connectors/whoop.md), built on kryoseu's [Whoops](https://github.com/kryoseu/whoops) | Sleep | API (OAuth: connect on its page), and its export uploaded in the UI | `sleep_session`, `journal` → `SleepStats`; `daily_activity`, `exercise` → `BodyStats` | Daily at 10:35 |
 | [**Audiobookshelf**](docs/connectors/audiobookshelf.md) | Reading & media | API | `reading_session`, `book_finished` → `MediaStats` | Daily at 03:10 |
 | [**Todoist**](docs/connectors/todoist.md) | Productivity | API | `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` → `TodoistStats` | Daily at 00:30 |
 
@@ -64,7 +65,6 @@ It only shows, read-only, when garmin-grafana's data last arrived.
 | Compatible tool | Category | Writes |
 |---|---|---|
 | [**garmin-grafana**](https://github.com/arpanghosh8453/garmin-grafana) | Body & health, Sleep | InfluxDB `GarminStats` (activity, sleep, heart rate, body battery...), with its own dashboards |
-| [**Whoops**](https://github.com/kryoseu/whoops) | Sleep | PostgreSQL (Whoop sleep, recovery, strain) |
 | [**Takeback**](https://github.com/vchatela-org/takeback) | Reading & media, Productivity | InfluxDB `MediaStats`, `ShoppingStats`, `DigitalStats`, from GDPR archives (Kindle sessions, Audible, purchases...) |
 
 ## Graphs: in Grafana
@@ -158,6 +158,15 @@ A new source is welcome when no maintained tool covers it yet
 tests and the privacy scan before pushing, and title the PR as a conventional
 commit, since it decides the release: [development and releases](docs/development.md).
 
+## Acknowledgements
+
+The Whoop connector is built on [Whoops](https://github.com/kryoseu/whoops), by
+**kryoseu**: its WHOOP client, its field mapping and `score_state` handling,
+and its export import were adapted rather than rewritten. Thank you, kryoseu:
+Whoops showed how to get one's own WHOOP data out, and made this connector
+mostly a port.
+
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). The files adapted from Whoops keep its licence, the
+[Apache License 2.0](LICENSES/Apache-2.0.txt): see [NOTICE](NOTICE).

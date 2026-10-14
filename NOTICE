@@ -1,0 +1,34 @@
+Tributary
+Licensed under the MIT License: see LICENSE.
+
+Third-party code
+================
+
+This product includes software adapted from Whoops
+(https://github.com/kryoseu/whoops), by kryoseu and the Whoops contributors,
+licensed under the Apache License, Version 2.0: see LICENSES/Apache-2.0.txt.
+Whoops' export import comes from its fork's CSV import
+(https://github.com/vchatela-org/whoops, branch feat/csv-import), offered
+upstream as https://github.com/kryoseu/whoops/pull/5.
+
+The adapted files say so in their header ("Portions adapted from
+kryoseu/whoops (https://github.com/kryoseu/whoops), Apache License 2.0;
+modified."), and remain under the Apache License 2.0:
+
+  app/connectors/whoop_api.py     from src/whoop.py (WhoopClient: the
+                                  endpoints, scopes, authorization URL, token
+                                  requests and paging)
+  app/connectors/whoop.py         from src/models/cycle.py, recovery.py,
+                                  sleep.py and workout.py (from_json: the field
+                                  mapping, the score_state handling)
+  app/connectors/whoop_export.py  from src/whoop_export.py and
+                                  src/models/export.py (the export's files,
+                                  columns, converters and checks)
+  tests/fakes.py, WHOOP section   the export's CSV headers, from
+                                  tests/conftest.py
+
+Whoops ships no NOTICE file, and the copyright line of its licence's appendix
+is the template's, unfilled: the copyright of that code stays with its
+authors. The rest of Tributary is MIT.
+
+Thank you, kryoseu.

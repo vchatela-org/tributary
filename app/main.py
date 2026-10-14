@@ -7,7 +7,7 @@ from app import scheduler
 from app.__version__ import __version__
 from app.config import settings
 from app.database import init_db
-from app.routers import api, web
+from app.routers import api, connections, web
 
 logging.basicConfig(
     level=logging.DEBUG if settings.debug else logging.INFO,
@@ -26,4 +26,5 @@ app = FastAPI(
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(web.router)
+app.include_router(connections.router)
 app.include_router(api.router)

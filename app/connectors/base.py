@@ -29,6 +29,9 @@ and implements one or both inputs:
     source of truth), and an uploaded file replaces them: all of them, or,
     when import_file returns a FileImport with `spans`, only the days the
     file covers (an export of a date range the user picked).
+A source that grants access in a browser (OAuth 2.0: WHOOP) also implements
+app/oauth.py's `oauth_*` hooks: its tokens are the core's, encrypted, and its
+page gets Connect / Disconnect.
 """
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
@@ -82,9 +85,11 @@ class FileImport:
     TRIBUTARY_INFLUXDB_USER: an export of the last month leaves the years
     before it as they are, and a measurement with no span is left as it is.
     None (bare points): the file holds the whole history, and the connector's
-    whole series are replaced."""
+    whole series are replaced. `summary`: what the import read, for the run's
+    message (counts, never a value)."""
     points: List[Point]
     spans: Optional[Dict[str, Span]] = None
+    summary: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -119,6 +124,9 @@ class Connector:
     required_env: ClassVar[Tuple[str, ...]] = ()
     file_types: ClassVar[Tuple[str, ...]] = ()
     rebuild_own_source: ClassVar[bool] = False
+    # Access granted in a browser (app/oauth.py): its page gets Connect,
+    # Reconnect and Disconnect, and /connectors/<key>/callback answers.
+    uses_oauth: ClassVar[bool] = False
 
     def __init__(self) -> None:
         self.settings = self.settings_class()
@@ -156,6 +164,12 @@ class Connector:
         """Whether it runs on a schedule: its API is set up, or it watches a
         folder. An upload works either way."""
         return self.api_configured() or self.watch_dir is not None
+
+    def setup_hint(self) -> Optional[str]:
+        """What to do so that its API runs, when the variables alone don't
+        say it (an OAuth source must also be connected on its page). None:
+        the UI lists `required_env`."""
+        return None
 
     def sync(self, cursor: Any) -> SyncResult:
         raise NotImplementedError

@@ -10,7 +10,8 @@ what the connectors declare (`app/schema.py`, each connector's
 ## Rules
 
 - **One database per domain:** `MediaStats` (reading, listening),
-  `BodyStats` (weight, body composition, medication), `SleepStats`,
+  `BodyStats` (weight, body composition, medication, food, workouts, daily
+  activity), `SleepStats` (sleep, recovery, the morning journal),
   `TodoistStats`, `ShoppingStats`, `DigitalStats`... A
   domain's database holds every tracker of that domain.
 - **A `source` tag on every point**, naming the tracker
@@ -57,8 +58,10 @@ what the connectors declare (`app/schema.py`, each connector's
   it (`TRIBUTARY_MEDISAFE_NOTES`), the words a medication app itself uses
   for a dose (its status, its unit, the medication's strength), and an
   exercise app's own name for an exercise (`activity`): bounded
-  vocabularies. No message, search, URL, address, email, IP or free-form
-  note otherwise. A test fails on any other text field.
+  vocabularies. A journal's questions are a tag (WHOOP's wording, and the
+  ones the member wrote), never its notes. No message, search, URL,
+  address, email, IP or free-form note otherwise. A test fails on any other
+  text field.
 - **Databases** are created by Tributary when missing, `WITH SHARD DURATION
   52w` (the default weekly shards make hundreds of tiny shards for a few
   years of history). An existing database is never altered.
@@ -84,8 +87,9 @@ Reading and listening. *Local time* on both measurements.
 
 ### `BodyStats`
 
-Body composition: weigh-ins of smart scales, and the doses of a medication
-reminder app. No *local time*.
+Body composition: weigh-ins of smart scales, the doses of a medication
+reminder app, meals and workouts, and a device's daily activity. No *local
+time*.
 
 | Measurement | Tags | Fields | Written by |
 |---|---|---|---|
@@ -94,7 +98,8 @@ reminder app. No *local time*.
 | `body_thresholds` | `user` | `weight_kg_t1` (float), `weight_kg_t2` (float), `weight_kg_t3` (float), `weight_kg_min` (float), `weight_kg_max` (float), `bmi_t1` (float), `bmi_t2` (float), `bmi_t3` (float), `bmi_min` (float), `bmi_max` (float), `body_fat_pct_t1` (float), `body_fat_pct_t2` (float), `body_fat_pct_t3` (float), `body_fat_pct_t4` (float), `body_fat_pct_min` (float), `body_fat_pct_max` (float), `subcutaneous_fat_pct_t1` (float), `subcutaneous_fat_pct_t2` (float), `subcutaneous_fat_pct_min` (float), `subcutaneous_fat_pct_max` (float), `visceral_fat_t1` (float), `visceral_fat_t2` (float), `visceral_fat_t3` (float), `visceral_fat_min` (float), `visceral_fat_max` (float), `lean_body_mass_kg_t1` (float), `lean_body_mass_kg_t2` (float), `lean_body_mass_kg_min` (float), `lean_body_mass_kg_max` (float), `muscle_pct_t1` (float), `muscle_pct_t2` (float), `muscle_pct_min` (float), `muscle_pct_max` (float), `bone_pct_t1` (float), `bone_pct_t2` (float), `bone_pct_min` (float), `bone_pct_max` (float), `body_age_t1` (float), `body_age_min` (float), `body_age_max` (float), `bmr_kcal_t1` (float), `bmr_kcal_min` (float), `bmr_kcal_max` (float), `body_water_pct_t1` (float), `body_water_pct_t2` (float), `body_water_pct_min` (float), `body_water_pct_max` (float), `protein_pct_t1` (float), `protein_pct_t2` (float), `protein_pct_min` (float), `protein_pct_max` (float) | Tributary: `renpho` |
 | `medication` | `source`, `user`, `med`, `status` | `taken` (int), `app_status` (str), `dose` (float), `unit` (str), `delay_min` (int), `note` (str), `strength` (str) | Tributary: `mytherapy`, `medisafe` |
 | `nutrition` | `source`, `user`, `meal` | `energy_kcal` (float), `fat_g` (float), `carbs_g` (float), `protein_g` (float), `saturated_fat_g` (float), `polyunsaturated_fat_g` (float), `monounsaturated_fat_g` (float), `trans_fat_g` (float), `fiber_g` (float), `sugar_g` (float), `cholesterol_mg` (float), `sodium_mg` (float), `potassium_mg` (float) | Tributary: `myfitnesspal` |
-| `exercise` | `source`, `user`, `category` | `activity` (str), `energy_kcal` (float), `duration_s` (int) | Tributary: `myfitnesspal` |
+| `exercise` | `source`, `user`, `category` | `activity` (str), `energy_kcal` (float), `duration_s` (int), `strain` (float), `avg_hr` (float), `max_hr` (float), `distance_m` (float), `altitude_gain_m` (float), `altitude_change_m` (float), `percent_recorded` (float), `zone0_s` (int), `zone1_s` (int), `zone2_s` (int), `zone3_s` (int), `zone4_s` (int), `zone5_s` (int), `zone1_pct` (float), `zone2_pct` (float), `zone3_pct` (float), `zone4_pct` (float), `zone5_pct` (float), `gps_enabled` (int) | Tributary: `myfitnesspal` (the first three fields), `whoop` |
+| `daily_activity` | `source`, `user` | `strain` (float), `energy_kcal` (float), `avg_hr` (float), `max_hr` (float), `steps` (int), `duration_s` (int) | Tributary: `whoop` |
 
 - `body_composition`: one point per weigh-in, at its time, with a field
   for each metric the scale measured (none for one it didn't: never a
@@ -138,14 +143,65 @@ reminder app. No *local time*.
   reported one -- the export writes a 0 for "not reported", so a 0 would
   understate it. Sum per `time(1d)` for daily totals.
 - `exercise`: one point per workout or a linked device's daily calorie
-  adjustment, at noon *local* plus the entry's index within the day (so
-  several workouts on one date stay separate points). `category` is `run`,
-  `bike`, `strength`, `aerobic`, `walk`, `hike`, `swim`, `climb`, `paddle`,
-  `elliptical`, `other` -- and `adjustment` for a device's calorie
-  adjustment, which is not a workout: filter it out with
-  `"category" != 'adjustment'`. `activity` is the app's own name for the
-  exercise; `duration_s` is absent on an adjustment (the export's fixed
-  "1 minute" is a placeholder).
+  adjustment. `category` is `run`, `bike`, `strength`, `aerobic`, `walk`,
+  `hike`, `swim`, `climb`, `paddle`, `elliptical`, `other` -- and
+  `adjustment` for a device's calorie adjustment, which is not a workout:
+  filter it out with `"category" != 'adjustment'`. `activity` is the app's
+  own name for the exercise.
+  - `myfitnesspal`: at noon *local* plus the entry's index within the day
+    (so several workouts on one date stay separate points); `duration_s` is
+    absent on an adjustment (the export's fixed "1 minute" is a
+    placeholder).
+  - `whoop`: at the workout's start, `category` mapped from WHOOP's sport
+    name (`running` → `run`...). `strain` is WHOOP's (0-21), `zone0_s` ...
+    `zone5_s` the seconds spent in each heart-rate zone (zone 0 below zone
+    1), `percent_recorded` the share of the workout with heart-rate data.
+    From WHOOP's export only: `zone1_pct` ... `zone5_pct` and
+    `gps_enabled` (0/1).
+- `daily_activity`: one point per device day. WHOOP's is its physiological
+  cycle, from one sleep onset to the next, stamped at its start (so usually
+  the evening before the day it is named after). `energy_kcal` is the
+  energy burned (WHOOP's kilojoules / 4.184), `steps` WHOOP's `step_count`,
+  `duration_s` absent while the cycle is still open (today's).
+
+### `SleepStats`
+
+Sleep: one point per sleep, from any tracker, and the morning journal that
+goes with it. No *local time*: a sleep carries its own local minutes
+(`bedtime_min`, `wake_min`) in the offset it was recorded in.
+
+| Measurement | Tags | Fields | Written by |
+|---|---|---|---|
+| `sleep_session` | `source`, `user`, `kind` (`night`, `nap`) | `start` (int), `in_bed_s` (int), `asleep_s` (int), `awake_s` (int), `light_s` (int), `deep_s` (int), `rem_s` (int), `cycles` (int), `awakenings` (int), `tz_offset_min` (int), `bedtime_min` (int), `wake_min` (int), `score` (float), `respiration_rate` (float), `resting_hr` (float), `hrv_rmssd_ms` (float), `avg_spo2_pct` (float), `efficiency_pct` (float), `consistency_pct` (float), `recovery_score` (float), `skin_temp_c` (float), `calibrating` (int), `no_data_s` (int), `need_baseline_s` (int), `need_debt_s` (int), `need_strain_s` (int), `need_nap_s` (int), `sleep_need_s` (int), `sleep_debt_s` (int); other tools' only: `avg_hr` (float), `min_hr` (float), `max_hr` (float), `deep_pct` (float), `rating` (float), `sdnn_ms` (float), `noise_level` (float), `snore_s` (float), `manual` (bool), `tz` (str), `tags` (str), `note` (str) | Tributary: `whoop`. Other tools: a Sleep as Android history import (`sleep_as_android`) |
+| `journal` | `source`, `user`, `question` | `answered_yes` (int), `count` (int) | Tributary: `whoop` (from its export) |
+
+- `sleep_session`: one point per sleep, at its **end** (the wake), so a
+  night lands on the morning it ended, as Garmin's `SleepSummary` does.
+  `start` is its start (epoch seconds); `in_bed_s` its length as the source
+  reports it; `awake_s`, `light_s`, `deep_s`, `rem_s` exclusive stages
+  (`deep_s` is WHOOP's slow-wave sleep); `asleep_s` the total sleep as the
+  source reports it (WHOOP: light + deep + REM; its export's "Asleep
+  duration" for history only the export has). `bedtime_min` is the local
+  start as signed minutes from midnight (23:30 = -30, 00:45 = 45),
+  `wake_min` the local end in minutes after midnight, both in
+  `tz_offset_min`. `score` is the source's own sleep score, 0-100 (WHOOP's
+  sleep performance), never comparable across sources.
+  - WHOOP's own: `efficiency_pct`, `consistency_pct`; `no_data_s`; the sleep
+    it says was needed (`need_baseline_s` plus `need_debt_s`,
+    `need_strain_s`, `need_nap_s`, which may be negative), and, from its
+    export, `sleep_need_s` and `sleep_debt_s`. The recovery WHOOP scores
+    from the night lands on that night's point: `recovery_score` (0-100),
+    `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `skin_temp_c`, and
+    `calibrating` (1 while WHOOP is still learning the member's baselines).
+  - Other tools' fields (Sleep as Android's history) keep the types they
+    were written with; `manual` is a bool, which Tributary's core has no
+    type for, so no connector writes it. `note` and `tags` are that
+    import's free text: Tributary never writes them.
+- `journal`: one point per answer of WHOOP's journal, at the start of the
+  cycle it was answered for (the cycle that starts with the night it is
+  read against). `question` is the question as WHOOP words it, the member's
+  own custom questions included; `answered_yes` is 1 or 0, `count` 1. The
+  notes typed with an answer are never written.
 
 ### `TodoistStats`
 

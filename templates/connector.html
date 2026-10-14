@@ -20,6 +20,61 @@
 
 <div class="tb-kpis" data-region="kpis:{{ c.key }}">{{ m.kpis(c) }}</div>
 
+{% if connection %}
+{# An OAuth source: the grant is the core's, encrypted; this block shows that
+   one exists, never a token. #}
+{% set link = connection %}
+<section class="tb-panel" id="connection">
+  <h2>Connection</h2>
+  {% if link.connected and link.readable %}
+    <p class="tb-hint"><i class="bi bi-check-circle-fill me-1"></i><strong>Connected.</strong>
+      {% if link.updated_at %}Access last renewed {{ link.updated_at | localtime }}.{% endif %}
+      The tokens are stored encrypted with <code class="tb-mono">TRIBUTARY_SECRET_KEY</code>, and never shown.</p>
+    {% if link.scope %}<p class="tb-hint">Granted: <span class="tb-mono">{{ link.scope }}</span></p>{% endif %}
+  {% elif link.connected %}
+    <p class="tb-note">A connection is stored, but the secret key set now can't open it (the key changed, or
+      is missing): set the key it was saved with, or reconnect.</p>
+  {% else %}
+    <p class="tb-hint"><strong>Not connected.</strong> Connecting opens {{ c.label }}'s own page, where you grant
+      read access to your sleep, recovery, cycles and workouts, then brings you back here. The first run follows
+      a minute later and reads the whole history.</p>
+  {% endif %}
+  {% if link.app_problem or link.key_problem %}
+    <p class="tb-note">{{ link.app_problem or link.key_problem }}</p>
+  {% endif %}
+  {% if link.connected or not (link.app_problem or link.key_problem) %}
+  <div class="tb-actions">
+    {% if not (link.app_problem or link.key_problem) %}
+    <form method="post" action="/connectors/{{ c.key }}/connect">
+      <button class="btn btn-sm btn-primary" type="submit"><i class="bi bi-box-arrow-up-right me-1"></i>{{
+        "Reconnect" if link.connected else "Connect " ~ c.label }}</button>
+    </form>
+    {% endif %}
+    {% if link.connected %}
+    <form method="post" action="/connectors/{{ c.key }}/disconnect">
+      <button class="btn btn-sm btn-ghost" type="submit"
+              title="Revoke Tributary's access, then forget the tokens"><i class="bi bi-x-circle me-1"></i>Disconnect</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% if not (link.app_problem or link.key_problem) %}
+  <details class="tb-fold">
+    <summary>Back from {{ c.label }}, on a page that doesn't load?</summary>
+    <p class="tb-hint mt-2">On a plain <code class="tb-mono">http://</code> install the redirect URI you
+      registered is an <code class="tb-mono">https://</code> address nothing answers, so the browser stops there
+      after you grant access. Copy that whole address and paste it here, within 10 minutes.</p>
+    <form method="post" action="/connectors/{{ c.key }}/callback" class="d-flex flex-wrap gap-2 align-items-center">
+      <input class="form-control form-control-sm tb-mono" style="max-width: 32rem;" type="url" name="url"
+             placeholder="https://localhost/connectors/{{ c.key }}/callback?code=…&amp;state=…" required
+             autocomplete="off">
+      <button class="btn btn-sm btn-outline-primary" type="submit">Finish connecting</button>
+    </form>
+  </details>
+  {% endif %}
+</section>
+{% endif %}
+
 {% if c.accepts_files %}
 <section class="tb-panel{% if c.staged %} hi{% endif %}" id="import">
   <h2>Import an export</h2>

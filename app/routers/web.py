@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from app import connectors, crud, freshness, influxdb, preferences, scheduler, schedule, views
+from app import connectors, crud, freshness, influxdb, oauth, preferences, scheduler, schedule, views
 from app.categories import CATEGORIES, EXTERNAL_TOOLS
 from app.config import settings
 from app.database import SessionLocal, get_db
@@ -70,6 +70,8 @@ def _connector_page(db: Session, connector) -> dict:
         if staged is not None else None,
         "influxdb_user": settings.influxdb_user,
         "ttl_hours": settings.staged_upload_ttl_hours,
+        # An OAuth source's connection, as the page shows it: never a token.
+        "connection": oauth.status(connector) if connector.uses_oauth else None,
     }
 
 
