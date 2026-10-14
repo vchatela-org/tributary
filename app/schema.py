@@ -74,12 +74,9 @@ DAILY_ACTIVITY = Measurement(
 )
 
 # ── SleepStats: sleep ───────────────────────────────────────────────────
-# The homelab sleep contract, also written by other tools (a Sleep as Android
-# history import) with fields of their own: `avg_hr`, `min_hr`, `max_hr`,
-# `deep_pct`, `rating`, `sdnn_ms`, `noise_level`, `snore_s` (float), `tz`,
-# `tags`, `note` (str) and `manual` (a bool: Tributary has no bool type, so it
-# is left out here). Where names overlap, the types are the ones already
-# stored. One point per sleep, at its end; `kind` is `night` or `nap`. WHOOP's
+# The homelab sleep contract, written by WHOOP and by a Sleep as Android
+# history import. Where names overlap, the types are the ones already stored.
+# One point per sleep, at its end; `kind` is `night` or `nap`. WHOOP's
 # recovery, scored from the night's sleep, lands on that sleep's point.
 SLEEP_SESSION = Measurement(
     database="SleepStats", name="sleep_session", tags=("kind",),
@@ -93,5 +90,35 @@ SLEEP_SESSION = Measurement(
         "efficiency_pct": float, "consistency_pct": float, "recovery_score": float, "skin_temp_c": float,
         "calibrating": int, "no_data_s": int, "need_baseline_s": int, "need_debt_s": int, "need_strain_s": int,
         "need_nap_s": int, "sleep_need_s": int, "sleep_debt_s": int,
+        # Sleep as Android's own (its export): heart rate over the session, its
+        # own deep-sleep percentage, the night's subjective rating, an SDNN HRV
+        # (a different statistic from RMSSD), snoring and the average noise
+        # level, the zone IANA name, and the session's tags and note (text).
+        # `manual` (a bool) is true for a session entered by hand, not tracked.
+        "avg_hr": float, "min_hr": float, "max_hr": float, "deep_pct": float, "rating": float,
+        "sdnn_ms": float, "noise_level": float, "snore_s": float,
+        "tz": str, "tags": str, "note": str, "manual": bool,
     },
+)
+
+# Sleep as Android's hypnogram: exclusive stage segments (a moment counts
+# once), stamped at the segment's start. `level` is Garmin's SleepStageLevel
+# scale (0 deep, 1 light, 2 rem, 3 awake), so hypnograms line up across
+# sources; `stage` repeats it as a word. The export stamps them in
+# milliseconds, and two can land in the same second once Tributary floors them
+# to its own precision: `last_wins` keeps the later one's fields rather than
+# summing two durations, as InfluxDB's own write did.
+SLEEP_STAGE = Measurement(
+    database="SleepStats", name="sleep_stage", tags=(),
+    fields={"level": int, "stage": str, "duration_s": int},
+    last_wins=True,
+)
+
+# Sleep as Android's samples during a session, stamped at the sample's time:
+# whichever it recorded -- heart rate, SpO2, SDNN. Same milli to whole-second
+# folding as the stages: a second holding two samples keeps the later one.
+SLEEP_VITALS = Measurement(
+    database="SleepStats", name="sleep_vitals", tags=(),
+    fields={"hr_bpm": float, "spo2_pct": float, "sdnn_ms": float},
+    last_wins=True,
 )

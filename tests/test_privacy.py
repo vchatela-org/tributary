@@ -30,7 +30,13 @@ ALLOWED_TEXT = {("MediaStats", "reading_session", "title"), ("MediaStats", "book
                 ("BodyStats", "exercise", "activity"),
                 # Medisafe: a medication's strength ("10 mg", "5 g"), as the
                 # script wrote it: a number and a unit the app offers.
-                ("BodyStats", "medication", "strength")}
+                ("BodyStats", "medication", "strength"),
+                # Sleep as Android: the session's zone (an IANA name), the
+                # hypnogram's stage word (deep/light/rem/awake, a bounded
+                # vocabulary), and the comment's hashtags -- a vocabulary the
+                # user chose and the dashboard filters on (`tags =~ /#alcohol/`).
+                ("SleepStats", "sleep_session", "tz"), ("SleepStats", "sleep_session", "tags"),
+                ("SleepStats", "sleep_stage", "stage")}
 # Todoist's task text: only with TRIBUTARY_TODOIST_TASK_TEXT (the job it
 # replaced wrote it, and its dashboard lists the completions). Medisafe's dose
 # note: only with TRIBUTARY_MEDISAFE_NOTES (the script wrote it, and the
@@ -38,7 +44,10 @@ ALLOWED_TEXT = {("MediaStats", "reading_session", "title"), ("MediaStats", "book
 OPT_IN_TEXT = {("TodoistStats", "todoist_task_completed", "content"),
                ("TodoistStats", "todoist_task_completed", "labels"),
                ("TodoistStats", "todoist_completion", "content"),
-               ("BodyStats", "medication", "note")}
+               ("BodyStats", "medication", "note"),
+               # Sleep as Android's comment free text: only with
+               # TRIBUTARY_SLEEP_AS_ANDROID_NOTES (the script wrote it).
+               ("SleepStats", "sleep_session", "note")}
 
 
 def test_only_titles_and_opt_in_text_are_declared_as_text():

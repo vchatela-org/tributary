@@ -1162,6 +1162,51 @@ def write_whoop_export(path, files=None, zipped=True):
     return Path(path)
 
 
+# ────────────────────────────────────────────────
+# Sleep as Android (its backup export, built by hand)
+# ────────────────────────────────────────────────
+
+# The export's base columns (the ones the import reads), then one "Event"
+# column per event of the record; the actigraphy columns in between are named
+# with that night's clock times and ignored.
+SLEEP_COLUMNS = ("Id", "Tz", "From", "To", "Sched", "Hours", "Rating", "Comment",
+                 "Framerate", "Snore", "Noise", "Cycles", "DeepSleep", "LenAdjust", "Geo")
+
+# An invented night: 2026-03-01 23:00 Paris (22:00 UTC), eight hours to 07:00.
+SLEEP_START_MS = epoch(2026, 3, 1, 22, 0) * 1000
+
+
+def sleep_record(record_id=SLEEP_START_MS, tz="Europe/Paris", hours="8.0", rating="0",
+                 comment="", snore="-1", noise="-1", cycles="3", deepsleep="0.2",
+                 lenadjust="0", events=()):
+    """One record's (header, data) lines: the base columns, then its events
+    (`KIND-<epoch ms>[-<value>]`, e.g. "DEEP_START-...", "HR-...-58"). The
+    writer adds a noise line after it, as the app does."""
+    header = list(SLEEP_COLUMNS) + ["Event"] * len(events)
+    data = [str(record_id), tz, "From", "To", "Sched", hours, rating, comment, "1",
+            snore, noise, cycles, deepsleep, lenadjust, ""] + list(events)
+    return header, data
+
+
+def write_sleep_export(path, records, zipped=True):
+    """A Sleep as Android backup: sleep-export.csv in a zip, or the CSV alone
+    (`zipped=False`). Each record is a header line, its data line, and a noise
+    line (an empty first cell) the connector skips."""
+    out = io.StringIO(newline="")
+    writer = csv.writer(out)
+    for header, data in records:
+        writer.writerow(header)
+        writer.writerow(data)
+        writer.writerow([""] * len(data))
+    text = out.getvalue()
+    if zipped:
+        with zipfile.ZipFile(path, "w") as archive:
+            archive.writestr("sleep-export.csv", text)
+    else:
+        Path(path).write_text(text, encoding="utf-8")
+    return Path(path)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="A fake Audiobookshelf server with a few sessions.")
     parser.add_argument("--host", default="127.0.0.1")

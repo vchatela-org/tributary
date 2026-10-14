@@ -71,8 +71,9 @@ dashboards read the following.
   Checked against garmin-grafana's `main` branch, October 2026.
 - `SleepStats` and two `BodyStats` series that Tributary's Whoop connector
   writes with `source=whoop` and a `user` tag ([the schema](schema.md)), listed
-  here for the fields the dashboards read: any other tool writing the same
-  names (a Sleep as Android history in `sleep_session`) is drawn the same way.
+  here for the fields the dashboards read: any other writer of the same names
+  (the Sleep as Android connector in `sleep_session`, its `#hashtags` in
+  `tags`) is drawn the same way.
 
 | Database | Measurement | Fields the dashboards read | Written by |
 |---|---|---|---|
@@ -81,7 +82,7 @@ dashboards read the following.
 | `GarminStats` | `ActivitySummary` | `elapsedDuration`, `calories`, `hrTimeInZone_1`...`_5` | garmin-grafana |
 | `GarminStats` | `VO2_Max` | `VO2_max_value`, `VO2_max_value_cycling` | garmin-grafana |
 | `GarminStats` | `BodyComposition` | `weight`, `bodyFat`, `bodyWater`, `boneMass`, `bmi`, `visceralFat` | garmin-grafana |
-| `SleepStats` | `sleep_session` | tag `kind` (`night`, `nap`: naps are left out); `asleep_s`, `deep_s`, `light_s`, `rem_s`, `awake_s`, `bedtime_min`, `wake_min` (int); `score`, `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `respiration_rate`, `recovery_score`, `skin_temp_c` (float). One point per sleep, at its end | Tributary: `whoop`; other tools |
+| `SleepStats` | `sleep_session` | tag `kind` (`night`, `nap`: naps are left out); `asleep_s`, `deep_s`, `light_s`, `rem_s`, `awake_s`, `bedtime_min`, `wake_min` (int); `score`, `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `respiration_rate`, `recovery_score`, `skin_temp_c` (float). One point per sleep, at its end | Tributary: `whoop`, `sleep_as_android` |
 | `BodyStats` | `daily_activity` | `steps` (int); `strain`, `energy_kcal` (float). One point per physiological day, at its start | Tributary: `whoop` |
 | `BodyStats` | `exercise` | beyond MyFitnessPal's fields: `zone1_s`...`zone5_s` (int, seconds per heart-rate zone) | Tributary: `whoop`, next to `myfitnesspal` |
 
