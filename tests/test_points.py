@@ -146,6 +146,15 @@ def test_last_wins_merges_a_key_as_consecutive_writes_would():
     assert lines == [f'm,source=s count=1i,minutes=2.0,note="second" {epoch(2025, 1, 1)}']
 
 
+def test_a_bool_field_is_true_or_false_and_never_summed():
+    """A bool is written `true`/`false` (InfluxDB remembers the type), and two of
+    them in one key take the later value rather than adding up."""
+    m = Measurement("D", "m", tags=(), fields={"count": int, "manual": bool})
+    lines = encode([Point(m, at(2025, 1, 1), {}, {"count": 1, "manual": False}),
+                    Point(m, at(2025, 1, 1), {}, {"count": 1, "manual": True})], "s")["D"]
+    assert lines == [f'm,source=s count=2i,manual=true {epoch(2025, 1, 1)}']
+
+
 def test_a_measurement_may_keep_its_texts_whole():
     whole = Measurement("D", "m", tags=(), fields={"note": str}, text_max=None)
     assert encode([Point(whole, at(2025, 1, 1), {}, {"note": "x" * 1000})], "s")["D"] == [
@@ -182,7 +191,7 @@ def test_every_field_type_is_stable():
     seen = {}
     for m in all_measurements():
         for name, kind in m.field_types.items():
-            assert kind in (int, float, str)
+            assert kind in (int, float, str, bool)
             assert seen.setdefault((m.database, m.name, name), kind) is kind, (m.name, name)
 
 
@@ -199,7 +208,7 @@ def _documented():
         if row and database:
             measurement, tags, fields = row.groups()
             contract[(database, measurement)] = (
-                {name: kind for name, kind in re.findall(r"`(\w+)` \((int|float|str)\)", fields)},
+                {name: kind for name, kind in re.findall(r"`(\w+)` \((int|float|str|bool)\)", fields)},
                 set(re.findall(r"`(\w+)`", tags)),
             )
     return contract

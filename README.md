@@ -13,7 +13,7 @@ sources.
 ```mermaid
 flowchart LR
     api["APIs<br>Renpho, Audiobookshelf, Todoist, Whoop"] -- on a schedule --> T
-    files["Export files<br>MyTherapy, Medisafe, MyFitnessPal, Whoop"] -- uploaded in the UI --> T
+    files["Export files<br>MyTherapy, Medisafe, MyFitnessPal, Whoop, Sleep as Android"] -- uploaded in the UI --> T
     T["<b>Tributary</b><br>fetch or import, normalise,<br>write: same key, same point"] --> DB[("InfluxDB 1.x<br>a database per domain")]
     tools["Compatible tools<br>garmin-grafana, Takeback..."] -.-> DB
     DB --> G["<b>Grafana</b><br>the dashboards"]
@@ -49,6 +49,7 @@ Light or dark follows your system; the other pages are in [docs/ui.md](docs/ui.m
 | [**Medisafe**](docs/connectors/medisafe.md) | Medication | Export, uploaded in the UI | `medication` → `BodyStats` | none: you import a file |
 | [**MyFitnessPal**](docs/connectors/myfitnesspal.md) | Nutrition & fitness | Export, uploaded in the UI | `body_composition`, `nutrition`, `exercise` → `BodyStats` | none: you import a file |
 | [**Whoop**](docs/connectors/whoop.md), built on kryoseu's [Whoops](https://github.com/kryoseu/whoops) | Sleep | API (OAuth: connect on its page), and its export uploaded in the UI | `sleep_session`, `journal` → `SleepStats`; `daily_activity`, `exercise` → `BodyStats` | Daily at 10:35 |
+| [**Sleep as Android**](docs/connectors/sleep_as_android.md) | Sleep | Export, uploaded in the UI | `sleep_session`, `sleep_stage`, `sleep_vitals` → `SleepStats` | none: you import a file |
 | [**Audiobookshelf**](docs/connectors/audiobookshelf.md) | Reading & media | API | `reading_session`, `book_finished` → `MediaStats` | Daily at 03:10 |
 | [**Todoist**](docs/connectors/todoist.md) | Productivity | API | `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` → `TodoistStats` | Daily at 00:30 |
 

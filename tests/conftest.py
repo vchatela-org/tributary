@@ -152,6 +152,14 @@ def myfitnesspal_connector():
 
 
 @pytest.fixture()
+def sleep_as_android_connector(monkeypatch):
+    """Sleep as Android as configured by nothing: no notes."""
+    connector = connectors.get("sleep_as_android")
+    monkeypatch.setattr(connector.settings, "notes", False)
+    return connector
+
+
+@pytest.fixture()
 def medisafe_connector(monkeypatch):
     """Medisafe as configured by nothing: no mapping, no notes, no end date."""
     connector = connectors.get("medisafe")

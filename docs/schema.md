@@ -31,8 +31,8 @@ what the connectors declare (`app/schema.py`, each connector's
 - **Field types are fixed per measurement.** InfluxDB 1.x rejects a write
   whose field type differs from what the shard already holds, so a field
   is always written with the type in the tables below, by every tool:
-  `int` (`12i` in line protocol), `float`, `str`. A new field is a new
-  name, never a new type for an old one.
+  `int` (`12i` in line protocol), `float`, `str`, `bool` (`true`/`false`).
+  A new field is a new name, never a new type for an old one.
 - **Local time:** InfluxQL can't shift a time zone, so measurements marked
   *local time* carry `local_hour` (0-23) and `local_weekday` (1 = Monday …
   7 = Sunday) as int fields, in `TRIBUTARY_TZ`, plus a `time_precision`
@@ -172,7 +172,9 @@ goes with it. No *local time*: a sleep carries its own local minutes
 
 | Measurement | Tags | Fields | Written by |
 |---|---|---|---|
-| `sleep_session` | `source`, `user`, `kind` (`night`, `nap`) | `start` (int), `in_bed_s` (int), `asleep_s` (int), `awake_s` (int), `light_s` (int), `deep_s` (int), `rem_s` (int), `cycles` (int), `awakenings` (int), `tz_offset_min` (int), `bedtime_min` (int), `wake_min` (int), `score` (float), `respiration_rate` (float), `resting_hr` (float), `hrv_rmssd_ms` (float), `avg_spo2_pct` (float), `efficiency_pct` (float), `consistency_pct` (float), `recovery_score` (float), `skin_temp_c` (float), `calibrating` (int), `no_data_s` (int), `need_baseline_s` (int), `need_debt_s` (int), `need_strain_s` (int), `need_nap_s` (int), `sleep_need_s` (int), `sleep_debt_s` (int); other tools' only: `avg_hr` (float), `min_hr` (float), `max_hr` (float), `deep_pct` (float), `rating` (float), `sdnn_ms` (float), `noise_level` (float), `snore_s` (float), `manual` (bool), `tz` (str), `tags` (str), `note` (str) | Tributary: `whoop`. Other tools: a Sleep as Android history import (`sleep_as_android`) |
+| `sleep_session` | `source`, `user`, `kind` (`night`, `nap`) | `start` (int), `in_bed_s` (int), `asleep_s` (int), `awake_s` (int), `light_s` (int), `deep_s` (int), `rem_s` (int), `cycles` (int), `awakenings` (int), `tz_offset_min` (int), `bedtime_min` (int), `wake_min` (int), `score` (float), `respiration_rate` (float), `resting_hr` (float), `hrv_rmssd_ms` (float), `avg_spo2_pct` (float), `efficiency_pct` (float), `consistency_pct` (float), `recovery_score` (float), `skin_temp_c` (float), `calibrating` (int), `no_data_s` (int), `need_baseline_s` (int), `need_debt_s` (int), `need_strain_s` (int), `need_nap_s` (int), `sleep_need_s` (int), `sleep_debt_s` (int), `avg_hr` (float), `min_hr` (float), `max_hr` (float), `deep_pct` (float), `rating` (float), `sdnn_ms` (float), `noise_level` (float), `snore_s` (float), `tz` (str), `tags` (str), `note` (str), `manual` (bool) | Tributary: `whoop`, `sleep_as_android` |
+| `sleep_stage` | `source`, `user` | `level` (int), `stage` (str), `duration_s` (int) | Tributary: `sleep_as_android` (its export) |
+| `sleep_vitals` | `source`, `user` | `hr_bpm` (float), `spo2_pct` (float), `sdnn_ms` (float) | Tributary: `sleep_as_android` (its export) |
 | `journal` | `source`, `user`, `question` | `answered_yes` (int), `count` (int) | Tributary: `whoop` (from its export) |
 
 - `sleep_session`: one point per sleep, at its **end** (the wake), so a
@@ -193,10 +195,25 @@ goes with it. No *local time*: a sleep carries its own local minutes
     from the night lands on that night's point: `recovery_score` (0-100),
     `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `skin_temp_c`, and
     `calibrating` (1 while WHOOP is still learning the member's baselines).
-  - Other tools' fields (Sleep as Android's history) keep the types they
-    were written with; `manual` is a bool, which Tributary's core has no
-    type for, so no connector writes it. `note` and `tags` are that
-    import's free text: Tributary never writes them.
+  - Sleep as Android's own (its export): `avg_hr`, `min_hr`, `max_hr` over
+    the session, `deep_pct` (its own deep-sleep percentage), `rating` (the
+    night's rating), `sdnn_ms` (an SDNN HRV, a different statistic from
+    `hrv_rmssd_ms`), `snore_s` and `noise_level`; `tz` (the zone's IANA
+    name); `manual` (true for a session entered by hand, its cycles == -1).
+    `tags` (the comment's hashtags, e.g. `#alcohol #sport`) and `note` (its
+    free text, written only with `TRIBUTARY_SLEEP_AS_ANDROID_NOTES`) are
+    text: the hashtags are a vocabulary the user chose and are always
+    written, the note is not.
+- `sleep_stage`: Sleep as Android's hypnogram, one point per segment at its
+  start. `level` is Garmin's `SleepStageLevel` scale (0 deep, 1 light,
+  2 rem, 3 awake) so hypnograms line up across sources, `stage` repeats it
+  as a word, `duration_s` is the segment. The app draws REM on top of light
+  and awake on top of either, so segments are flattened with a precedence
+  (awake, rem, deep, light): each moment counts once.
+- `sleep_vitals`: Sleep as Android's samples during a session, at their
+  time: whichever the app recorded -- `hr_bpm`, `spo2_pct`, `sdnn_ms`.
+  Both of these carry milliseconds in the export and whole seconds here
+  (Tributary's precision); two samples in one second keep the later one.
 - `journal`: one point per answer of WHOOP's journal, at the start of the
   cycle it was answered for (the cycle that starts with the night it is
   read against). `question` is the question as WHOOP words it, the member's

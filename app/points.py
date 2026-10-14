@@ -8,8 +8,9 @@ app/influxdb.py writes.
 Field types are part of the contract: InfluxDB 1.x rejects a write whose
 field type differs from what the shard already holds, and other tools write
 into the same databases (docs/schema.md). So every field is declared once
-(int / float / str) and always written the same way; an undeclared field or
-tag is an error, not a guess.
+(int / float / str / bool) and always written the same way; an undeclared
+field or tag is an error, not a guess. `bool` is `true`/`false` in the line
+protocol; a field InfluxDB already holds as a boolean must be written as one.
 
 Privacy: InfluxDB 1.x usually runs without authentication. Only numbers and
 low-cardinality tags leave; a text field exists only where a measurement
@@ -19,9 +20,10 @@ isn't on its short allow-list.
 Points are keyed by measurement + tags + second: InfluxDB overwrites a
 point with the same key, so points of one run that share a key are merged
 first, numbers summed and texts joined (two sessions started in the same
-second on the same device must add up, not replace each other) -- or, for
-a measurement declared `last_wins`, the later point's fields winning, as
-consecutive writes would.
+second on the same device must add up, not replace each other) -- a bool
+field takes the later point's value instead, since two booleans have no sum
+-- or, for a measurement declared `last_wins`, the later point's fields
+winning, as consecutive writes would.
 
 Times are UTC (naive datetimes are read as UTC). Measurements declared with
 `local_time` also get local_hour / local_weekday (in TRIBUTARY_TZ: InfluxQL
@@ -49,7 +51,8 @@ class Measurement:
     name: str
     # The measurement's own tag keys, besides `source` and `user`.
     tags: Tuple[str, ...]
-    # Every field it may write, with its type; `str` opts a text field in.
+    # Every field it may write, with its type (int / float / str / bool);
+    # `str` opts a text field in.
     fields: Mapping[str, type]
     # local_hour / local_weekday fields and a time_precision tag.
     local_time: bool = False
@@ -109,6 +112,8 @@ def _format_field(name: str, value: Any, kind: type, text_max: Optional[int] = T
         return f"{_escape_key(name)}={int(value)}i"
     if kind is float:
         return f"{_escape_key(name)}={float(value)!r}"
+    if kind is bool:
+        return f"{_escape_key(name)}={'true' if value else 'false'}"
     if kind is str:
         text = str(value)[:text_max].replace("\r", " ").replace("\n", " ").replace("\\", "\\\\").replace('"', '\\"')
         return f'{_escape_key(name)}="{text}"'
@@ -183,8 +188,8 @@ def encode(points: Iterable[Point], source: str, user: Optional[str] = None,
                 if m.last_wins:
                     texts.clear()
                 texts.add(str(value))
-            elif m.last_wins:
-                acc["numbers"][name] = value
+            elif kind is bool or m.last_wins:
+                acc["numbers"][name] = value  # a bool is not summed: the later point's value stands
             else:
                 acc["numbers"][name] = acc["numbers"].get(name, 0) + value
 

@@ -513,14 +513,15 @@ def test_the_declared_series(whoop_connector):
 
 # Types already stored in SleepStats..sleep_session and BodyStats..exercise
 # (SHOW FIELD KEYS on the owner's InfluxDB, read by the main thread: types
-# only). `manual` is a bool there: left out of the declaration (Tributary has
-# no bool type).
+# only). `manual` is a bool there too: the Sleep as Android import wrote it,
+# and the connector now declares it.
 LIVE_SLEEP_SESSION = {
     **{name: int for name in ("asleep_s", "awake_s", "bedtime_min", "cycles", "deep_s", "in_bed_s", "light_s",
                               "rem_s", "start", "tz_offset_min", "wake_min")},
     **{name: float for name in ("avg_hr", "min_hr", "max_hr", "avg_spo2_pct", "deep_pct", "rating", "sdnn_ms",
                                 "noise_level", "snore_s")},
     **{name: str for name in ("note", "tags", "tz")},
+    "manual": bool,
 }
 LIVE_EXERCISE = {"activity": str, "duration_s": int, "energy_kcal": float}
 
@@ -528,7 +529,7 @@ LIVE_EXERCISE = {"activity": str, "duration_s": int, "energy_kcal": float}
 def test_the_declarations_match_the_types_already_stored():
     for name, kind in SLEEP_SESSION.field_types.items():
         assert LIVE_SLEEP_SESSION.get(name, kind) is kind, name
-    assert "manual" not in SLEEP_SESSION.field_types
+    assert SLEEP_SESSION.field_types["manual"] is bool
     assert set(SLEEP_SESSION.tag_keys) == {"source", "user", "kind"}
     for name, kind in EXERCISE.field_types.items():
         assert LIVE_EXERCISE.get(name, kind) is kind, name

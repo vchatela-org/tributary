@@ -29,6 +29,7 @@ and, for an API, how often it runs by default (change it in the UI).
 | Connector | Source | Input | Writes |
 |---|---|---|---|
 | [**Whoop**](whoop.md), built on kryoseu's [Whoops](https://github.com/kryoseu/whoops) | `whoop` | API (OAuth, connected on its page), daily; and its export file, imported in the UI | `SleepStats`: `sleep_session`, `journal`; `BodyStats`: `daily_activity`, `exercise` |
+| [**Sleep as Android**](sleep_as_android.md) | `sleep_as_android` | backup file, imported in the UI | `SleepStats`: `sleep_session`, `sleep_stage`, `sleep_vitals` |
 
 garmin-grafana, a [compatible tool](../compatible-tools.md), covers Garmin's
 sleep.
