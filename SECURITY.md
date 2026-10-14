@@ -37,6 +37,9 @@ assessment within 30 days.
 - Tests on every push and pull request, including checks that no secret,
   email or IP address is stored, logged or written.
 - A privacy deny-list scan of the tree and the whole history, and gitleaks.
-- CodeQL (`python`, `actions`, `security-extended`) and dependency review,
-  once the repository is public.
+- CodeQL (`python`, `actions`, `security-extended`) on every push, pull
+  request and weekly, and dependency review on pull requests.
+- Secret scanning with push protection, and Dependabot security updates.
+- `main` takes changes through pull requests only, with these checks
+  required; release tags (`v*`) can't be moved or deleted.
 - Dependabot updates for pip, Docker, Docker Compose and GitHub Actions.
