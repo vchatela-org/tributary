@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/vchatela-org/tributary/compare/v0.11.0...v0.12.0) (2026-10-14)
+
+
+### Features
+
+* **sleep-as-android:** a Sleep as Android backup connector ([#39](https://github.com/vchatela-org/tributary/issues/39)) ([5b402c2](https://github.com/vchatela-org/tributary/commit/5b402c217108b196971d624321c424a537e152f6))
+
 ## [0.11.0](https://github.com/vchatela-org/tributary/compare/v0.10.1...v0.11.0) (2026-10-14)
 
 
