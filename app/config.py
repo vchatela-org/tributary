@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     # this, the file and its row are deleted (app/runner.py purge_staged).
     staged_upload_ttl_hours: float = 24.0
 
+    # garmin-grafana's freshness line (app/freshness.py): the database it writes,
+    # of which only two timestamps are read. Empty: no line. Its newest data older
+    # than the hours below is marked stale (a warning: Tributary does not run it).
+    garmin_grafana_database: str = "GarminStats"
+    garmin_grafana_stale_hours: float = 24.0
+
     @property
     def db_url(self) -> str:
         return self.database_url or f"sqlite:///{Path(self.data_dir) / 'tributary.db'}"

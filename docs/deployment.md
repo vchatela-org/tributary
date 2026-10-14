@@ -37,6 +37,8 @@ Every setting is an environment variable (or a line in `.env`).
 | `TRIBUTARY_FIRST_RUN_DELAY` | `60` | Seconds between the start and the first scheduled run. |
 | `TRIBUTARY_MAX_UPLOAD_MB` | `200` | Largest file the upload form takes. |
 | `TRIBUTARY_DEBUG` | `false` | Debug logging. |
+| `TRIBUTARY_GARMIN_GRAFANA_DATABASE` | `GarminStats` | Where [garmin-grafana](compatible-tools.md#when-garmin-grafanas-data-last-arrived) writes: two timestamps are read from it for the line on its card, never a value. Empty: no line. |
+| `TRIBUTARY_GARMIN_GRAFANA_STALE_HOURS` | `24` | garmin-grafana's line is marked stale (a warning) when its newest data is older than this. |
 
 Each connector has its own, documented with it ([connectors](connectors/README.md)).
 

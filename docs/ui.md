@@ -14,7 +14,11 @@ exact line protocol, nothing written), or *Import a file* for a source that
 takes an export. The chevron unfolds the rest: what it reads and writes, the
 file picker of a source you import into, and a link to its page. The
 compatible tools are listed under the categories they feed, marked as not run
-by Tributary. The page never reloads itself: a run in progress updates in
+by Tributary. garmin-grafana's card says when its data last arrived (*Garmin
+data up to ... · last watch upload ...*), marked *Over 24 h old* with the
+warning sign when it is stale; that is when, not why
+([compatible tools](compatible-tools.md#when-garmin-grafanas-data-last-arrived)).
+The page never reloads itself: a run in progress updates in
 place, so a file you are choosing stays chosen.
 
 ![The top of the overview: sources by category, each with its schedule, last and next run](screenshots/overview-light.png)
@@ -61,7 +65,8 @@ failure, and updates a run in progress without reloading itself.
 **Settings** chooses which sources the overview shows, so a few of them are not
 buried under the whole catalogue. It is display only: a hidden source is still
 scheduled, still runs, and its series keep filling. Everything is shown on a
-fresh install, and everything can be brought back from the same page.
+fresh install, and everything can be brought back from the same page. Below,
+the compatible tools by category, with garmin-grafana's freshness line.
 
 ![Settings: which sources the overview shows](screenshots/settings-light.png)
 

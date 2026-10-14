@@ -63,7 +63,8 @@ class FakeInflux:
     """Keeps points by key (database, measurement, tags, time) as InfluxDB
     does -- writing the same key overwrites --, records every /query
     statement and /write body; `fail[path] = (code, body)` makes a path
-    answer an error."""
+    answer an error, and `hold` seconds makes /query wait that long before
+    answering (cut short when the fake closes)."""
 
     def __init__(self):
         self.queries: List[Tuple[Optional[str], str]] = []
@@ -71,6 +72,8 @@ class FakeInflux:
         self.fail: Dict[str, Tuple[int, str]] = {}
         self.databases = {"_internal"}
         self.points: Dict[Tuple, Dict[str, str]] = {}
+        self.hold = 0.0
+        self._closing = threading.Event()
         outer = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -85,10 +88,15 @@ class FakeInflux:
                     self.wfile.write(payload.encode())
                     return
                 if url.path == "/query":
-                    result = outer._query(params.get("db"), params["q"])
-                    self.send_response(200)
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"results": [result]}).encode())
+                    if outer.hold:
+                        outer._closing.wait(outer.hold)
+                    result = outer._query(params.get("db"), params["q"], params.get("epoch"))
+                    try:
+                        self.send_response(200)
+                        self.end_headers()
+                        self.wfile.write(json.dumps({"results": [result]}).encode())
+                    except OSError:
+                        pass  # the client stopped waiting (`hold`)
                     return
                 outer.writes.append((params["db"], params["precision"], body.split("\n")))
                 for line in body.split("\n"):
@@ -104,7 +112,7 @@ class FakeInflux:
         threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True).start()
         self.url = f"http://127.0.0.1:{self.server.server_port}"
 
-    def _query(self, database: Optional[str], statement: str) -> Dict:
+    def _query(self, database: Optional[str], statement: str, epoch: Optional[str] = None) -> Dict:
         self.queries.append((database, statement))
         result: Dict = {"statement_id": 0}
         if statement == "SHOW DATABASES":
@@ -128,9 +136,41 @@ class FakeInflux:
                         and dict(k[2]).get("source") == source and (user is None or dict(k[2]).get("user") == user)
                         and start <= k[3] < end]:
                 del self.points[key]
+        elif statement.startswith(("SELECT last(", "SELECT * FROM")):
+            result.update(self._newest(database, statement, epoch))
         else:
             result.update(self._select(database, statement))
         return result
+
+    def _exists(self, database: Optional[str]) -> bool:
+        return database in self.databases or any(k[0] == database for k in self.points)
+
+    def _newest(self, database: Optional[str], statement: str, epoch: Optional[str]) -> Dict:
+        """The reads of a compatible tool's freshness line: a measurement's
+        newest point, as `last("<field>")` or as `*` newest first, limit 1.
+        Answered whole, its values and tags included, as InfluxDB does: only
+        the code under test may drop them. Times as epoch seconds with
+        `epoch=s`, RFC3339 otherwise."""
+        last = re.match(r'SELECT last\("(\w+)"\) FROM "(\w+)"$', statement)
+        star = re.match(r'SELECT \* FROM "(\w+)" ORDER BY time DESC LIMIT 1$', statement)
+        if not (last or star):
+            raise AssertionError(f"the fake does not answer {statement!r}")
+        if not self._exists(database):
+            return {"error": f"database not found: {database}"}
+        field, measurement = last.groups() if last else (None, star.group(1))
+        rows = [(ts, dict(tags), fields) for (db, m, tags, ts), fields in self.points.items()
+                if db == database and m == measurement and (field is None or field in fields)]
+        if not rows:
+            return {}
+        ts, tags, fields = max(rows, key=lambda row: row[0])
+        when = ts if epoch == "s" else datetime.fromtimestamp(ts, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        if last:
+            columns, values = ["time", "last"], [when, _field_value(fields[field])]
+        else:
+            names = sorted(set(tags) | set(fields))
+            columns = ["time", *names]
+            values = [when, *(tags[n] if n in tags else _field_value(fields[n]) for n in names)]
+        return {"series": [{"name": measurement, "columns": columns, "values": [values]}]}
 
     def _select(self, database: Optional[str], statement: str) -> Dict:
         """The one SELECT a connector makes today: a single field of a
@@ -142,7 +182,7 @@ class FakeInflux:
                          r' AND "(\w+)" != \'([^\']*)\' AND time >= \'(.+)\' AND time < \'(.+)\'$', statement)
         if match is None:
             return {}
-        if database not in self.databases and not any(k[0] == database for k in self.points):
+        if not self._exists(database):
             return {"error": f"database not found: {database}"}
         field, measurement, t1, v1, t2, v2, start, end = match.groups()
         start, end = _epoch(start), _epoch(end)
@@ -169,7 +209,17 @@ class FakeInflux:
         return [line for _db, _p, body in self.writes for line in body]
 
     def close(self):
+        self._closing.set()
         self.server.shutdown()
+
+
+def _field_value(raw: str):
+    """A line-protocol field value as InfluxDB answers it in JSON."""
+    if raw.startswith('"'):
+        return _unescape(raw[1:-1])
+    if raw in ("t", "T", "true", "True", "TRUE", "f", "F", "false", "False", "FALSE"):
+        return raw.lower().startswith("t")
+    return int(raw[:-1]) if raw.endswith(("i", "u")) else float(raw)
 
 
 # ────────────────────────────────────────────────

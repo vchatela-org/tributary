@@ -183,14 +183,34 @@
 </div>
 {%- endmacro %}
 
-{% macro external(tools) -%}
+{# A compatible tool's freshness line (app/freshness.py): when its data last
+   arrived in InfluxDB -- never why, never a value. Stale is a warning with its
+   icon and its words, never an error: Tributary does not run the tool. #}
+{% macro freshness(f) -%}
+<span class="tb-fresh" title="{{ f.title }}">
+{%- if f.seen %}
+  <i class="bi bi-clock-history" aria-hidden="true"></i>
+  <span>{% for s in f.seen %}{{ s.label }} <b>{{ s.at | localtime }}</b>{% if not loop.last %} · {% endif %}{% endfor %}</span>
+  {%- if f.stale %}
+  <span class="tb-pill tb-tone-warning"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>Over {{ f.stale_after }} old</span>
+  {%- endif %}
+{%- else %}
+  <span class="tb-fresh-none"><i class="bi bi-dash-circle" aria-hidden="true"></i>{{ f.nothing }}</span>
+{%- endif %}
+</span>
+{%- endmacro %}
+
+{% macro external(tools, freshness_by_label=None) -%}
 {% if tools %}
 <div class="tb-group-foot">
   <span class="tb-foot-label">Also feeding it, not run by Tributary</span>
   <div>
   {% for t in tools %}
     <div class="tb-tool"><a href="{{ t.url }}" rel="noreferrer">{{ t.label }}<i
-        class="bi bi-box-arrow-up-right ms-1"></i></a> <span>{{ t.note }}</span></div>
+        class="bi bi-box-arrow-up-right ms-1"></i></a> <span>{{ t.note }}</span>
+      {%- if freshness_by_label and t.label in freshness_by_label %}
+      <div>{{ freshness(freshness_by_label[t.label]) }}</div>
+      {%- endif %}</div>
   {% endfor %}
   </div>
 </div>

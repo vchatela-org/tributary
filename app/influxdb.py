@@ -38,14 +38,14 @@ def is_configured() -> bool:
     return bool(settings.influxdb_url)
 
 
-def _post(path: str, params: Dict[str, str], body: bytes = b"") -> bytes:
+def _post(path: str, params: Dict[str, str], body: bytes = b"", timeout: float = TIMEOUT_SECONDS) -> bytes:
     url = settings.influxdb_url.rstrip("/") + path + "?" + urlencode(params)
     if urlparse(url).scheme not in ("http", "https"):
         raise InfluxError(f"Invalid TRIBUTARY_INFLUXDB_URL ({settings.influxdb_url}): "
                           "it must start with http:// or https://.")
     request = Request(url, data=body, method="POST", headers={"Content-Type": "text/plain; charset=utf-8"})
     try:
-        with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+        with urlopen(request, timeout=timeout) as response:
             return response.read()
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace").strip()
@@ -62,14 +62,19 @@ def _post(path: str, params: Dict[str, str], body: bytes = b"") -> bytes:
         raise InfluxError(f"Connection to InfluxDB lost on {path}: {type(exc).__name__} {exc}".rstrip()) from exc
 
 
-def query(statement: str, database: Optional[str] = None) -> Dict:
+def query(statement: str, database: Optional[str] = None, timeout: float = TIMEOUT_SECONDS,
+          epoch: Optional[str] = None) -> Dict:
     """One InfluxQL statement. /query answers 200 even when the statement
     fails: the error is in the body. Connectors may read through this too
-    (e.g. to skip what another source already measured)."""
+    (e.g. to skip what another source already measured). `timeout` is in
+    seconds; `epoch` ("s", "ms"...) answers times as numbers in that unit
+    rather than RFC3339 strings."""
     params = {"q": statement}
     if database:
         params["db"] = database
-    payload = json.loads(_post("/query", params) or b"{}")
+    if epoch:
+        params["epoch"] = epoch
+    payload = json.loads(_post("/query", params, timeout=timeout) or b"{}")
     for result in payload.get("results") or []:
         if result.get("error"):
             raise InfluxError(f"InfluxDB: {result['error']} ({statement})")

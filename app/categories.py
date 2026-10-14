@@ -7,7 +7,7 @@ into the same InfluxDB and are not run by Tributary (docs/compatible-tools.md).
 They are shown next to Tributary's own connectors so a reader sees everything
 that feeds a domain, and they are never scheduled, hidden or configured here.
 """
-from typing import Dict, NamedTuple, Tuple
+from typing import Dict, NamedTuple, Optional, Tuple
 
 # The order the UI and the README list them in: the domains a person thinks
 # about, from the body outwards.
@@ -23,11 +23,14 @@ CATEGORIES: Tuple[str, ...] = (
 
 class ExternalTool(NamedTuple):
     """A maintained tool that writes the same databases, one Tributary does not
-    run. `writes` is where its numbers land, for the reader's benefit."""
+    run. `writes` is where its numbers land, for the reader's benefit.
+    `freshness` names its probe in app/freshness.py, if any: when its data last
+    arrived, read from InfluxDB (timestamps only) and shown on its card."""
     label: str
     url: str
     writes: str
     note: str
+    freshness: Optional[str] = None
 
 
 GARMIN_GRAFANA = ExternalTool(
@@ -35,6 +38,7 @@ GARMIN_GRAFANA = ExternalTool(
     url="https://github.com/arpanghosh8453/garmin-grafana",
     writes="InfluxDB `GarminStats`",
     note="Activity, sleep, heart rate, body battery... from the Garmin API, with its own dashboards.",
+    freshness="garmin-grafana",
 )
 WHOOPS = ExternalTool(
     label="Whoops",

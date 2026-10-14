@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from app import connectors, crud, influxdb, preferences, scheduler, schedule, views
+from app import connectors, crud, freshness, influxdb, preferences, scheduler, schedule, views
 from app.categories import CATEGORIES, EXTERNAL_TOOLS
 from app.config import settings
 from app.database import SessionLocal, get_db
@@ -80,9 +80,13 @@ def _connector_page(db: Session, connector) -> dict:
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request, show: Optional[str] = None, db: Session = Depends(get_db)):
     showing = show == "hidden"
+    overview = _overview(db)
     return templates.TemplateResponse(request, "index.html", {
-        **_overview(db), "hidden_cards": views.hidden_cards(db) if showing else [],
+        **overview, "hidden_cards": views.hidden_cards(db) if showing else [],
         "showing_hidden": showing, "has_hidden": bool(preferences.hidden_connectors(db)),
+        # The page's, not _overview's: the polled fragment has no tool card, so
+        # a poll never reads InfluxDB for it.
+        "tool_freshness": freshness.for_tools(t for section in overview["sections"] for t in section["tools"]),
     })
 
 
@@ -131,6 +135,7 @@ def settings_page(request: Request, db: Session = Depends(get_db)):
         "categories": CATEGORIES,
         "tools": EXTERNAL_TOOLS,
         "tools_outside": sorted({t.label for tools in EXTERNAL_TOOLS.values() for t in tools}),
+        "tool_freshness": freshness.for_tools(t for tools in EXTERNAL_TOOLS.values() for t in tools),
         "influxdb_configured": influxdb.is_configured(),
     })
 

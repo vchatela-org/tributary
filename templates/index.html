@@ -88,7 +88,7 @@
   {% else %}
   <p class="tb-group-empty">No Tributary connector for this domain yet.</p>
   {% endif %}
-  {{ m.external(section.tools) }}
+  {{ m.external(section.tools, tool_freshness) }}
 </section>
 {% endfor %}
 

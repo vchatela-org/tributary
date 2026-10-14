@@ -64,6 +64,14 @@
       {% for t in tools %}<a href="{{ t.url }}" rel="noreferrer">{{ t.label }}</a> ({{ t.writes | code_spans }}){% if not loop.last %}, {% endif %}{% endfor %}
     </div>
   {% endif %}{% endfor %}
+  {% if tool_freshness %}
+  {# Read-only: when their data last arrived, timestamps only (app/freshness.py). #}
+  <div class="tb-tools-fresh">
+    {% for label, f in tool_freshness.items() %}
+    <div><strong>{{ label }}</strong> {{ m.freshness(f) }}</div>
+    {% endfor %}
+  </div>
+  {% endif %}
 </section>
 
 <section class="tb-panel">

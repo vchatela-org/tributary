@@ -48,7 +48,9 @@ def db():
 @pytest.fixture(autouse=True)
 def _clean_state():
     """Each test starts with no run, no cursor, no schedule set in the UI, no
-    checked upload and no preference, and nothing queued."""
+    checked upload and no preference, nothing queued, and no compatible tool's
+    freshness remembered (a fake InfluxDB's port may be another test's again)."""
+    from app import freshness
     from app.database import SessionLocal
     from app.models import ConnectorSchedule, Cursor, Preference, StagedUpload, SyncRun
 
@@ -56,6 +58,7 @@ def _clean_state():
         for table in (SyncRun, Cursor, ConnectorSchedule, StagedUpload, Preference):
             session.query(table).delete()
         session.commit()
+    freshness.clear()
     yield
     # A test that saved a schedule starts the thread (app/scheduler.reschedule);
     # stop it, so it cannot consume the next test's queue.
