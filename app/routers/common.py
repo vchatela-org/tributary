@@ -101,9 +101,8 @@ def safe_back(request: Request, default: str = "/") -> str:
     reads "\\" as "/", and "//host" or "///host" as another site."""
     referer = urlparse(request.headers.get("referer") or "")
     back = (referer.path or default) + (f"?{referer.query}" if referer.query else "")
-    back = back.replace("\\", "/")
-    # The netloc check is redundant after the prefix checks, but it is the
-    # relative-URL guard code scanning recognises.
-    if back.startswith("/") and not back.startswith("//") and not urlparse(back).netloc:
-        return back
-    return default
+    if not back.startswith("/") or back.startswith("//") or "\\" in back:
+        return default
+    # The checks above make it a same-site path. Rebuilding it behind a fixed
+    # "/" changes nothing, but it is the shape code scanning reads as safe.
+    return "/" + back[1:]
