@@ -230,7 +230,9 @@ def set_schedule(request: Request, key: str, preset: str = Form(""), at: str = F
     *Manual only*. An expression that does not parse comes back as a notice on the
     page."""
     connector = connector_or_404(key)
-    default = f"/connectors/{key}"
+    # Built from the registered connector, not the URL: the same path, and
+    # never a value the request chose.
+    default = f"/connectors/{connector.key}"
     if reset:
         # "Reset to default": forget the saved value, so the environment or the
         # connector's own default applies again.

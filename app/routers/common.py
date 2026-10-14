@@ -103,6 +103,4 @@ def safe_back(request: Request, default: str = "/") -> str:
     back = (referer.path or default) + (f"?{referer.query}" if referer.query else "")
     if not back.startswith("/") or back.startswith("//") or "\\" in back:
         return default
-    # The checks above make it a same-site path. Rebuilding it behind a fixed
-    # "/" changes nothing, but it is the shape code scanning reads as safe.
-    return "/" + back[1:]
+    return back
