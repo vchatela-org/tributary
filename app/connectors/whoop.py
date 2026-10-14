@@ -63,8 +63,9 @@ Export (whoop_export.py: the zip, or one of its CSV files):
   - journal (SleepStats, export only): one point per answer, at its cycle's
     start (the API cycle's pinned time when one matches), tag question =
     WHOOP's wording, custom questions included; fields answered_yes (0/1),
-    count (1), and the cycle's recovery (recovery_score, hrv_rmssd_ms — so a
-    panel can compare recovery on yes-days against no-days without a join).
+    count (1), and the cycle's recovery, sleep and strain (recovery_score,
+    hrv_rmssd_ms, asleep_s, strain — so a panel can compare them on yes-days
+    against no-days without a join).
     Notes are never read. Every export holds the whole
     history, so an import replaces this source's journal over the days it
     covers (FileImport.spans); nothing else is ever dropped.
@@ -108,7 +109,8 @@ CALLBACK_PATH = "/connectors/whoop/callback"
 
 JOURNAL = Measurement(
     database="SleepStats", name="journal", tags=("question",),
-    fields={"answered_yes": int, "count": int, "recovery_score": float, "hrv_rmssd_ms": float},
+    fields={"answered_yes": int, "count": int, "recovery_score": float, "hrv_rmssd_ms": float,
+            "asleep_s": int, "strain": float},
 )
 
 # WHOOP's sport name -> MyFitnessPal's category words, first match wins (the
@@ -640,8 +642,8 @@ def export_points(tables: Dict[str, List[Dict]], pins: Dict[str, Dict[str, list]
                                 _export_workout_fields(row)))
 
     # The journal is keyed by cycle: carry that cycle's recovery on the answer, so
-    # a panel can compare recovery on days a question was answered yes vs no
-    # without joining two measurements (InfluxQL cannot).
+    # a panel can compare recovery, sleep and strain on days a question was
+    # answered yes vs no without joining two measurements (InfluxQL cannot).
     cycles_by_start = {row["cycle_start"]: row for row in tables.get("cycles", [])}
     journal: List[Point] = []
     for row in tables.get("journal", []):
@@ -656,6 +658,8 @@ def export_points(tables: Dict[str, List[Dict]], pins: Dict[str, Dict[str, list]
         if cycle is not None:
             _put(fields, "recovery_score", cycle.get("recovery_score"))
             _put(fields, "hrv_rmssd_ms", cycle.get("hrv_rmssd_ms"))
+            _put(fields, "asleep_s", _seconds(cycle.get("asleep_ms")), int)
+            _put(fields, "strain", cycle.get("strain"))
         journal.append(Point(JOURNAL, _at(pin[0]) if pin is not None else row["cycle_start"],
                              {"question": question[:200]}, fields))
     journal = collapse(journal)

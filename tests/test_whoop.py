@@ -70,14 +70,14 @@ JOURNAL = ["journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=
            "1790889000"]
 
 # The same answers, once the export's cycles are in the upload: each carries the
-# recovery of the cycle it is keyed to.
+# recovery, the night's sleep and the day's strain of the cycle it is keyed to.
 JOURNAL_FROM_EXPORT = [
-    "journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=alice answered_yes=0i,count=1i,"
-    "hrv_rmssd_ms=48.0,recovery_score=61.0 1773093600",
-    "journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=alice answered_yes=1i,count=1i,"
-    "hrv_rmssd_ms=31.8,recovery_score=44.0 1790889000",
-    "journal,question=Read\\ in\\ bed\\ before\\ sleeping?,source=whoop,user=alice answered_yes=0i,count=1i,"
-    "hrv_rmssd_ms=31.8,recovery_score=44.0 1790889000",
+    "journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=alice answered_yes=0i,asleep_s=25200i,"
+    "count=1i,hrv_rmssd_ms=48.0,recovery_score=61.0,strain=9.8 1773093600",
+    "journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=alice answered_yes=1i,asleep_s=27420i,"
+    "count=1i,hrv_rmssd_ms=31.8,recovery_score=44.0,strain=12.4 1790889000",
+    "journal,question=Read\\ in\\ bed\\ before\\ sleeping?,source=whoop,user=alice answered_yes=0i,asleep_s=27420i,"
+    "count=1i,hrv_rmssd_ms=31.8,recovery_score=44.0,strain=12.4 1790889000",
 ]
 
 
@@ -418,7 +418,7 @@ def test_the_journal_keeps_custom_questions_and_never_a_note(whoop_connector, tm
     assert sorted(lines) == sorted(JOURNAL)
     assert all(WHOOP_NOTE not in line and "glasses" not in line for line in lines)
     assert whoop.JOURNAL.field_types == {"answered_yes": int, "count": int, "recovery_score": float,
-                                         "hrv_rmssd_ms": float}
+                                         "hrv_rmssd_ms": float, "asleep_s": int, "strain": float}
     assert whoop.JOURNAL.tag_keys == ("source", "user", "question")
 
 

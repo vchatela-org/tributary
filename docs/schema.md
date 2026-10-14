@@ -177,7 +177,7 @@ goes with it. No *local time*: a sleep carries its own local minutes
 | `sleep_session` | `source`, `user`, `kind` (`night`, `nap`) | `start` (int), `in_bed_s` (int), `asleep_s` (int), `awake_s` (int), `light_s` (int), `deep_s` (int), `rem_s` (int), `cycles` (int), `awakenings` (int), `tz_offset_min` (int), `bedtime_min` (int), `wake_min` (int), `score` (float), `respiration_rate` (float), `resting_hr` (float), `hrv_rmssd_ms` (float), `avg_spo2_pct` (float), `efficiency_pct` (float), `consistency_pct` (float), `recovery_score` (float), `skin_temp_c` (float), `calibrating` (int), `no_data_s` (int), `need_baseline_s` (int), `need_debt_s` (int), `need_strain_s` (int), `need_nap_s` (int), `sleep_need_s` (int), `sleep_debt_s` (int), `avg_hr` (float), `min_hr` (float), `max_hr` (float), `deep_pct` (float), `rating` (float), `sdnn_ms` (float), `noise_level` (float), `snore_s` (float), `tz` (str), `tags` (str), `note` (str), `manual` (bool) | Tributary: `whoop`, `sleep_as_android` |
 | `sleep_stage` | `source`, `user` | `level` (int), `stage` (str), `duration_s` (int) | Tributary: `sleep_as_android` (its export) |
 | `sleep_vitals` | `source`, `user` | `hr_bpm` (float), `spo2_pct` (float), `sdnn_ms` (float) | Tributary: `sleep_as_android` (its export) |
-| `journal` | `source`, `user`, `question` | `answered_yes` (int), `count` (int), `recovery_score` (float), `hrv_rmssd_ms` (float) | Tributary: `whoop` (from its export) |
+| `journal` | `source`, `user`, `question` | `answered_yes` (int), `count` (int), `recovery_score` (float), `hrv_rmssd_ms` (float), `asleep_s` (int), `strain` (float) | Tributary: `whoop` (from its export) |
 
 - `sleep_session`: one point per sleep, at its **end** (the wake), so a
   night lands on the morning it ended, as Garmin's `SleepSummary` does.
@@ -221,7 +221,7 @@ goes with it. No *local time*: a sleep carries its own local minutes
   read against). `question` is the question as WHOOP words it, the member's
   own custom questions included; `answered_yes` is 1 or 0, `count` 1. The
   answer also carries the recovery of the cycle it is keyed to
-  (`recovery_score`, `hrv_rmssd_ms`), so a panel can compare recovery on days
+  (`recovery_score`, `hrv_rmssd_ms`, `asleep_s`, `strain`), so a panel can compare recovery, sleep and strain on days
   a question was answered yes against no without joining two measurements. The
   notes typed with an answer are never written.
 
