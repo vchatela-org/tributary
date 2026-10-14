@@ -98,7 +98,7 @@ time*.
 | `body_thresholds` | `user` | `weight_kg_t1` (float), `weight_kg_t2` (float), `weight_kg_t3` (float), `weight_kg_min` (float), `weight_kg_max` (float), `bmi_t1` (float), `bmi_t2` (float), `bmi_t3` (float), `bmi_min` (float), `bmi_max` (float), `body_fat_pct_t1` (float), `body_fat_pct_t2` (float), `body_fat_pct_t3` (float), `body_fat_pct_t4` (float), `body_fat_pct_min` (float), `body_fat_pct_max` (float), `subcutaneous_fat_pct_t1` (float), `subcutaneous_fat_pct_t2` (float), `subcutaneous_fat_pct_min` (float), `subcutaneous_fat_pct_max` (float), `visceral_fat_t1` (float), `visceral_fat_t2` (float), `visceral_fat_t3` (float), `visceral_fat_min` (float), `visceral_fat_max` (float), `lean_body_mass_kg_t1` (float), `lean_body_mass_kg_t2` (float), `lean_body_mass_kg_min` (float), `lean_body_mass_kg_max` (float), `muscle_pct_t1` (float), `muscle_pct_t2` (float), `muscle_pct_min` (float), `muscle_pct_max` (float), `bone_pct_t1` (float), `bone_pct_t2` (float), `bone_pct_min` (float), `bone_pct_max` (float), `body_age_t1` (float), `body_age_min` (float), `body_age_max` (float), `bmr_kcal_t1` (float), `bmr_kcal_min` (float), `bmr_kcal_max` (float), `body_water_pct_t1` (float), `body_water_pct_t2` (float), `body_water_pct_min` (float), `body_water_pct_max` (float), `protein_pct_t1` (float), `protein_pct_t2` (float), `protein_pct_min` (float), `protein_pct_max` (float) | Tributary: `renpho` |
 | `medication` | `source`, `user`, `med`, `status` | `taken` (int), `app_status` (str), `dose` (float), `unit` (str), `delay_min` (int), `note` (str), `strength` (str) | Tributary: `mytherapy`, `medisafe` |
 | `nutrition` | `source`, `user`, `meal` | `energy_kcal` (float), `fat_g` (float), `carbs_g` (float), `protein_g` (float), `saturated_fat_g` (float), `polyunsaturated_fat_g` (float), `monounsaturated_fat_g` (float), `trans_fat_g` (float), `fiber_g` (float), `sugar_g` (float), `cholesterol_mg` (float), `sodium_mg` (float), `potassium_mg` (float) | Tributary: `myfitnesspal` |
-| `exercise` | `source`, `user`, `category` | `activity` (str), `energy_kcal` (float), `duration_s` (int), `strain` (float), `avg_hr` (float), `max_hr` (float), `distance_m` (float), `altitude_gain_m` (float), `altitude_change_m` (float), `percent_recorded` (float), `zone0_s` (int), `zone1_s` (int), `zone2_s` (int), `zone3_s` (int), `zone4_s` (int), `zone5_s` (int), `zone1_pct` (float), `zone2_pct` (float), `zone3_pct` (float), `zone4_pct` (float), `zone5_pct` (float), `gps_enabled` (int) | Tributary: `myfitnesspal` (the first three fields), `whoop` |
+| `exercise` | `source`, `user`, `category`, `sport` | `activity` (str), `energy_kcal` (float), `duration_s` (int), `strain` (float), `avg_hr` (float), `max_hr` (float), `distance_m` (float), `altitude_gain_m` (float), `altitude_change_m` (float), `percent_recorded` (float), `zone0_s` (int), `zone1_s` (int), `zone2_s` (int), `zone3_s` (int), `zone4_s` (int), `zone5_s` (int), `zone1_pct` (float), `zone2_pct` (float), `zone3_pct` (float), `zone4_pct` (float), `zone5_pct` (float), `gps_enabled` (int) | Tributary: `myfitnesspal` (the first three fields), `whoop` |
 | `daily_activity` | `source`, `user` | `strain` (float), `energy_kcal` (float), `avg_hr` (float), `max_hr` (float), `steps` (int), `duration_s` (int) | Tributary: `whoop` |
 
 - `body_composition`: one point per weigh-in, at its time, with a field
@@ -153,7 +153,9 @@ time*.
     absent on an adjustment (the export's fixed "1 minute" is a
     placeholder).
   - `whoop`: at the workout's start, `category` mapped from WHOOP's sport
-    name (`running` → `run`...). `strain` is WHOOP's (0-21), `zone0_s` ...
+    name (`running` → `run`...), and `sport` = that name kept as written (a
+    tag, so a panel can group by it: InfluxQL groups by tags, not fields).
+    `strain` is WHOOP's (0-21), `zone0_s` ...
     `zone5_s` the seconds spent in each heart-rate zone (zone 0 below zone
     1), `percent_recorded` the share of the workout with heart-rate data.
     From WHOOP's export only: `zone1_pct` ... `zone5_pct` and
@@ -175,7 +177,7 @@ goes with it. No *local time*: a sleep carries its own local minutes
 | `sleep_session` | `source`, `user`, `kind` (`night`, `nap`) | `start` (int), `in_bed_s` (int), `asleep_s` (int), `awake_s` (int), `light_s` (int), `deep_s` (int), `rem_s` (int), `cycles` (int), `awakenings` (int), `tz_offset_min` (int), `bedtime_min` (int), `wake_min` (int), `score` (float), `respiration_rate` (float), `resting_hr` (float), `hrv_rmssd_ms` (float), `avg_spo2_pct` (float), `efficiency_pct` (float), `consistency_pct` (float), `recovery_score` (float), `skin_temp_c` (float), `calibrating` (int), `no_data_s` (int), `need_baseline_s` (int), `need_debt_s` (int), `need_strain_s` (int), `need_nap_s` (int), `sleep_need_s` (int), `sleep_debt_s` (int), `avg_hr` (float), `min_hr` (float), `max_hr` (float), `deep_pct` (float), `rating` (float), `sdnn_ms` (float), `noise_level` (float), `snore_s` (float), `tz` (str), `tags` (str), `note` (str), `manual` (bool) | Tributary: `whoop`, `sleep_as_android` |
 | `sleep_stage` | `source`, `user` | `level` (int), `stage` (str), `duration_s` (int) | Tributary: `sleep_as_android` (its export) |
 | `sleep_vitals` | `source`, `user` | `hr_bpm` (float), `spo2_pct` (float), `sdnn_ms` (float) | Tributary: `sleep_as_android` (its export) |
-| `journal` | `source`, `user`, `question` | `answered_yes` (int), `count` (int) | Tributary: `whoop` (from its export) |
+| `journal` | `source`, `user`, `question` | `answered_yes` (int), `count` (int), `recovery_score` (float), `hrv_rmssd_ms` (float) | Tributary: `whoop` (from its export) |
 
 - `sleep_session`: one point per sleep, at its **end** (the wake), so a
   night lands on the morning it ended, as Garmin's `SleepSummary` does.
@@ -218,6 +220,9 @@ goes with it. No *local time*: a sleep carries its own local minutes
   cycle it was answered for (the cycle that starts with the night it is
   read against). `question` is the question as WHOOP words it, the member's
   own custom questions included; `answered_yes` is 1 or 0, `count` 1. The
+  answer also carries the recovery of the cycle it is keyed to
+  (`recovery_score`, `hrv_rmssd_ms`), so a panel can compare recovery on days
+  a question was answered yes against no without joining two measurements. The
   notes typed with an answer are never written.
 
 ### `TodoistStats`

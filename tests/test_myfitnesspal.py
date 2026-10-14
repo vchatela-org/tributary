@@ -340,7 +340,7 @@ def test_the_declared_series_is_the_scripts(connector):
     # app/schema.py: the script's tags, and its three fields with their types.
     from app import schema
     assert myfitnesspal.EXERCISE is schema.EXERCISE
-    assert myfitnesspal.EXERCISE.tag_keys == ("source", "user", "category")
+    assert myfitnesspal.EXERCISE.tag_keys == ("source", "user", "category", "sport")
     assert {name: myfitnesspal.EXERCISE.field_types[name] for name in ("activity", "energy_kcal", "duration_s")} \
         == {"activity": str, "energy_kcal": float, "duration_s": int}
     assert (myfitnesspal.EXERCISE.last_wins, myfitnesspal.EXERCISE.text_max) == (False, 250)

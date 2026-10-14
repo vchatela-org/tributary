@@ -41,15 +41,15 @@ CYCLE = ("daily_activity,source=whoop,user=alice avg_hr=68.0,duration_s=87600i,e
          "steps=8234i,strain=12.4 1790889000")
 OPEN_CYCLE = ("daily_activity,source=whoop,user=alice avg_hr=61.0,energy_kcal=1000.0,max_hr=120.0,steps=3021i,"
               "strain=5.2951527 1790976600")
-RUN = ('exercise,category=run,source=whoop,user=alice activity="running",altitude_change_m=-0.781372010707855,'
+RUN = ('exercise,category=run,source=whoop,sport=running,user=alice activity="running",altitude_change_m=-0.781372010707855,'
        "altitude_gain_m=46.64384460449,avg_hr=123.0,distance_m=1772.77035916,duration_s=2730i,energy_kcal=375.1,"
        "max_hr=146.0,percent_recorded=100.0,strain=8.2463,zone0_s=300i,zone1_s=600i,zone2_s=900i,zone3_s=900i,"
        "zone4_s=600i,zone5_s=300i 1790956800")
-YOGA = 'exercise,category=other,source=whoop,user=alice activity="yoga",duration_s=1800i 1790838000'
+YOGA = 'exercise,category=other,source=whoop,sport=yoga,user=alice activity="yoga",duration_s=1800i 1790838000'
 
 # The export of tests/fakes.py, merged onto the points above.
 NIGHT_FROM_EXPORT = "sleep_session,kind=night,source=whoop,user=alice sleep_debt_s=360i,sleep_need_s=27900i 1790918744"
-RUN_FROM_EXPORT = ("exercise,category=run,source=whoop,user=alice gps_enabled=1i,zone1_pct=20.0,zone2_pct=30.0,"
+RUN_FROM_EXPORT = ("exercise,category=run,source=whoop,sport=running,user=alice gps_enabled=1i,zone1_pct=20.0,zone2_pct=30.0,"
                    "zone3_pct=30.0,zone4_pct=15.0,zone5_pct=5.0 1790956800")
 OLD_NIGHT = ("sleep_session,kind=night,source=whoop,user=alice asleep_s=25200i,avg_spo2_pct=97.5,awake_s=2700i,"
              "bedtime_min=-60i,consistency_pct=81.0,deep_s=6600i,efficiency_pct=90.0,hrv_rmssd_ms=48.0,"
@@ -58,7 +58,7 @@ OLD_NIGHT = ("sleep_session,kind=night,source=whoop,user=alice asleep_s=25200i,a
              "wake_min=405i 1773121500")
 OLD_CYCLE = ("daily_activity,source=whoop,user=alice avg_hr=66.0,duration_s=85500i,energy_kcal=2100.0,max_hr=150.0,"
              "strain=9.8 1773093600")
-OLD_RIDE = ('exercise,category=bike,source=whoop,user=alice activity="Cycling",avg_hr=135.0,duration_s=2400i,'
+OLD_RIDE = ('exercise,category=bike,source=whoop,sport=Cycling,user=alice activity="Cycling",avg_hr=135.0,duration_s=2400i,'
             "energy_kcal=450.0,gps_enabled=0i,max_hr=160.0,strain=10.1,zone1_pct=10.0,zone2_pct=40.0,"
             "zone3_pct=30.0,zone4_pct=15.0,zone5_pct=5.0 1773162000")
 JOURNAL = ["journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=alice answered_yes=0i,count=1i "
@@ -68,6 +68,17 @@ JOURNAL = ["journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=
            # A question the member wrote: written too (the owner's decision).
            "journal,question=Read\\ in\\ bed\\ before\\ sleeping?,source=whoop,user=alice answered_yes=0i,count=1i "
            "1790889000"]
+
+# The same answers, once the export's cycles are in the upload: each carries the
+# recovery of the cycle it is keyed to.
+JOURNAL_FROM_EXPORT = [
+    "journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=alice answered_yes=0i,count=1i,"
+    "hrv_rmssd_ms=48.0,recovery_score=61.0 1773093600",
+    "journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=alice answered_yes=1i,count=1i,"
+    "hrv_rmssd_ms=31.8,recovery_score=44.0 1790889000",
+    "journal,question=Read\\ in\\ bed\\ before\\ sleeping?,source=whoop,user=alice answered_yes=0i,count=1i,"
+    "hrv_rmssd_ms=31.8,recovery_score=44.0 1790889000",
+]
 
 
 def lines_of(points, user="alice"):
@@ -316,7 +327,8 @@ def test_the_export_lands_on_the_api_s_points_and_fills_the_history_before_it(
     record = runner.run(db, whoop_connector, file=str(path), filename=path.name, trigger="upload", dry_run=True)
     assert record.status == "ok", record.message
     preview = [line for line in record.preview.splitlines() if not line.startswith("#")]
-    assert sorted(preview) == sorted([NIGHT_FROM_EXPORT, RUN_FROM_EXPORT, OLD_NIGHT, OLD_CYCLE, OLD_RIDE, *JOURNAL])
+    assert sorted(preview) == sorted([NIGHT_FROM_EXPORT, RUN_FROM_EXPORT, OLD_NIGHT, OLD_CYCLE, OLD_RIDE,
+                                      *JOURNAL_FROM_EXPORT])
     assert ("sleeps: 1 on the API's points, 1 from before the API's first record, cycles: 1 on the API's points, "
             "1 from before the API's first record, workouts: 1 on the API's points, 1 from before the API's first "
             "record, 3 journal answer(s)") in record.message
@@ -405,7 +417,8 @@ def test_the_journal_keeps_custom_questions_and_never_a_note(whoop_connector, tm
     lines = lines_of(result.points)
     assert sorted(lines) == sorted(JOURNAL)
     assert all(WHOOP_NOTE not in line and "glasses" not in line for line in lines)
-    assert whoop.JOURNAL.field_types == {"answered_yes": int, "count": int}
+    assert whoop.JOURNAL.field_types == {"answered_yes": int, "count": int, "recovery_score": float,
+                                         "hrv_rmssd_ms": float}
     assert whoop.JOURNAL.tag_keys == ("source", "user", "question")
 
 

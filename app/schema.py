@@ -55,8 +55,11 @@ MEDICATION = Measurement(
 # `duration_s` are WHOOP's: its strain, heart rate and distances, the seconds
 # spent in each heart-rate zone (zone 0 is below zone 1), and, from its export
 # only, the share of the workout in zones 1-5 and whether GPS was on (0/1).
+# `category` is the shared coarse word (six values); `sport` is WHOOP's own
+# finer name (running, weightlifting...), a tag so a Grafana panel can group by
+# it — InfluxQL groups by tags only, never by fields.
 EXERCISE = Measurement(
-    database="BodyStats", name="exercise", tags=("category",),
+    database="BodyStats", name="exercise", tags=("category", "sport"),
     fields={"activity": str, "energy_kcal": float, "duration_s": int,
             "strain": float, "avg_hr": float, "max_hr": float, "distance_m": float, "altitude_gain_m": float,
             "altitude_change_m": float, "percent_recorded": float,
