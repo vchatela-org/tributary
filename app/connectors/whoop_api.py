@@ -114,11 +114,15 @@ def _token_request(fields: Dict[str, str], user_agent: str) -> Dict[str, Any]:
         with _opener.open(request, timeout=TIMEOUT_SECONDS) as response:
             data = json.load(response)
     except HTTPError as exc:
+        # Told apart by the OAuth error code only: a bare 401 could be either.
         code = _error_code(exc)
         if code == "invalid_grant":
             raise InvalidGrant("WHOOP refused the grant (invalid_grant).") from None
-        if code == "invalid_client" or exc.code == 401:
+        if code == "invalid_client":
             raise InvalidClient("WHOOP refused the app's credentials (invalid_client).") from None
+        if exc.code == 401:
+            raise WhoopError("WHOOP's token endpoint refused the request (401): check the app's client id and "
+                             "secret, or reconnect.") from None
         raise WhoopError(f"WHOOP's token endpoint answered {exc.code}" + (f" ({code})." if code else ".")) from None
     except URLError as exc:
         raise WhoopError(f"WHOOP unreachable: {exc.reason}") from None
@@ -175,10 +179,12 @@ def _rate_limit_wait(exc: HTTPError) -> Optional[int]:
 
 class Client:
     """The data endpoints. `token(force)` returns an access token: the
-    current one, or a new one when `force` (WHOOP refused the last one)."""
+    current one (asked once, at the first request), or a new one when
+    `force` (WHOOP refused the last one: asked once per client)."""
 
     def __init__(self, token: Callable[[bool], str], user_agent: str = "whoop-api"):
         self._token = token
+        self._current: Optional[str] = None
         self._user_agent = user_agent
         self._refreshed = False
         self.requests = 0
@@ -188,7 +194,9 @@ class Client:
         attempt = 0
         while True:
             wait = None
-            headers = {"Authorization": f"Bearer {self._token(False)}", "Accept": "application/json",
+            if self._current is None:
+                self._current = self._token(False)
+            headers = {"Authorization": f"Bearer {self._current}", "Accept": "application/json",
                        "User-Agent": self._user_agent}
             self.requests += 1
             try:
@@ -202,7 +210,7 @@ class Client:
                     # Once per run: a token WHOOP invalidated early (a new
                     # authorization, a refresh elsewhere).
                     self._refreshed = True
-                    self._token(True)
+                    self._current = self._token(True)
                     continue
                 if exc.code == 403:
                     raise WhoopError(f"WHOOP refused /{path} (403): was its scope granted? Reconnect to grant "

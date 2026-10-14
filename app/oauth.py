@@ -75,9 +75,11 @@ class Grant:
     scope: Optional[str]
 
     @classmethod
-    def from_response(cls, data: Any, label: str, refresh_token: Optional[str] = None) -> "Grant":
+    def from_response(cls, data: Any, label: str, refresh_token: Optional[str] = None,
+                      scope: Optional[str] = None) -> "Grant":
         """A token endpoint's answer. A refresh answer without a refresh token
-        keeps the one it was given (a source that doesn't rotate)."""
+        keeps the one it was given (a source that doesn't rotate), and one
+        without a scope the scope granted before."""
         if not isinstance(data, dict) or not isinstance(data.get("access_token"), str) or not data["access_token"]:
             raise OAuthError(f"{label} answered without an access token.")
         expires_in = data.get("expires_in")
@@ -85,10 +87,16 @@ class Grant:
         if isinstance(expires_in, (int, float)) and not isinstance(expires_in, bool) and expires_in > 0:
             expires_at = utcnow() + timedelta(seconds=int(expires_in))
         renewed = data.get("refresh_token")
-        scope = data.get("scope")
+        granted = data.get("scope")
         return cls(access_token=data["access_token"],
                    refresh_token=renewed if isinstance(renewed, str) and renewed else refresh_token,
-                   expires_at=expires_at, scope=scope[:255] if isinstance(scope, str) else None)
+                   expires_at=expires_at, scope=granted[:255] if isinstance(granted, str) and granted else scope)
+
+    def due(self) -> bool:
+        """Whether the access token expires within the margin. One the source
+        gave no lifetime for is used until it is refused (a 401): refreshing
+        it at every use would spend a single-use refresh token each time."""
+        return self.expires_at is not None and self.expires_at - utcnow() <= REFRESH_MARGIN
 
 
 @contextmanager
@@ -250,8 +258,7 @@ def access_token(connector, force_refresh: bool = False) -> str:
         grant = load(connector.key, label)
         if grant is None:
             raise OAuthError(f"{label} is not connected: connect it on its page.")
-        due = grant.expires_at is None or grant.expires_at - utcnow() <= REFRESH_MARGIN
-        if force_refresh or due or not grant.access_token:
+        if force_refresh or grant.due() or not grant.access_token:
             grant = _refresh(connector, grant)
         return grant.access_token
 
@@ -266,7 +273,7 @@ def _refresh(connector, grant: Grant) -> Grant:
         # Dead for good: keeping it would only fail every run the same way.
         forget(connector.key)
         raise OAuthError(f"{label} refused the stored connection (invalid_grant): {reconnect(label)}") from None
-    renewed = Grant.from_response(answer, label, refresh_token=grant.refresh_token)
+    renewed = Grant.from_response(answer, label, refresh_token=grant.refresh_token, scope=grant.scope)
     save(connector.key, renewed)
     return renewed
 
@@ -281,7 +288,7 @@ def disconnect(connector) -> Optional[str]:
         try:
             grant = load(connector.key, label)
             if grant is not None:
-                if grant.expires_at is None or grant.expires_at - utcnow() <= REFRESH_MARGIN:
+                if grant.due() or not grant.access_token:
                     grant = _refresh(connector, grant)
                 connector.oauth_revoke(grant.access_token)
         except (ConnectorError, GrantRevoked) as exc:

@@ -122,7 +122,8 @@ the full contract is in [the schema](../schema.md).
 
 - **Scores.** A record WHOOP has scored carries its score. One still
   awaiting its score (`PENDING_SCORE`) is not written yet: the next run reads
-  it again (the cursor never moves past it). One WHOOP could not score
+  it again (the cursor doesn't move past it, unless it has waited for more
+  than 30 days; a *Full resync* still reads it). One WHOOP could not score
   (`UNSCORABLE`) is written with what needs no score (its times, its sport,
   its steps), never a score field.
 - **A missing value is no field**, never a 0 (an old cycle without steps has
@@ -148,8 +149,8 @@ the full contract is in [the schema](../schema.md).
   one (the daily limit) stops the run, and the next one reads it again. Other
   server errors are retried three times. A redirect is refused: the token
   would follow it.
-- **Tokens**: an access token lasts about an hour. Tributary refreshes it when
-  it expires within a minute, and once more if WHOOP refuses it (`401`).
+- **Tokens**: an access token lasts about an hour. A run refreshes it when it
+  expires within a minute, and once more if WHOOP refuses it (`401`).
   WHOOP **rotates** refresh tokens and kills the old one when it issues the
   new one, so the new pair is stored the moment it arrives, before any data is
   read, in a dry run too, and kept even if the run fails afterwards. If WHOOP
@@ -167,23 +168,28 @@ zip within a day (it expires after 7 days). Upload the zip on Whoop's page
 `journal_entries.csv`), up to 50 MB each. Upload the files as WHOOP made them:
 one re-saved by a spreadsheet (other separators, other date formats) is refused.
 
-- **Connect the API and let its first run finish first.** Each export row is
-  then matched to the API's record whose start is within **60 seconds** (the
-  export is in local time to the second; the API in UTC to the millisecond),
-  and only adds what the API lacks, on the API's point: `sleep_need_s` and
-  `sleep_debt_s` on a sleep, `zone1_pct` ... `zone5_pct` and `gps_enabled` on
-  a workout. **An API value is never overwritten by an export value.**
-- A row no API record matches (history from before the API was read, or an
-  export uploaded before the first run) is written whole, at its own time.
+- **Connect the API and let its first run finish first**: once connected, an
+  import before that first run is refused. Each export row is then matched
+  to the API's record whose start is within **60 seconds** of its own (the
+  export is in local time to the second; the API in UTC to the millisecond;
+  a start edited in the app is followed), and only adds what the API lacks,
+  on the API's point: `sleep_need_s` and `sleep_debt_s` on a sleep,
+  `zone1_pct` ... `zone5_pct` and `gps_enabled` on a workout. **An API value
+  is never overwritten by an export value.**
+- A row older than every record the API returned (history from before the
+  API's reach) is written whole, at its own time. A newer row no API record
+  matches is **left out**: it is the API's to write (a night newer than its
+  last run), and written beside it, it would be a second point. Let the API
+  run, then import again. Without the API (never connected), every row is
+  written at its own time.
 - **The journal** is rebuilt from each export: every export holds the whole
   history, so an import replaces this source's journal over the days it
   covers (an answer deleted in the app goes too). Nothing else is ever
   dropped. It needs `TRIBUTARY_INFLUXDB_USER`, like every import that
   replaces days.
 - The check's message counts what was matched: *sleeps: 412 on the API's
-  points, 0 at their own time...*. On your first real export, read those
-  counts before importing: rows "at their own time" that should have matched
-  would be second points next to the API's.
+  points, 0 from before the API's first record...*, and what was left out.
+  On your first real export, read those counts before importing.
 
 ## Coming from Whoops
 
@@ -221,7 +227,10 @@ counts agree.
 - No heart-rate or step time series, no VO₂ max, no stress: the API has none.
 - Webhooks are not used: a daily run is enough, and they would need a public
   route.
-- A sleep or a workout whose start an edit moved by more than 60 seconds no
-  longer matches its export row: the row is written next to it.
+- An export taken after a sleep or a workout was edited in the app, but
+  imported before the API's next run read that edit, doesn't match it: the
+  row is left out (import again after the run).
+- The cursor keeps a small pin per sleep, cycle and workout ever read (about
+  70 bytes each): what keeps points from moving, even on a *Full resync*.
 - Only one WHOOP account per Tributary (the `user` tag is
   `TRIBUTARY_INFLUXDB_USER`).

@@ -19,6 +19,8 @@ from tests.fakes import (WHOOP_CYCLES_HEADER, WHOOP_EXPORT, WHOOP_JOURNAL_HEADER
                          parse, write_whoop_export)
 
 PARIS = ZoneInfo("Europe/Paris")
+# The fixtures' day, as the whoop_api fixture sets the connector's clock.
+TODAY = datetime(2026, 10, 3, 8, 35, tzinfo=timezone.utc)
 
 # Written by hand from the fixtures (tests/fakes.py), WHOOP's own sample
 # numbers: times to the second, ms -> s rounded, kJ / 4.184 to 0.1 kcal, the
@@ -100,10 +102,23 @@ def test_score_state_scored_pending_and_unscorable():
     assert "score" in whoop.sleep_fields(sleep)
     sleep["score_state"] = "UNSCORABLE"  # a score left in by mistake is still ignored
     assert set(whoop.sleep_fields(sleep)) == {"start", "tz_offset_min", "bedtime_min", "wake_min"}
-    points, cursor, counts = whoop.api_points([whoop_sleep("sleep-night-2")], [], [], [], whoop._state(None))
+    points, cursor, counts = whoop.api_points([whoop_sleep("sleep-night-2")], [], [], [], whoop._state(None),
+                                              now=TODAY)
     assert points == [] and counts["pending"] == 1
     # The cursor stays at the pending sleep: the next run reads it again.
     assert cursor["since"]["sleep"] == 1790976600 and cursor["pinned"]["sleep"] == {}
+
+
+def test_a_record_left_pending_for_a_month_no_longer_holds_the_cursor():
+    """Or every run would read from it, a day more each day."""
+    old = whoop_sleep("sleep-night-2")
+    old.update(start="2026-08-01T21:00:00.000Z", end="2026-08-02T05:00:00.000Z")
+    newer = whoop_sleep("sleep-night-1")
+    _points, cursor, counts = whoop.api_points([old, newer], [], [], [], whoop._state(None), now=TODAY)
+    assert counts["pending"] == 1 and cursor["since"]["sleep"] == 1790889000  # the newer one's start
+    _points, cursor, _counts = whoop.api_points([old, newer], [], [], [], whoop._state(None),
+                                                now=datetime(2026, 8, 20, tzinfo=timezone.utc))
+    assert cursor["since"]["sleep"] == 1785618000  # still within the month: held
     assert whoop.recovery_fields({"score_state": "PENDING_SCORE", "score": {"recovery_score": 1}}) == {}
     assert whoop.workout_fields({"start": "2026-10-01T07:00:00Z", "end": "2026-10-01T07:10:00Z",
                                  "sport_name": "yoga", "score_state": "UNSCORABLE"}) == \
@@ -302,8 +317,9 @@ def test_the_export_lands_on_the_api_s_points_and_fills_the_history_before_it(
     assert record.status == "ok", record.message
     preview = [line for line in record.preview.splitlines() if not line.startswith("#")]
     assert sorted(preview) == sorted([NIGHT_FROM_EXPORT, RUN_FROM_EXPORT, OLD_NIGHT, OLD_CYCLE, OLD_RIDE, *JOURNAL])
-    assert ("sleeps: 1 on the API's points, 1 at their own time, cycles: 1 on the API's points, 1 at their own "
-            "time, workouts: 1 on the API's points, 1 at their own time, 3 journal answer(s)") in record.message
+    assert ("sleeps: 1 on the API's points, 1 from before the API's first record, cycles: 1 on the API's points, "
+            "1 from before the API's first record, workouts: 1 on the API's points, 1 from before the API's first "
+            "record, 3 journal answer(s)") in record.message
 
     record = runner.promote(db, whoop_connector)
     assert record.status == "ok", record.message
@@ -329,6 +345,46 @@ def test_a_row_is_the_api_s_record_within_60_seconds_only(tmp_path):
     assert matcher.match("sleep", at(1061, timezone.utc)) is None
     assert matcher.match("workout", at(1939, timezone.utc)) is None
     assert matcher.match("cycle", at(1000, timezone.utc)) is None
+    # Before the API's first record: history only the export has.
+    assert matcher.before_the_api("sleep", at(939, timezone.utc))
+    assert not matcher.before_the_api("sleep", at(940, timezone.utc))
+    assert matcher.before_the_api("cycle", at(10 ** 9, timezone.utc))  # the API returned no cycle
+
+
+def test_an_edited_sleep_still_takes_its_export_row(whoop_connected, whoop_connector, influx, db, alice, tmp_path):
+    """The pin keeps the time and tag first written, and follows the start:
+    the export, made after the edit, matches it."""
+    runner.run(db, whoop_connector)
+    night = next(s for s in whoop_connected.records["sleep"] if s["id"] == "sleep-night-1")
+    night.update(start="2026-10-01T20:40:00.000Z")
+    runner.run(db, whoop_connector)
+    files = dict(WHOOP_EXPORT)
+    files["sleeps.csv"] = WHOOP_EXPORT["sleeps.csv"].replace("2026-10-01 23:10:01", "2026-10-01 22:40:00")
+    files["physiological_cycles.csv"] = WHOOP_EXPORT["physiological_cycles.csv"].replace(
+        ",2026-10-01 23:10:00,2026-10-02 07:25:44", ",2026-10-01 22:40:00,2026-10-02 07:25:44")
+    result = whoop_connector.import_file(write_whoop_export(tmp_path / "export.zip", files))
+    assert NIGHT_FROM_EXPORT in lines_of(result.points)
+    assert result.summary[0] == "sleeps: 1 on the API's points, 1 from before the API's first record"
+
+
+def test_a_row_the_api_should_have_is_left_out_not_written_beside_it(whoop_connected, whoop_connector, influx, db,
+                                                                      alice, tmp_path):
+    """A night newer than the last API run (or one the API no longer has):
+    the API writes it, at its own time; the export never adds a second."""
+    runner.run(db, whoop_connector)
+    files = dict(WHOOP_EXPORT)
+    files["sleeps.csv"] = WHOOP_EXPORT["sleeps.csv"] + (
+        "2026-10-03 23:00:00,,UTC+02:00,2026-10-03 23:00:00,2026-10-04 07:00:00,90,15.0,420,465,220,110,90,45,"
+        "480,20,90,81,false\n")
+    result = whoop_connector.import_file(write_whoop_export(tmp_path / "export.zip", files))
+    assert not [line for line in lines_of(result.points) if "start=1791061200i" in line]
+    assert ("sleeps: 1 on the API's points, 1 from before the API's first record, 1 left out (the API's to write: "
+            "let it run, then import again)") in result.summary
+
+
+def test_an_export_waits_for_the_api_s_first_run_once_connected(whoop_connected, whoop_connector, tmp_path):
+    with pytest.raises(ConnectorError, match="connected but has not run yet: run it first"):
+        whoop_connector.import_file(write_whoop_export(tmp_path / "export.zip"))
 
 
 def test_an_export_before_any_api_run_is_written_whole_at_its_own_times(whoop_connector, tmp_path, monkeypatch):

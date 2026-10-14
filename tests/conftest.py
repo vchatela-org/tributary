@@ -227,13 +227,18 @@ def whoop_connector(monkeypatch):
 @pytest.fixture()
 def whoop_api(monkeypatch, whoop_connector, secret_key):
     """WHOOP's token endpoint and API served in-process over HTTP; retries
-    don't wait (`fake.slept` records them)."""
+    don't wait (`fake.slept` records them); the connector's clock is the
+    fixtures' day (2026-10-03, mid-morning)."""
+    from datetime import datetime, timezone
+
+    from app.connectors import whoop
     from app.connectors import whoop_api as client
 
     fake = FakeWhoop()
     fake.slept = []
     monkeypatch.setattr(client, "API_ENDPOINT", fake.url)
     monkeypatch.setattr(client, "_sleep", fake.slept.append)
+    monkeypatch.setattr(whoop, "_now", lambda: datetime(2026, 10, 3, 8, 35, tzinfo=timezone.utc))
     yield fake
     fake.close()
 

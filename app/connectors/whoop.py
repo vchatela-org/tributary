@@ -42,21 +42,24 @@ Rules:
   - times must not move: a sleep edited in the app moves its end, which would
     leave a second point behind. The cursor pins each sleep, cycle and
     workout to the time -- and the `kind` or `category` tag -- it was first
-    written with ({id: [time, start, tag]}), and a full resync keeps them.
+    written with ({id: [time, start, tag]}, the start following edits), and
+    a full resync keeps them.
 
 Cursor: per resource, the newest start read (never past a record still
-awaiting its score). A run reads from there minus
-TRIBUTARY_WHOOP_LOOKBACK_DAYS (default 7: rescoring and edits), 25 a page,
-and rewrites it; the same keys overwrite themselves. A first run or a *Full
-resync* reads the whole history (no `start`).
+awaiting its score, unless it has waited over 30 days). A run reads from
+there minus TRIBUTARY_WHOOP_LOOKBACK_DAYS (default 7: rescoring and edits),
+25 a page, and rewrites it; the same keys overwrite themselves. A first run
+or a *Full resync* reads the whole history (no `start`).
 
 Export (whoop_export.py: the zip, or one of its CSV files):
   - every row is matched to the API record whose start is within 60 s (the
     pins above). Matched, it adds only what the API lacks, on the API's point
     (same time, same tags): sleep_need_s, sleep_debt_s on a sleep;
     zone1_pct ... zone5_pct and gps_enabled on a workout. An API field is
-    never overwritten by an export value. Unmatched (history from before the
-    API was read), a row is written whole at its own time.
+    never overwritten by an export value. A row older than every record the
+    API returned (history before its reach) is written whole at its own
+    time; a newer unmatched one is left out: the API's to write, at its own
+    time. Once the API is connected, an import waits for its first run.
   - journal (SleepStats, export only): one point per answer, at its cycle's
     start (the API cycle's pinned time when one matches), tag question =
     WHOOP's wording, custom questions included; fields answered_yes (0/1)
@@ -83,7 +86,7 @@ from app.__version__ import __version__
 from app.config import settings as app_settings
 from app.connectors import whoop_api, whoop_export
 from app.connectors.base import Connector, ConnectorError, ConnectorSettings, FileImport, Span, SyncResult
-from app.points import Measurement, Point
+from app.points import Measurement, Point, epoch_seconds
 from app.schema import DAILY_ACTIVITY, EXERCISE, SLEEP_SESSION
 
 PREFIX = "TRIBUTARY_WHOOP_"
@@ -93,8 +96,12 @@ KJ_PER_KCAL = 4.184
 # close (the export is to the second, in local time; the API to the
 # millisecond, in UTC).
 MATCH_SECONDS = 60
-# Where WHOOP sends the browser back (app/routers/oauth.py): the redirect URI
-# to register is https://<Tributary's host> followed by this.
+# A record awaiting its score holds the cursor back (the next run reads it
+# again), but not one older than this: WHOOP left it unscored for good, and
+# re-reading from it every day would only grow the window.
+PENDING_HOLD = timedelta(days=30)
+# Where WHOOP sends the browser back (app/routers/connections.py): the redirect
+# URI to register is https://<Tributary's host> followed by this.
 CALLBACK_PATH = "/connectors/whoop/callback"
 
 JOURNAL = Measurement(
@@ -157,8 +164,8 @@ def parse_time(raw: Any) -> Optional[datetime]:
     return (moment if moment.tzinfo else moment.replace(tzinfo=timezone.utc)).astimezone(timezone.utc)
 
 
-def epoch(moment: datetime) -> int:
-    return math.floor(moment.timestamp())
+# A point's second, as the core keys it.
+epoch = epoch_seconds
 
 
 def offset_minutes(raw: Any) -> Optional[int]:
@@ -328,12 +335,17 @@ def _at(seconds: int) -> datetime:
     return datetime.fromtimestamp(seconds, timezone.utc)
 
 
+def _now() -> datetime:
+    """Now (tests fix it)."""
+    return datetime.now(timezone.utc)
+
+
 def collapse(points: List[Point]) -> List[Point]:
     """One point per key (measurement, time, tags), the later one's fields
     winning: the core would sum two points sharing a key."""
     merged: Dict[Tuple, Point] = {}
     for point in points:
-        key = (point.measurement.name, int(point.time.timestamp()), tuple(sorted(point.tags.items())))
+        key = (point.measurement.name, epoch(point.time), tuple(sorted(point.tags.items())))
         if key in merged:
             merged[key].fields.update(point.fields)
         else:
@@ -356,8 +368,18 @@ def _state(cursor: Any) -> Dict[str, Any]:
             "pinned": {r: dict(pinned.get(r) or {}) for r in RESOURCES}}
 
 
+def _pin(pinned: Dict[str, list], key: str, at: int, start: int, *tag: Any) -> list:
+    """[time, start, (tag)]: the time and tag a record was first written with,
+    kept; its start, the latest WHOOP gave (what an export row is matched on,
+    an edit included)."""
+    pin = pinned.setdefault(key, [at, start, *tag])
+    pin[1] = start
+    return pin
+
+
 def api_points(sleeps: List[Dict], recoveries: List[Dict], cycles: List[Dict], workouts: List[Dict],
-               state: Dict[str, Any]) -> Tuple[List[Point], Dict[str, Any], Dict[str, int]]:
+               state: Dict[str, Any], now: Optional[datetime] = None
+               ) -> Tuple[List[Point], Dict[str, Any], Dict[str, int]]:
     """(points, the new cursor, counts) for what a run read."""
     pinned = state["pinned"]
     since = dict(state["since"])
@@ -365,6 +387,11 @@ def api_points(sleeps: List[Dict], recoveries: List[Dict], cycles: List[Dict], w
     points: List[Point] = []
     waiting: Dict[str, List[int]] = {r: [] for r in RESOURCES}
     newest: Dict[str, List[int]] = {r: [] for r in RESOURCES}
+    hold_from = epoch((now or _now()) - PENDING_HOLD)
+
+    def wait_for(resource: str, start: datetime) -> None:
+        if epoch(start) >= hold_from:
+            waiting[resource].append(epoch(start))
 
     def unique(records: List[Dict]) -> List[Dict]:
         by_id = {}
@@ -378,10 +405,10 @@ def api_points(sleeps: List[Dict], recoveries: List[Dict], cycles: List[Dict], w
         key, start, end = str(sleep["id"]), parse_time(sleep["start"]), parse_time(sleep.get("end"))
         newest["sleep"].append(epoch(start))
         if pending(sleep) or end is None:
-            waiting["sleep"].append(epoch(start))
+            wait_for("sleep", start)
             counts["pending"] += 1
             continue
-        pin = pinned["sleep"].setdefault(key, [epoch(end), epoch(start), int(bool(sleep.get("nap")))])
+        pin = _pin(pinned["sleep"], key, epoch(end), epoch(start), int(bool(sleep.get("nap"))))
         fields = sleep_fields(sleep)
         recovery = recovery_of.pop(key, None)
         if recovery is not None:
@@ -403,11 +430,11 @@ def api_points(sleeps: List[Dict], recoveries: List[Dict], cycles: List[Dict], w
         newest["cycle"].append(epoch(start))
         if pending(cycle) or parse_time(cycle.get("end")) is None:
             # Not final yet: read again by the next runs.
-            waiting["cycle"].append(epoch(start))
+            wait_for("cycle", start)
         if pending(cycle):
             counts["pending"] += 1
             continue
-        pin = pinned["cycle"].setdefault(key, [epoch(start), epoch(start)])
+        pin = _pin(pinned["cycle"], key, epoch(start), epoch(start))
         fields = cycle_fields(cycle)
         if fields:
             counts["cycle"] += 1
@@ -417,10 +444,10 @@ def api_points(sleeps: List[Dict], recoveries: List[Dict], cycles: List[Dict], w
         key, start = str(workout["id"]), parse_time(workout["start"])
         newest["workout"].append(epoch(start))
         if pending(workout):
-            waiting["workout"].append(epoch(start))
+            wait_for("workout", start)
             counts["pending"] += 1
             continue
-        pin = pinned["workout"].setdefault(key, [epoch(start), epoch(start), category(workout.get("sport_name"))])
+        pin = _pin(pinned["workout"], key, epoch(start), epoch(start), category(workout.get("sport_name")))
         counts["workout"] += 1
         points.append(Point(EXERCISE, _at(pin[0]), {"category": pin[2]}, workout_fields(workout)))
 
@@ -437,14 +464,14 @@ def api_points(sleeps: List[Dict], recoveries: List[Dict], cycles: List[Dict], w
 # ────────────────────────────────────────────────
 
 class Matcher:
-    """The API records a run pinned, by start: an export row is the record
-    whose start is within MATCH_SECONDS of its own."""
+    """The API records the runs pinned, by their latest start: an export row
+    is the record whose start is within MATCH_SECONDS of its own."""
 
     def __init__(self, pins: Dict[str, Dict[str, list]]):
         self._sorted: Dict[str, List[Tuple[int, list]]] = {}
         for resource in RESOURCES:
             rows = [(pin[1], pin) for pin in (pins.get(resource) or {}).values()
-                    if isinstance(pin, list) and len(pin) >= 2]
+                    if isinstance(pin, list) and len(pin) >= 3 - (resource == "cycle")]
             self._sorted[resource] = sorted(rows, key=lambda row: row[0])
 
     def match(self, resource: str, start: datetime) -> Optional[list]:
@@ -454,6 +481,14 @@ class Matcher:
         near = [rows[i] for i in (index - 1, index) if 0 <= i < len(rows)]
         near = [row for row in near if abs(row[0] - at) <= MATCH_SECONDS]
         return min(near, key=lambda row: abs(row[0] - at))[1] if near else None
+
+    def before_the_api(self, resource: str, start: datetime) -> bool:
+        """Whether a row is older than every record the API returned: history
+        the API never had, which only the export can write. A row the API
+        should have (newer: the API's next run brings it) is left out instead
+        of written at a time the API's point may not share."""
+        rows = self._sorted.get(resource) or []
+        return not rows or epoch(start) < rows[0][0] - MATCH_SECONDS
 
 
 def _offset(row: Dict) -> int:
@@ -510,7 +545,9 @@ def export_points(tables: Dict[str, List[Dict]], pins: Dict[str, Dict[str, list]
     onto the API's points."""
     matcher = Matcher(pins)
     points: List[Point] = []
-    told = {"sleep": [0, 0], "cycle": [0, 0], "workout": [0, 0]}
+    # Per resource: on the API's points, written whole (before the API's
+    # first record), left out (the API's own to write).
+    told = {"sleep": [0, 0, 0], "cycle": [0, 0, 0], "workout": [0, 0, 0]}
 
     # Sleeps: sleeps.csv, and the main sleep of each cycle (its recovery, and
     # the sleep itself when sleeps.csv isn't in the upload).
@@ -534,6 +571,8 @@ def export_points(tables: Dict[str, List[Dict]], pins: Dict[str, Dict[str, list]
             told["sleep"][0] += 1
             fields = {name: value for name, value in _export_sleep_fields(row).items() if name in SLEEP_EXPORT_ONLY}
             points.append(Point(SLEEP_SESSION, _at(pin[0]), {"kind": "nap" if pin[2] else "night"}, fields))
+        elif not matcher.before_the_api("sleep", row["sleep_onset"]):
+            told["sleep"][2] += 1
         elif row.get("wake_onset") is not None:
             told["sleep"][1] += 1
             fields = {**_export_sleep_fields(row), **entry["recovery"]}
@@ -541,10 +580,13 @@ def export_points(tables: Dict[str, List[Dict]], pins: Dict[str, Dict[str, list]
                                 fields))
 
     # Cycles: the API has every field the export does; the export's own only
-    # for the days the API never returned.
+    # for the days before the API's first one.
     for row in tables.get("cycles", []):
         if matcher.match("cycle", row["cycle_start"]) is not None:
             told["cycle"][0] += 1
+            continue
+        if not matcher.before_the_api("cycle", row["cycle_start"]):
+            told["cycle"][2] += 1
             continue
         fields: Dict[str, Any] = {}
         _put(fields, "strain", row.get("strain"))
@@ -564,6 +606,8 @@ def export_points(tables: Dict[str, List[Dict]], pins: Dict[str, Dict[str, list]
             fields = {name: value for name, value in _export_workout_fields(row).items()
                       if name in WORKOUT_EXPORT_ONLY}
             points.append(Point(EXERCISE, _at(pin[0]), {"category": pin[2]}, fields))
+        elif not matcher.before_the_api("workout", row["workout_start"]):
+            told["workout"][2] += 1
         else:
             told["workout"][1] += 1
             points.append(Point(EXERCISE, row["workout_start"], {"category": category(row.get("sport_name"))},
@@ -586,9 +630,10 @@ def export_points(tables: Dict[str, List[Dict]], pins: Dict[str, Dict[str, list]
         days = sorted(point.time.astimezone(tz).date() for point in journal)
         span = Span(days[0], days[-1])
 
-    summary = [f"{what}: {matched} on the API's points, {alone} at their own time"
-               for what, (matched, alone) in (("sleeps", told["sleep"]), ("cycles", told["cycle"]),
-                                              ("workouts", told["workout"])) if matched or alone]
+    summary = [f"{what}: {matched} on the API's points, {alone} from before the API's first record"
+               + (f", {left} left out (the API's to write: let it run, then import again)" if left else "")
+               for what, (matched, alone, left) in (("sleeps", told["sleep"]), ("cycles", told["cycle"]),
+                                                    ("workouts", told["workout"])) if matched or alone or left]
     if journal:
         summary.append(f"{len(journal)} journal answer(s)")
     return collapse(points) + journal, span, summary
@@ -715,7 +760,7 @@ class WhoopConnector(Connector):
         except whoop_api.WhoopError as exc:
             raise ConnectorError(str(exc)) from None
 
-        points, new_cursor, counts = api_points(sleeps, recoveries, cycles, workouts, state)
+        points, new_cursor, counts = api_points(sleeps, recoveries, cycles, workouts, state, _now())
         tz = ZoneInfo(app_settings.tz)
         froms = [moment for moment in (lower(r) for r in RESOURCES) if moment is not None]
         since = (f"since {min(froms).astimezone(tz).date().isoformat()}" if len(froms) == len(RESOURCES)
@@ -742,7 +787,13 @@ class WhoopConnector(Connector):
             tables = whoop_export.read_export(path)
         except whoop_export.ExportFormatError as exc:
             raise ConnectorError(str(exc)) from None
-        points, span, summary = export_points(tables, self._pins(), ZoneInfo(app_settings.tz))
+        pins = self._pins()
+        if not any(pins.values()) and oauth.has_grant(self.key):
+            # Its rows would be written at their own times, and the API's
+            # first run next to them at its own: let the API go first.
+            raise ConnectorError("Whoop's API is connected but has not run yet: run it first (Run now), then "
+                                 "import the export, so that it lands on the API's points.")
+        points, span, summary = export_points(tables, pins, ZoneInfo(app_settings.tz))
         if not points:
             raise ConnectorError("This export holds nothing to import: nothing is written, nothing dropped.")
         return FileImport(points, {JOURNAL.name: span} if span else {}, summary)

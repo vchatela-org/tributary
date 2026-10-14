@@ -363,6 +363,43 @@ def test_the_lock_keeps_two_refreshes_from_killing_each_other(whoop_connected, w
     assert stored_grant().refresh_token in whoop_connected.refresh_tokens
 
 
+def test_a_run_reads_the_token_once_and_keeps_the_scope_across_refreshes(whoop_connected, whoop_connector,
+                                                                         monkeypatch):
+    calls = []
+    real = oauth.access_token
+    monkeypatch.setattr(oauth, "access_token", lambda c, force_refresh=False: calls.append(force_refresh)
+                        or real(c, force_refresh))
+    whoop_connected.page_size = 1  # a dozen requests
+    whoop_connector.sync(None)
+    assert calls == [False] and len(whoop_connected.data_paths()) > 10
+    # A refresh answer without a scope keeps the scope granted.
+    monkeypatch.setattr(whoop_connected, "grant", lambda: {
+        **type(whoop_connected).grant(whoop_connected), "scope": None})
+    real(whoop_connector, force_refresh=True)
+    assert stored_row().scope == "offline read:recovery read:cycles read:sleep read:workout"
+
+
+def test_a_token_with_no_lifetime_is_refreshed_only_when_refused(whoop_connected, whoop_connector):
+    with SessionLocal() as db:
+        db.get(OAuthToken, "whoop").expires_at = None
+        db.commit()
+    for _ in range(3):
+        oauth.access_token(whoop_connector)
+    assert "token:refresh_token" not in whoop_connected.events
+    whoop_connected.access_tokens.clear()
+    whoop_connector.sync(None)
+    assert whoop_connected.events.count("token:refresh_token") == 1
+
+
+def test_a_bare_401_from_the_token_endpoint_is_not_called_bad_credentials(whoop_connected, whoop_connector):
+    expire_now()
+    whoop_connected.fail["/oauth/oauth2/token"] = [(401, {}, "not json")]
+    with pytest.raises(oauth.ConnectorError) as error:
+        oauth.access_token(whoop_connector)
+    assert "refused the request (401)" in str(error.value) and "invalid_client" not in str(error.value)
+    assert stored_row() is not None
+
+
 def test_disconnect_revokes_then_forgets(client, whoop_connected, whoop_connector):
     assert client.post("/connectors/whoop/disconnect", headers=CROSS).status_code == 403
     back = client.post("/connectors/whoop/disconnect", headers=SAME, follow_redirects=False)
