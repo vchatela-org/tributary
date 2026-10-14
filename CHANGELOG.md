@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.1](https://github.com/vchatela-org/tributary/compare/v0.10.0...v0.10.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* clear the CodeQL findings -- pinned actions, a least-privilege Harbor workflow, the back-redirect guard ([#27](https://github.com/vchatela-org/tributary/issues/27)) ([7d4f9f8](https://github.com/vchatela-org/tributary/commit/7d4f9f8bade948741c3bf9dabca5710b78679ce7))
+* **web:** build the schedule editor's fallback redirect from the registered connector ([#30](https://github.com/vchatela-org/tributary/issues/30)) ([4762eee](https://github.com/vchatela-org/tributary/commit/4762eee0fda65debb72432f11ed1e96b60402c5d))
+
 ## [0.10.0](https://github.com/vchatela-org/tributary/compare/v0.9.0...v0.10.0) (2026-10-13)
 
 
