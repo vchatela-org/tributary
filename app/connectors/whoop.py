@@ -62,8 +62,10 @@ Export (whoop_export.py: the zip, or one of its CSV files):
     time. Once the API is connected, an import waits for its first run.
   - journal (SleepStats, export only): one point per answer, at its cycle's
     start (the API cycle's pinned time when one matches), tag question =
-    WHOOP's wording, custom questions included; fields answered_yes (0/1)
-    and count (1). Notes are never read. Every export holds the whole
+    WHOOP's wording, custom questions included; fields answered_yes (0/1),
+    count (1), and the cycle's recovery (recovery_score, hrv_rmssd_ms — so a
+    panel can compare recovery on yes-days against no-days without a join).
+    Notes are never read. Every export holds the whole
     history, so an import replaces this source's journal over the days it
     covers (FileImport.spans); nothing else is ever dropped.
 
@@ -106,7 +108,7 @@ CALLBACK_PATH = "/connectors/whoop/callback"
 
 JOURNAL = Measurement(
     database="SleepStats", name="journal", tags=("question",),
-    fields={"answered_yes": int, "count": int},
+    fields={"answered_yes": int, "count": int, "recovery_score": float, "hrv_rmssd_ms": float},
 )
 
 # WHOOP's sport name -> MyFitnessPal's category words, first match wins (the
@@ -306,6 +308,25 @@ def category(sport: Any) -> str:
     return next((word for key, word in CATEGORIES if key in name), "other")
 
 
+def sport_name(raw: Any) -> Optional[str]:
+    """WHOOP's sport name as the `sport` tag: trimmed and bounded, or None."""
+    if not isinstance(raw, str):
+        return None
+    return raw.strip()[:64] or None
+
+
+def workout_tags(pin: list, sport: Optional[str]) -> Dict[str, Optional[str]]:
+    """A workout point's tags: the shared `category`, plus WHOOP's own `sport`
+    (pinned like `category`, so editing the sport in the app does not move the
+    point). A pin written before the tag existed (3 elements) is extended."""
+    if len(pin) <= 3:
+        pin.append(sport)
+    tags: Dict[str, Optional[str]] = {"category": pin[2]}
+    if pin[3]:
+        tags["sport"] = pin[3]
+    return tags
+
+
 def workout_fields(workout: Dict) -> Dict[str, Any]:
     """A workout's fields (Whoops' `WhoopWorkout.from_json`): the sport and
     duration always, the score's when scored."""
@@ -447,9 +468,12 @@ def api_points(sleeps: List[Dict], recoveries: List[Dict], cycles: List[Dict], w
             wait_for("workout", start)
             counts["pending"] += 1
             continue
-        pin = _pin(pinned["workout"], key, epoch(start), epoch(start), category(workout.get("sport_name")))
+        pin = _pin(pinned["workout"], key, epoch(start), epoch(start),
+                   category(workout.get("sport_name")), sport_name(workout.get("sport_name")))
         counts["workout"] += 1
-        points.append(Point(EXERCISE, _at(pin[0]), {"category": pin[2]}, workout_fields(workout)))
+        points.append(Point(EXERCISE, _at(pin[0]),
+                            workout_tags(pin, sport_name(workout.get("sport_name"))),
+                            workout_fields(workout)))
 
     for resource in RESOURCES:
         if newest[resource]:
@@ -605,14 +629,20 @@ def export_points(tables: Dict[str, List[Dict]], pins: Dict[str, Dict[str, list]
             told["workout"][0] += 1
             fields = {name: value for name, value in _export_workout_fields(row).items()
                       if name in WORKOUT_EXPORT_ONLY}
-            points.append(Point(EXERCISE, _at(pin[0]), {"category": pin[2]}, fields))
+            points.append(Point(EXERCISE, _at(pin[0]),
+                                workout_tags(pin, sport_name(row.get("sport_name"))), fields))
         elif not matcher.before_the_api("workout", row["workout_start"]):
             told["workout"][2] += 1
         else:
             told["workout"][1] += 1
-            points.append(Point(EXERCISE, row["workout_start"], {"category": category(row.get("sport_name"))},
+            points.append(Point(EXERCISE, row["workout_start"],
+                                {"category": category(row.get("sport_name")), "sport": sport_name(row.get("sport_name"))},
                                 _export_workout_fields(row)))
 
+    # The journal is keyed by cycle: carry that cycle's recovery on the answer, so
+    # a panel can compare recovery on days a question was answered yes vs no
+    # without joining two measurements (InfluxQL cannot).
+    cycles_by_start = {row["cycle_start"]: row for row in tables.get("cycles", [])}
     journal: List[Point] = []
     for row in tables.get("journal", []):
         question = " ".join(str(row.get("question") or "").split())
@@ -622,6 +652,10 @@ def export_points(tables: Dict[str, List[Dict]], pins: Dict[str, Dict[str, list]
         fields: Dict[str, Any] = {"count": 1}
         if isinstance(row.get("answered_yes"), bool):
             fields["answered_yes"] = int(row["answered_yes"])
+        cycle = cycles_by_start.get(row["cycle_start"])
+        if cycle is not None:
+            _put(fields, "recovery_score", cycle.get("recovery_score"))
+            _put(fields, "hrv_rmssd_ms", cycle.get("hrv_rmssd_ms"))
         journal.append(Point(JOURNAL, _at(pin[0]) if pin is not None else row["cycle_start"],
                              {"question": question[:200]}, fields))
     journal = collapse(journal)
