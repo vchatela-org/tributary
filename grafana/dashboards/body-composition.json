@@ -73,7 +73,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"weight_kg\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 2"
+          "query": "SELECT \"weight_kg\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter ORDER BY time DESC LIMIT 2"
         },
         {
           "refId": "T",
@@ -205,7 +205,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"bmi\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 2"
+          "query": "SELECT \"bmi\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter ORDER BY time DESC LIMIT 2"
         },
         {
           "refId": "T",
@@ -337,7 +337,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"body_fat_pct\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 2"
+          "query": "SELECT \"body_fat_pct\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter ORDER BY time DESC LIMIT 2"
         },
         {
           "refId": "T",
@@ -478,7 +478,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"subcutaneous_fat_pct\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 2"
+          "query": "SELECT \"subcutaneous_fat_pct\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter ORDER BY time DESC LIMIT 2"
         },
         {
           "refId": "T",
@@ -601,7 +601,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"visceral_fat\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 2"
+          "query": "SELECT \"visceral_fat\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter ORDER BY time DESC LIMIT 2"
         },
         {
           "refId": "T",
@@ -733,7 +733,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"lean_body_mass_kg\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 2"
+          "query": "SELECT \"lean_body_mass_kg\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter ORDER BY time DESC LIMIT 2"
         },
         {
           "refId": "T",
@@ -856,7 +856,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"muscle_pct\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 2"
+          "query": "SELECT \"muscle_pct\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter ORDER BY time DESC LIMIT 2"
         },
         {
           "refId": "T",
@@ -979,7 +979,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"bone_pct\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 2"
+          "query": "SELECT \"bone_pct\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter ORDER BY time DESC LIMIT 2"
         },
         {
           "refId": "T",
@@ -1102,7 +1102,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"fat_free_weight_kg\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 2"
+          "query": "SELECT \"fat_free_weight_kg\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter ORDER BY time DESC LIMIT 2"
         }
       ],
       "transformations": [
@@ -1176,7 +1176,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"body_age\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 2"
+          "query": "SELECT \"body_age\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter ORDER BY time DESC LIMIT 2"
         },
         {
           "refId": "T",
@@ -1290,7 +1290,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"bmr_kcal\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 2"
+          "query": "SELECT \"bmr_kcal\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter ORDER BY time DESC LIMIT 2"
         },
         {
           "refId": "T",
@@ -1404,7 +1404,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"body_water_pct\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 2"
+          "query": "SELECT \"body_water_pct\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter ORDER BY time DESC LIMIT 2"
         },
         {
           "refId": "T",
@@ -1527,7 +1527,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"protein_pct\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter ORDER BY time DESC LIMIT 2"
+          "query": "SELECT \"protein_pct\" AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter ORDER BY time DESC LIMIT 2"
         },
         {
           "refId": "T",
@@ -1640,7 +1640,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT last(\"weight_kg\") - first(\"weight_kg\") AS \"delta\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+          "query": "SELECT last(\"weight_kg\") - first(\"weight_kg\") AS \"delta\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
         }
       ]
     },
@@ -1691,7 +1691,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT last(\"weight_kg\") AS \"weight_kg\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+          "query": "SELECT last(\"weight_kg\") AS \"weight_kg\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
         }
       ]
     },
@@ -1761,7 +1761,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"weight_kg\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"weight_kg\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -1907,7 +1907,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"weight_kg\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"weight_kg\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -1959,7 +1959,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"weight_kg\") - first(\"weight_kg\") AS \"Change\", max(\"weight_kg\") AS \"Highest\", min(\"weight_kg\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"weight_kg\") - first(\"weight_kg\") AS \"Change\", max(\"weight_kg\") AS \"Highest\", min(\"weight_kg\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -2027,7 +2027,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT \"weight_kg\" AS \"Weight\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT \"weight_kg\" AS \"Weight\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -2145,7 +2145,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"bmi\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"bmi\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -2291,7 +2291,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"bmi\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"bmi\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -2343,7 +2343,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"bmi\") - first(\"bmi\") AS \"Change\", max(\"bmi\") AS \"Highest\", min(\"bmi\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"bmi\") - first(\"bmi\") AS \"Change\", max(\"bmi\") AS \"Highest\", min(\"bmi\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -2411,7 +2411,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT \"bmi\" AS \"BMI\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT \"bmi\" AS \"BMI\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -2529,7 +2529,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"body_fat_pct\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"body_fat_pct\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -2689,7 +2689,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"body_fat_pct\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"body_fat_pct\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -2741,7 +2741,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"body_fat_pct\") - first(\"body_fat_pct\") AS \"Change\", max(\"body_fat_pct\") AS \"Highest\", min(\"body_fat_pct\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"body_fat_pct\") - first(\"body_fat_pct\") AS \"Change\", max(\"body_fat_pct\") AS \"Highest\", min(\"body_fat_pct\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -2809,7 +2809,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT \"body_fat_pct\" AS \"Body Fat Percentage\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT \"body_fat_pct\" AS \"Body Fat Percentage\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -2936,7 +2936,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"subcutaneous_fat_pct\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"subcutaneous_fat_pct\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -3068,7 +3068,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"subcutaneous_fat_pct\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"subcutaneous_fat_pct\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -3120,7 +3120,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"subcutaneous_fat_pct\") - first(\"subcutaneous_fat_pct\") AS \"Change\", max(\"subcutaneous_fat_pct\") AS \"Highest\", min(\"subcutaneous_fat_pct\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"subcutaneous_fat_pct\") - first(\"subcutaneous_fat_pct\") AS \"Change\", max(\"subcutaneous_fat_pct\") AS \"Highest\", min(\"subcutaneous_fat_pct\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -3188,7 +3188,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT \"subcutaneous_fat_pct\" AS \"Subcutaneous Fat\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT \"subcutaneous_fat_pct\" AS \"Subcutaneous Fat\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -3297,7 +3297,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"visceral_fat\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"visceral_fat\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -3443,7 +3443,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"visceral_fat\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"visceral_fat\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -3495,7 +3495,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"visceral_fat\") - first(\"visceral_fat\") AS \"Change\", max(\"visceral_fat\") AS \"Highest\", min(\"visceral_fat\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"visceral_fat\") - first(\"visceral_fat\") AS \"Change\", max(\"visceral_fat\") AS \"Highest\", min(\"visceral_fat\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -3563,7 +3563,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT \"visceral_fat\" AS \"Visceral Fat\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT \"visceral_fat\" AS \"Visceral Fat\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -3681,7 +3681,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"lean_body_mass_kg\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"lean_body_mass_kg\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -3813,7 +3813,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"lean_body_mass_kg\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"lean_body_mass_kg\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -3865,7 +3865,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"lean_body_mass_kg\") - first(\"lean_body_mass_kg\") AS \"Change\", max(\"lean_body_mass_kg\") AS \"Highest\", min(\"lean_body_mass_kg\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"lean_body_mass_kg\") - first(\"lean_body_mass_kg\") AS \"Change\", max(\"lean_body_mass_kg\") AS \"Highest\", min(\"lean_body_mass_kg\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -3933,7 +3933,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT \"lean_body_mass_kg\" AS \"Muscle Mass\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT \"lean_body_mass_kg\" AS \"Muscle Mass\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -4042,7 +4042,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"muscle_pct\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"muscle_pct\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -4174,7 +4174,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"muscle_pct\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"muscle_pct\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -4226,7 +4226,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"muscle_pct\") - first(\"muscle_pct\") AS \"Change\", max(\"muscle_pct\") AS \"Highest\", min(\"muscle_pct\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"muscle_pct\") - first(\"muscle_pct\") AS \"Change\", max(\"muscle_pct\") AS \"Highest\", min(\"muscle_pct\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -4294,7 +4294,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT \"muscle_pct\" AS \"Skeletal Muscle Percentage\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT \"muscle_pct\" AS \"Skeletal Muscle Percentage\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -4403,7 +4403,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"bone_pct\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"bone_pct\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -4535,7 +4535,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"bone_pct\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"bone_pct\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -4587,7 +4587,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"bone_pct\") - first(\"bone_pct\") AS \"Change\", max(\"bone_pct\") AS \"Highest\", min(\"bone_pct\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"bone_pct\") - first(\"bone_pct\") AS \"Change\", max(\"bone_pct\") AS \"Highest\", min(\"bone_pct\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -4655,7 +4655,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT \"bone_pct\" AS \"Bone Mass\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT \"bone_pct\" AS \"Bone Mass\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -4758,7 +4758,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"fat_free_weight_kg\") - first(\"fat_free_weight_kg\") AS \"Change\", max(\"fat_free_weight_kg\") AS \"Highest\", min(\"fat_free_weight_kg\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"fat_free_weight_kg\") - first(\"fat_free_weight_kg\") AS \"Change\", max(\"fat_free_weight_kg\") AS \"Highest\", min(\"fat_free_weight_kg\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -4826,7 +4826,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT \"fat_free_weight_kg\" AS \"Fat-Free Mass\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT \"fat_free_weight_kg\" AS \"Fat-Free Mass\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -4884,7 +4884,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"body_age\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"body_age\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -5002,7 +5002,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"body_age\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"body_age\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -5054,7 +5054,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"body_age\") - first(\"body_age\") AS \"Change\", max(\"body_age\") AS \"Highest\", min(\"body_age\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"body_age\") - first(\"body_age\") AS \"Change\", max(\"body_age\") AS \"Highest\", min(\"body_age\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -5122,7 +5122,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT \"body_age\" AS \"Metabolic Age\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT \"body_age\" AS \"Metabolic Age\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -5222,7 +5222,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"bmr_kcal\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"bmr_kcal\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -5340,7 +5340,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"bmr_kcal\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"bmr_kcal\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -5392,7 +5392,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"bmr_kcal\") - first(\"bmr_kcal\") AS \"Change\", max(\"bmr_kcal\") AS \"Highest\", min(\"bmr_kcal\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"bmr_kcal\") - first(\"bmr_kcal\") AS \"Change\", max(\"bmr_kcal\") AS \"Highest\", min(\"bmr_kcal\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -5460,7 +5460,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT \"bmr_kcal\" AS \"BMR\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT \"bmr_kcal\" AS \"BMR\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -5560,7 +5560,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"body_water_pct\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"body_water_pct\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -5692,7 +5692,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"body_water_pct\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"body_water_pct\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -5744,7 +5744,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"body_water_pct\") - first(\"body_water_pct\") AS \"Change\", max(\"body_water_pct\") AS \"Highest\", min(\"body_water_pct\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"body_water_pct\") - first(\"body_water_pct\") AS \"Change\", max(\"body_water_pct\") AS \"Highest\", min(\"body_water_pct\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -5812,7 +5812,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT \"body_water_pct\" AS \"Body Water Percentage\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT \"body_water_pct\" AS \"Body Water Percentage\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -5921,7 +5921,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"protein_pct\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"protein_pct\") AS \"value\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -6053,7 +6053,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"protein_pct\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"protein_pct\") AS \"level\" FROM \"body_levels\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -6105,7 +6105,7 @@
               },
               "rawQuery": true,
               "resultFormat": "table",
-              "query": "SELECT last(\"protein_pct\") - first(\"protein_pct\") AS \"Change\", max(\"protein_pct\") AS \"Highest\", min(\"protein_pct\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT last(\"protein_pct\") - first(\"protein_pct\") AS \"Change\", max(\"protein_pct\") AS \"Highest\", min(\"protein_pct\") AS \"Lowest\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             }
           ]
         },
@@ -6173,7 +6173,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT \"protein_pct\" AS \"Protein Percentage\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter"
+              "query": "SELECT \"protein_pct\" AS \"Protein Percentage\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" = '${primary}' AND $timeFilter"
             },
             {
               "refId": "T",
@@ -6248,8 +6248,8 @@
       "title": "Weight",
       "id": 68,
       "datasource": {
-        "type": "influxdb",
-        "uid": "${body}"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "gridPos": {
         "h": 9,
@@ -6267,7 +6267,10 @@
             "lineInterpolation": "linear",
             "lineWidth": 2
           },
-          "decimals": 1
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
         },
         "overrides": [
           {
@@ -6288,8 +6291,8 @@
           },
           {
             "matcher": {
-              "id": "byName",
-              "options": "trend (5 weigh-ins)"
+              "id": "byRegexp",
+              "options": "/^trend · /"
             },
             "properties": [
               {
@@ -6298,14 +6301,7 @@
               },
               {
                 "id": "custom.lineWidth",
-                "value": 3
-              },
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "text"
-                }
+                "value": 2
               }
             ]
           },
@@ -6319,7 +6315,7 @@
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "blue"
+                  "fixedColor": "#3987e5"
                 }
               }
             ]
@@ -6335,6 +6331,21 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
                 }
               }
             ]
@@ -6371,18 +6382,41 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(\"weight_kg\", 5) AS \"trend (5 weigh-ins)\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter",
-          "alias": "trend (5 weigh-ins)"
+          "query": "SELECT moving_average(\"weight_kg\", 5) AS \"trend\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter GROUP BY \"source\"",
+          "alias": "$col · $tag_source"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"weight\" / 1000 AS \"weight\" FROM \"BodyComposition\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter",
+          "alias": "$col · garmin"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"weight\", 5) / 1000 AS \"trend\" FROM \"BodyComposition\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter",
+          "alias": "$col · garmin"
         }
-      ]
+      ],
+      "description": "Every weigh-in (points) and a moving average of the last 5 (line), one colour per source: two scales are two lines, never one."
     },
     {
       "type": "timeseries",
       "title": "Body composition (kg)",
       "id": 69,
       "datasource": {
-        "type": "influxdb",
-        "uid": "${body}"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "gridPos": {
         "h": 8,
@@ -6405,7 +6439,10 @@
             },
             "fillOpacity": 40
           },
-          "decimals": 1
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
         },
         "overrides": [
           {
@@ -6418,7 +6455,7 @@
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "blue"
+                  "fixedColor": "#3987e5"
                 }
               },
               {
@@ -6449,6 +6486,32 @@
                   "mode": "normal",
                   "group": "myfitnesspal"
                 }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              },
+              {
+                "id": "custom.stacking",
+                "value": {
+                  "mode": "normal",
+                  "group": "garmin"
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
               }
             ]
           },
@@ -6504,6 +6567,28 @@
           "resultFormat": "time_series",
           "query": "SELECT \"weight_kg\" * \"body_fat_pct\" / 100 AS \"fat mass\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter GROUP BY \"source\"",
           "alias": "$col · $tag_source"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"weight\" / 1000 * (1 - \"bodyFat\" / 100) AS \"fat-free mass\" FROM \"BodyComposition\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter",
+          "alias": "$col · garmin"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"weight\" / 1000 * \"bodyFat\" / 100 AS \"fat mass\" FROM \"BodyComposition\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter",
+          "alias": "$col · garmin"
         }
       ],
       "description": "Weight split into fat-free mass and fat mass (weight × body fat %); the top of the stack is the weight."
@@ -6513,8 +6598,8 @@
       "title": "Body fat",
       "id": 70,
       "datasource": {
-        "type": "influxdb",
-        "uid": "${body}"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "gridPos": {
         "h": 8,
@@ -6532,7 +6617,10 @@
             "lineInterpolation": "linear",
             "lineWidth": 2
           },
-          "decimals": 1
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
         },
         "overrides": [
           {
@@ -6545,7 +6633,7 @@
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "blue"
+                  "fixedColor": "#3987e5"
                 }
               }
             ]
@@ -6561,6 +6649,21 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
                 }
               }
             ]
@@ -6617,6 +6720,17 @@
           "resultFormat": "time_series",
           "query": "SELECT \"subcutaneous_fat_pct\" AS \"subcutaneous fat\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter GROUP BY \"source\"",
           "alias": "$col · $tag_source"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"bodyFat\" AS \"body fat\" FROM \"BodyComposition\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter",
+          "alias": "$col · garmin"
         }
       ]
     },
@@ -6625,8 +6739,8 @@
       "title": "Muscle & water",
       "id": 71,
       "datasource": {
-        "type": "influxdb",
-        "uid": "${body}"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "gridPos": {
         "h": 8,
@@ -6644,7 +6758,10 @@
             "lineInterpolation": "linear",
             "lineWidth": 2
           },
-          "decimals": 1
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
         },
         "overrides": [
           {
@@ -6657,7 +6774,7 @@
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "blue"
+                  "fixedColor": "#3987e5"
                 }
               }
             ]
@@ -6673,6 +6790,21 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
                 }
               }
             ]
@@ -6729,6 +6861,17 @@
           "resultFormat": "time_series",
           "query": "SELECT \"body_water_pct\" AS \"water\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter GROUP BY \"source\"",
           "alias": "$col · $tag_source"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"bodyWater\" AS \"water\" FROM \"BodyComposition\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter",
+          "alias": "$col · garmin"
         }
       ]
     },
@@ -6737,8 +6880,8 @@
       "title": "Protein & bone",
       "id": 72,
       "datasource": {
-        "type": "influxdb",
-        "uid": "${body}"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "gridPos": {
         "h": 8,
@@ -6756,7 +6899,10 @@
             "lineInterpolation": "linear",
             "lineWidth": 2
           },
-          "decimals": 1
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
         },
         "overrides": [
           {
@@ -6781,7 +6927,7 @@
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "blue"
+                  "fixedColor": "#3987e5"
                 }
               }
             ]
@@ -6797,6 +6943,21 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
                 }
               }
             ]
@@ -6853,6 +7014,17 @@
           "resultFormat": "time_series",
           "query": "SELECT \"bone_pct\" AS \"bone\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter GROUP BY \"source\"",
           "alias": "$col · $tag_source"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"boneMass\" / 1000 AS \"bone\" FROM \"BodyComposition\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter",
+          "alias": "$col · garmin"
         }
       ]
     },
@@ -6861,8 +7033,8 @@
       "title": "BMI & visceral fat",
       "id": 73,
       "datasource": {
-        "type": "influxdb",
-        "uid": "${body}"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "gridPos": {
         "h": 8,
@@ -6880,7 +7052,10 @@
             "lineInterpolation": "linear",
             "lineWidth": 2
           },
-          "decimals": 1
+          "decimals": 1,
+          "color": {
+            "mode": "palette-classic-by-name"
+          }
         },
         "overrides": [
           {
@@ -6913,7 +7088,7 @@
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "blue"
+                  "fixedColor": "#3987e5"
                 }
               }
             ]
@@ -6929,6 +7104,21 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
                 }
               }
             ]
@@ -6985,6 +7175,28 @@
           "resultFormat": "time_series",
           "query": "SELECT \"visceral_fat\" AS \"visceral fat\" FROM \"body_composition\" WHERE \"user\" = '$user' AND \"source\" =~ /^${source:regex}$/ AND $timeFilter GROUP BY \"source\"",
           "alias": "$col · $tag_source"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"bmi\" AS \"BMI\" FROM \"BodyComposition\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter",
+          "alias": "$col · garmin"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"visceralFat\" AS \"visceral fat\" FROM \"BodyComposition\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter",
+          "alias": "$col · garmin"
         }
       ]
     },
@@ -7011,6 +7223,9 @@
             "pointSize": 4,
             "lineInterpolation": "linear",
             "lineWidth": 2
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
           }
         },
         "overrides": [
@@ -7064,7 +7279,7 @@
                 "id": "color",
                 "value": {
                   "mode": "fixed",
-                  "fixedColor": "blue"
+                  "fixedColor": "#3987e5"
                 }
               }
             ]
@@ -7399,6 +7614,19 @@
         "multi": false
       },
       {
+        "type": "datasource",
+        "name": "garmin",
+        "label": "InfluxDB GarminStats",
+        "query": "influxdb",
+        "regex": "/GarminStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
         "type": "query",
         "name": "user",
         "label": "User",
@@ -7418,8 +7646,31 @@
       },
       {
         "type": "query",
-        "name": "source",
-        "label": "Source",
+        "name": "rated",
+        "label": "Rated scales",
+        "description": "Sources that rate their readings (body_levels): listed first.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"body_levels\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"body_levels\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "type": "query",
+        "name": "scales",
+        "label": "Other scales",
+        "description": "The other sources of weigh-ins.",
         "datasource": {
           "type": "influxdb",
           "uid": "${body}"
@@ -7428,12 +7679,42 @@
         "query": "SHOW TAG VALUES FROM \"body_composition\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
         "refresh": 1,
         "sort": 1,
-        "hide": 0,
-        "current": {},
+        "hide": 2,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
         "options": [],
         "multi": true,
         "includeAll": true,
-        "allValue": ".*"
+        "regex": "/^(?!(?:${rated:pipe})$).*$/"
+      },
+      {
+        "type": "custom",
+        "name": "source",
+        "label": "Sources",
+        "description": "The sources the History row draws, one colour each (garmin: garmin-grafana's weigh-ins).",
+        "query": "${rated:csv},${scales:csv},garmin",
+        "hide": 0,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "type": "custom",
+        "name": "primary",
+        "label": "Readings from",
+        "description": "The one source the tiles and the metric rows read: two scales' readings are never mixed.",
+        "query": "${rated:csv},${scales:csv}",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
       }
     ]
   },

@@ -16,17 +16,30 @@ ROOT = Path(__file__).resolve().parents[1]
 DASHBOARDS = sorted((ROOT / "grafana" / "dashboards").glob("*.json"))
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 DOC = (ROOT / "docs" / "dashboards.md").read_text(encoding="utf-8")
+DESIGN = (ROOT / "docs" / "dashboards-design.md").read_text(encoding="utf-8")
 
-# Where each measurement lives, as the connectors declare it.
-DATABASE = {m.name: m.database for c in connectors.all_connectors() for m in c.measurements}
+
+def _written_elsewhere():
+    """{measurement: database} of the series the dashboards read that no Tributary
+    connector writes yet (garmin-grafana's, the sleep contract's): the table of
+    dashboards-design.md's "Series written by other tools"."""
+    section = DESIGN.split("\n## Series written by other tools\n", 1)[1].split("\n## ", 1)[0]
+    return {m: db for db, m in re.findall(r"^\| `(\w+)` \| `(\w+)` \|", section, re.MULTILINE)}
+
+
+# Where each measurement lives, as the connectors declare it, or as the design doc
+# documents it for another tool.
+DECLARED = {m.name: m.database for c in connectors.all_connectors() for m in c.measurements}
+DATABASE = {**_written_elsewhere(), **DECLARED}
 # The `source` of Tributary's connectors, and of the tools writing next to them
-# that a dashboard colours (docs/schema.md: Takeback's Kindle and Audible sessions).
-SOURCES = {c.key for c in connectors.all_connectors()} | {"kindle", "audible"}
+# that a dashboard colours (docs/schema.md: Takeback's Kindle and Audible sessions;
+# dashboards-design.md: `garmin` names garmin-grafana's series, `whoop` a strap).
+SOURCES = {c.key for c in connectors.all_connectors()} | {"kindle", "audible", "garmin", "whoop"}
 # Tag values every user has: the schema's own vocabularies, nobody's data.
 VOCABULARY = {"p1", "p2", "p3", "p4", "taken", "missed", "skipped", "unlogged",
               "breakfast", "lunch", "dinner", "snacks", "audiobook", "ebook", "podcast"}
 # Built-in Grafana datasources a panel may use besides the dashboard's own.
-BUILT_IN = {"-- Grafana --", "__expr__"}
+BUILT_IN = {"-- Grafana --", "-- Mixed --", "__expr__"}
 
 
 def _load(path):
@@ -87,6 +100,15 @@ def test_every_panel_reads_through_a_datasource_variable(dashboard):
                 assert ds is None, (dashboard["uid"], p.get("title"), ds)
 
 
+def test_a_series_written_elsewhere_is_documented_once():
+    """The design doc's table of other tools' series may not contradict a
+    connector: once a connector writes one, the database must agree."""
+    elsewhere = _written_elsewhere()
+    assert {"SleepSummary", "sleep_session", "daily_activity"} <= set(elsewhere), elsewhere
+    for name, database in elsewhere.items():
+        assert DECLARED.get(name, database) == database, (name, database, DECLARED[name])
+
+
 def test_queries_read_declared_measurements_from_their_database(dashboard):
     databases = _datasource_variables(dashboard)
     for panel, target in _queries(dashboard):
@@ -101,9 +123,18 @@ def test_nothing_is_saved_in_the_variables(dashboard):
     a medication...): the lists fill from the reader's own series. The time zone
     is the one value allowed, at TRIBUTARY_TZ's default."""
     for v in _variables(dashboard):
-        assert v["type"] in ("datasource", "query", "textbox"), (dashboard["uid"], v["name"], v["type"])
+        assert v["type"] in ("datasource", "query", "textbox", "custom"), (dashboard["uid"], v["name"], v["type"])
         current = v.get("current") or {}
-        if v["type"] == "query":
+        if v["type"] == "custom":
+            # a source picker: the dashboard's own lists of sources, plus a source
+            # that has no tag to list it by (garmin-grafana's)
+            lists = {w["name"] for w in _variables(dashboard) if w["type"] == "query"}
+            for item in v["query"].split(","):
+                found = re.fullmatch(r"\$\{(\w+):csv\}", item)
+                assert (found and found.group(1) in lists) or item in SOURCES, (dashboard["uid"], v["name"], item)
+            assert current.get("value") in (None, "", "$__all", ["$__all"]), (dashboard["uid"], v["name"], current)
+            assert not v.get("options"), (dashboard["uid"], v["name"])
+        elif v["type"] == "query":
             assert current.get("value") in (None, "", "$__all", ["$__all"]), (dashboard["uid"], v["name"], current)
             assert all(o.get("value") in ("$__all",) for o in v.get("options", [])), (dashboard["uid"], v["name"])
         elif v["type"] == "textbox":
@@ -155,6 +186,47 @@ def test_every_override_names_something_the_panel_produces(dashboard):
                     re.search(pattern, f"{n} · {s}") for n in names for s in SOURCES), (dashboard["uid"], p.get("title"), option)
             else:
                 assert m.get("id") in ("byType", "byFrameRefID", "byValue"), (dashboard["uid"], p.get("title"), m)
+
+
+def _source_colours(panel):
+    """[(source, fixed colour)] of the overrides that colour one source's series:
+    by its name, or by a name ending in it ("weight · renpho")."""
+    out = []
+    for o in panel.get("fieldConfig", {}).get("overrides", []):
+        m = o.get("matcher", {})
+        name = m.get("options") if m.get("id") == "byName" else None
+        if m.get("id") == "byRegexp":
+            found = re.fullmatch(r"/\.\*(\w+)\$/", str(m.get("options")))
+            name = found and found.group(1)
+        if name in SOURCES:
+            out += [(name, p["value"]["fixedColor"]) for p in o.get("properties", [])
+                    if p.get("id") == "color" and p["value"].get("mode") == "fixed"]
+    return out
+
+
+def test_a_source_keeps_one_colour_everywhere_and_shares_it_with_no_other_in_a_panel():
+    """docs/dashboards-design.md, rule 2: a scale, a watch, a strap are told apart
+    by colour on every dashboard."""
+    colours = {}
+    for path in DASHBOARDS:
+        d = _load(path)
+        for p in _panels(d["panels"]):
+            in_panel = dict(_source_colours(p))
+            for source, colour in in_panel.items():
+                colours.setdefault(source, set()).add(colour.lower())
+            assert len({c.lower() for c in in_panel.values()}) == len(in_panel), (d["uid"], p.get("title"), in_panel)
+    assert colours and all(len(c) == 1 for c in colours.values()), colours
+
+
+def test_a_series_per_source_is_coloured_by_its_name(dashboard):
+    """A source no override names gets its colour from its name, so a source
+    appearing does not repaint the others (rule 2)."""
+    for p in _panels(dashboard["panels"]):
+        if p.get("type") != "timeseries":
+            continue
+        if any("$tag_source" in (t.get("alias") or "") for t in p.get("targets", [])):
+            mode = p["fieldConfig"]["defaults"].get("color", {}).get("mode")
+            assert mode == "palette-classic-by-name", (dashboard["uid"], p.get("title"), mode)
 
 
 def test_links_stay_among_tributary_s_dashboards(dashboard):

@@ -62,6 +62,19 @@
         "multi": false
       },
       {
+        "type": "datasource",
+        "name": "garmin",
+        "label": "InfluxDB GarminStats",
+        "query": "influxdb",
+        "regex": "/GarminStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
         "type": "textbox",
         "name": "tz",
         "label": "Time zone",
@@ -910,8 +923,8 @@
       "type": "timeseries",
       "title": "Weight, every scale",
       "datasource": {
-        "type": "influxdb",
-        "uid": "${body}"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "gridPos": {
         "x": 0,
@@ -930,13 +943,24 @@
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"weight\" / 1000 FROM \"BodyComposition\" WHERE $timeFilter",
+          "alias": "garmin"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "unit": "masskg",
           "color": {
-            "mode": "palette-classic"
+            "mode": "palette-classic-by-name"
           },
           "custom": {
             "drawStyle": "line",
@@ -1017,6 +1041,25 @@
                 "value": "MyFitnessPal"
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "garmin"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "Garmin"
+              }
+            ]
           }
         ]
       },
@@ -1033,7 +1076,7 @@
           "hideZeros": true
         }
       },
-      "description": "Every weigh-in in BodyStats, one colour per source."
+      "description": "Every weigh-in in BodyStats and garmin-grafana's, one colour per source."
     },
     {
       "id": 11,
