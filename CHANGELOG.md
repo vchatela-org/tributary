@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/vchatela-org/tributary/compare/v0.12.0...v0.13.0) (2026-10-14)
+
+
+### Features
+
+* **whoop:** a sport tag on workouts, and the cycle's recovery on each journal answer ([#41](https://github.com/vchatela-org/tributary/issues/41)) ([7ba1405](https://github.com/vchatela-org/tributary/commit/7ba14054a486d9af6e89bd59665078c7dd159793))
+
 ## [0.12.0](https://github.com/vchatela-org/tributary/compare/v0.11.0...v0.12.0) (2026-10-14)
 
 
