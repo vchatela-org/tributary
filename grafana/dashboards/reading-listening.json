@@ -29,6 +29,32 @@
         "hide": 0
       },
       {
+        "type": "datasource",
+        "name": "garmin",
+        "label": "InfluxDB GarminStats",
+        "query": "influxdb",
+        "regex": "/GarminStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "datasource",
+        "name": "sleep",
+        "label": "InfluxDB SleepStats",
+        "query": "influxdb",
+        "regex": "/SleepStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
         "name": "tz",
         "label": "Time zone",
         "type": "textbox",
@@ -108,6 +134,59 @@
           ]
         },
         "allValue": ".*"
+      },
+      {
+        "type": "query",
+        "name": "user",
+        "label": "User",
+        "description": "Whose nights the sleep score row reads: the user tag of SleepStats.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${sleep}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"user\"",
+        "query": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"user\"",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "nights",
+        "label": "Night sources",
+        "description": "Every source of nights in SleepStats, for the Sleep score from list.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${sleep}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "type": "custom",
+        "name": "score_from",
+        "label": "Sleep score from",
+        "description": "The source of the sleep score. Each device scores on its own scale.",
+        "query": "${nights:csv},garmin",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
       }
     ]
   },
@@ -647,7 +726,7 @@
       "type": "timeseries",
       "id": 8,
       "title": "Evening reading",
-      "description": "Per evening: minutes read or listened between 20:00 and 03:00 local time (the local_hour field, in TRIBUTARY_TZ), placed at noon of the evening's day. Add a sleep series from your sleep tracker to compare.",
+      "description": "Per evening: minutes read or listened between 20:00 and 03:00 local time (the local_hour field, in TRIBUTARY_TZ), placed at noon of the evening's day. The night that follows is drawn below, on the same windows (the crosshair is shared).",
       "datasource": {
         "type": "influxdb",
         "uid": "${media}"
@@ -701,6 +780,87 @@
       ]
     },
     {
+      "type": "timeseries",
+      "title": "Sleep score of the night after · ${score_from}",
+      "id": 10,
+      "description": "The score of the night that follows each evening above, from the source picked in Sleep score from, in the same noon-to-noon windows. Each device scores on its own scale. The Correlations dashboard pairs them point by point.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 24,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 4,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "min": 0,
+          "max": 100
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"sleepScore\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${score_from}' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "sleep score"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"score\") FROM \"sleep_session\" WHERE \"source\" = '${score_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "sleep score"
+        }
+      ]
+    },
+    {
       "type": "table",
       "id": 9,
       "title": "Books finished",
@@ -710,7 +870,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 37,
         "w": 24,
         "h": 8
       },
