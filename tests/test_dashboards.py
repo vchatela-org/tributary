@@ -169,12 +169,23 @@ def test_a_single_source_reads_the_picker_of_its_value(dashboard):
     single = {v["name"] for v in _variables(dashboard) if v["type"] == "custom" and not v.get("multi")}
     assert single <= set(PICKERS), (dashboard["uid"], single - set(PICKERS))
     for panel, target in _queries(dashboard):
-        q = target["query"]
+        q = target["query"].replace(GARMIN_NIGHT, "")
         for name in re.findall(r"= '\$\{(\w+)\}'", q):
             assert name in single, (dashboard["uid"], panel and panel.get("title"), name)
             named = set(re.findall(r'"(\w+)"', q)) - set(re.findall(r'FROM\s+"(\w+)"', q)) \
                 - set(re.findall(r'AS\s+"([^"]+)"', q)) - FILTERS
             assert named <= PICKERS[name], (dashboard["uid"], panel and panel.get("title"), name, named - PICKERS[name])
+
+
+# docs/dashboards-design.md, "Series written by other tools": a garmin-grafana
+# night counts when it has time asleep and REM.
+GARMIN_NIGHT = '"sleepTimeSeconds" > 0 AND "remSleepSeconds" > 0'
+
+
+def test_a_garmin_night_has_time_asleep_and_rem(dashboard):
+    for panel, target in _queries(dashboard):
+        if re.search(r'FROM\s+"SleepSummary"', target["query"]):
+            assert GARMIN_NIGHT in target["query"], (dashboard["uid"], panel and panel.get("title"))
 
 
 def test_days_are_cut_in_the_tz_variable(dashboard):

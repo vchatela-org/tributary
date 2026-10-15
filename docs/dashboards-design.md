@@ -40,9 +40,10 @@ Rules every panel follows:
    | `garmin` | orange `#d95926` | | `audiobookshelf` | orange `#d95926` |
    | `myfitnesspal` | aqua `#199e70` | | `audible` | aqua `#199e70` |
    | `whoop` | violet `#9085e9` | | | |
+   | `sleep_as_android` | aqua `#199e70` | | | |
 
    Some sources share a graph: a scale, a diary and a watch; a watch, a diary
-   and a strap; three reading apps. Each of those sets passes the palette
+   and a strap; a watch, a strap and a phone (sleep); three reading apps. Each of those sets passes the palette
    validator, in light and dark, for every pair. A colour is reused only
    across domains that never share a graph, and a legend always names the
    series.
@@ -97,6 +98,13 @@ dashboards read the following.
   skipped by counting a duration. It is assumed to hold one person: it has no
   `user` tag, and garmin-grafana's optional `User_ID` is not filtered.
   Checked against garmin-grafana's `main` branch, October 2026.
+- A `SleepSummary` night counts when it has time asleep and REM
+  (`"sleepTimeSeconds" > 0 AND "remSleepSeconds" > 0`, on every query, a test
+  checks). Without the filter a second copy of each night, written under
+  another `Device` tag with its stages but no time asleep, adds itself to
+  every stage sum. The nights a watch scored before it had sleep staging (a
+  movement-only algorithm: no REM, and 5 to 12 hours of "deep" sleep) are
+  left out with it.
 - `SleepStats` and two `BodyStats` series that Tributary's Whoop connector
   writes with `source=whoop` and a `user` tag ([the schema](schema.md)), listed
   here for the fields the dashboards read: any other writer of the same names
@@ -106,6 +114,7 @@ dashboards read the following.
 | Database | Measurement | Fields the dashboards read | Written by |
 |---|---|---|---|
 | `GarminStats` | `SleepSummary` | `sleepTimeSeconds`, `deepSleepSeconds`, `lightSleepSeconds`, `remSleepSeconds`, `awakeSleepSeconds`, `sleepScore`, `restingHeartRate`, `avgOvernightHrv`, `averageSpO2Value`, `averageRespirationValue` (one point per night, at its end) | garmin-grafana |
+| `GarminStats` | `SleepIntraday` | `SleepStageLevel` (0 deep, 1 light, 2 REM, 3 awake), `heartRate`: the samples of a night | garmin-grafana |
 | `GarminStats` | `DailyStats` | `totalSteps`, `activeKilocalories`, `bmrKilocalories`, `moderateIntensityMinutes`, `vigorousIntensityMinutes` | garmin-grafana |
 | `GarminStats` | `ActivitySummary` | `elapsedDuration`, `calories`, `hrTimeInZone_1`...`_5` | garmin-grafana |
 | `GarminStats` | `VO2_Max` | `VO2_max_value`, `VO2_max_value_cycling` | garmin-grafana |
