@@ -224,3 +224,22 @@ records; volume per workout; volume and sets by category; the latest sets and
 a summary per session; time per heart-rate zone and time under tension per
 exercise; workouts per week, a calendar, and the sets Garmin could not
 classify. Variables: time zone, exercise category, exercise.
+
+## GitHub: commits and hosted minutes
+
+`DevStats`, from the [GitHub connector](connectors/github.md): `github_commit`,
+`github_actions_month`, `github_actions_usage`.
+- **Hosted minutes** (GitHub's billing report): this month's minutes counted
+  against the 2,000 a free plan includes, per account (yellow from 80%, red at
+  2,000); each account's months against the same line; the minutes per
+  repository over the range (public repositories' are free). Counted minutes
+  keep only the private repositories' standard runners, with GitHub's
+  multipliers (Windows ×2, macOS ×10).
+- **Commits** on the default branches, merges and forks left out: totals by
+  author (you alone, you with an agent, a bot, someone else), the share of your
+  commits made with an agent, commits per week by author, and per repository
+  for each account.
+
+The connector writes one point per account and month, on its first day: the
+monthly panels draw those, as InfluxQL has no calendar month. Variables:
+time zone, account.
