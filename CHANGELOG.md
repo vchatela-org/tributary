@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/vchatela-org/tributary/compare/v0.14.0...v0.15.0) (2026-10-15)
+
+
+### Features
+
+* **github:** a GitHub connector: who wrote the commits, hosted minutes against the included ones ([#45](https://github.com/vchatela-org/tributary/issues/45)) ([46d0f5d](https://github.com/vchatela-org/tributary/commit/46d0f5dab7ad36903e1c9f97ffa2c780540754e3))
+
 ## [0.14.0](https://github.com/vchatela-org/tributary/compare/v0.13.0...v0.14.0) (2026-10-14)
 
 
