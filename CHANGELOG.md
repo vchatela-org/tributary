@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/vchatela-org/tributary/compare/v0.17.0...v0.18.0) (2026-10-15)
+
+
+### Features
+
+* **grafana:** Healthspan on WHOOP's model, for any source ([#52](https://github.com/vchatela-org/tributary/issues/52)) ([c6ae3cb](https://github.com/vchatela-org/tributary/commit/c6ae3cb6482faf6ee7996f5f7f5c1ab8207863ef))
+
 ## [0.17.0](https://github.com/vchatela-org/tributary/compare/v0.16.0...v0.17.0) (2026-10-15)
 
 
