@@ -88,6 +88,15 @@ Rules every panel follows:
 4. **Counts of distinct events may be added across sources.** A dose, a
    reading session or a task has exactly one writer. Measured values never
    are: weight, heart rate, sleep, or a workout that two apps both received.
+5. **A tile's colour flags a guideline, never a source.** A Healthspan tile
+   turns yellow when its value falls short of a published guideline: time
+   asleep (7 hours a night), intensity minutes (150 a week), steps (8,000 a
+   day). Met, it stays in the text colour like every other tile, so nothing
+   hinges on telling green from yellow. The yellow is Grafana's
+   `dark-yellow`, with a shade per theme, well apart from `garmin`'s orange.
+   A value whose healthy range depends on age, sex or the person (resting
+   heart rate, HRV, VO₂ max, body fat) has no colour. The trends draw the
+   same guidelines as dashed lines.
 
 ## Series written by other tools
 

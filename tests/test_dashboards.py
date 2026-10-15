@@ -297,6 +297,19 @@ def test_a_series_per_source_is_coloured_by_its_name(dashboard):
             assert mode == "palette-classic-by-name", (dashboard["uid"], p.get("title"), mode)
 
 
+def test_a_healthspan_tile_turns_yellow_below_its_guideline_only():
+    """docs/dashboards-design.md, rule 5: a tile's colour flags a published
+    guideline missed, never a source; met, the tile is in the text colour."""
+    d = _load(ROOT / "grafana" / "dashboards" / "healthspan.json")
+    guided = {p["title"]: p for p in _panels(d["panels"]) if p.get("type") == "stat"
+              and p["fieldConfig"]["defaults"]["color"]["mode"] == "thresholds"}
+    assert set(guided) == {"Sleep / night", "Intensity / week", "Steps / day"}
+    for title, p in guided.items():
+        below, met = p["fieldConfig"]["defaults"]["thresholds"]["steps"]
+        assert (below["value"], below["color"], met["color"]) == (None, "dark-yellow", "text"), title
+        assert f"Yellow below {met['value']:,}" in p["description"], title
+
+
 def test_links_stay_among_tributary_s_dashboards(dashboard):
     uids = {_load(p)["uid"] for p in DASHBOARDS}
     for link in dashboard.get("links", []):
