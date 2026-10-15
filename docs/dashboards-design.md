@@ -54,7 +54,7 @@ Rules every panel follows:
 
    | Picker | Label | Reads |
    |---|---|---|
-   | `sleep_from` | *Sleep from* | time asleep, stages, time awake and awakenings, bedtime and wake-up |
+   | `sleep_from` | *Sleep from* | time asleep, stages, time awake and awakenings, bedtime and wake-up, sleep consistency |
    | `score_from` | *Sleep score from* | sleep score |
    | `hrv_from` | *HRV from* | overnight HRV |
    | `rhr_from` | *Resting HR from* | resting heart rate |
@@ -88,15 +88,17 @@ Rules every panel follows:
 4. **Counts of distinct events may be added across sources.** A dose, a
    reading session or a task has exactly one writer. Measured values never
    are: weight, heart rate, sleep, or a workout that two apps both received.
-5. **A tile's colour flags a guideline, never a source.** A Healthspan tile
-   turns yellow when its value falls short of a published guideline: time
-   asleep (7 hours a night), intensity minutes (150 a week), steps (8,000 a
-   day). Met, it stays in the text colour like every other tile, so nothing
-   hinges on telling green from yellow. The yellow is Grafana's
-   `dark-yellow`, with a shade per theme, well apart from `garmin`'s orange.
-   A value whose healthy range depends on age, sex or the person (resting
-   heart rate, HRV, VO₂ max, body fat) has no colour. The trends draw the
-   same guidelines as dashed lines.
+5. **A colour on Healthspan says years, never a source.** Healthspan colours
+   its nine indicators by the years they add to WHOOP Age or take off, on one
+   diverging scale: two oranges, a grey around 0, two greens (`#f8bc5e`,
+   `#b8803f`, `#5d6268`, `#22a07b`, `#5ff2c0`). The validator keeps the arms
+   apart for protan and deutan vision (worst adjacent pair ΔE 14), and bars
+   and bands never sit next to a source's line. No value is written in a
+   colour: a bar prints its value in the text colour, an age impact sits on a
+   tile filled with its colour, where Grafana picks dark ink on the bright
+   steps and white on the others. A tile with no data stays clear. Every
+   other tile, on every dashboard, is in the text colour; guidelines are
+   dashed lines on the trends.
 
 ## Series written by other tools
 
@@ -132,12 +134,12 @@ dashboards read the following.
 | `GarminStats` | `SleepSummary` | `sleepTimeSeconds`, `deepSleepSeconds`, `lightSleepSeconds`, `remSleepSeconds`, `awakeSleepSeconds`, `awakeCount`, `sleepScore`, `restingHeartRate`, `avgOvernightHrv`, `averageSpO2Value`, `averageRespirationValue` (one point per night, at its end) | garmin-grafana |
 | `GarminStats` | `SleepIntraday` | `SleepStageLevel` (0 deep, 1 light, 2 REM, 3 awake), `heartRate`: the samples of a night | garmin-grafana |
 | `GarminStats` | `DailyStats` | `totalSteps`, `activeKilocalories`, `bmrKilocalories`, `moderateIntensityMinutes`, `vigorousIntensityMinutes`, `activeSeconds`, `highlyActiveSeconds`, `sedentarySeconds`, `sleepingSeconds` | garmin-grafana |
-| `GarminStats` | `ActivitySummary` | `elapsedDuration`, `calories`, `hrTimeInZone_1`...`_5` | garmin-grafana |
+| `GarminStats` | `ActivitySummary` | `elapsedDuration`, `calories`, `hrTimeInZone_1`...`_5`, `activityType` (a string: `strength_training`) | garmin-grafana |
 | `GarminStats` | `StrengthExerciseSet` | tags `ExerciseCategory`, `ExerciseLabel`; `Reps`, `Weight_kg`, `Duration_s`, `SetOrder`: one point per set of a strength workout | garmin-grafana (newer than v0.5.0: older versions strand a set's old rows when it is edited in Garmin Connect) |
 | `GarminStats` | `StrengthHRZones` | `ZoneNumber`, `SecsInZone`: a strength workout's time per heart-rate zone | garmin-grafana |
 | `GarminStats` | `VO2_Max` | `VO2_max_value`, `VO2_max_value_cycling` | garmin-grafana |
 | `GarminStats` | `BodyComposition` | `weight`, `bodyFat`, `bodyWater`, `boneMass`, `bmi`, `visceralFat` | garmin-grafana |
-| `SleepStats` | `sleep_session` | tag `kind` (`night`, `nap`: naps are left out); `asleep_s`, `deep_s`, `light_s`, `rem_s`, `awake_s`, `awakenings`, `bedtime_min`, `wake_min` (int); `score`, `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `respiration_rate`, `recovery_score`, `skin_temp_c`, and Sleep as Android's `min_hr`, `max_hr` (float). One point per sleep, at its end | Tributary: `whoop`, `sleep_as_android` |
+| `SleepStats` | `sleep_session` | tag `kind` (`night`, `nap`: naps are left out); `asleep_s`, `deep_s`, `light_s`, `rem_s`, `awake_s`, `awakenings`, `bedtime_min`, `wake_min` (int); `score`, `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `respiration_rate`, `recovery_score`, `skin_temp_c`, `consistency_pct`, and Sleep as Android's `min_hr`, `max_hr` (float). One point per sleep, at its end | Tributary: `whoop`, `sleep_as_android` |
 | `BodyStats` | `daily_activity` | `steps` (int); `strain`, `energy_kcal` (float). One point per physiological day, at its start | Tributary: `whoop` |
 | `BodyStats` | `exercise` | beyond MyFitnessPal's fields: `zone1_s`...`zone5_s` (int, seconds per heart-rate zone) | Tributary: `whoop`, next to `myfitnesspal` |
 
@@ -156,9 +158,10 @@ no dashboard change; without it, they show the other sources.
   - the regularity row: bedtime and wake-up, their spread;
   - the tiles, when picked.
 - **Healthspan:**
+  - every indicator but VO₂ max, when picked: sleep consistency, hours of
+    sleep, heart-rate zones, strength time, steps, resting heart rate;
   - the resting heart rate, HRV, time asleep, workout time and steps
-    trends;
-  - the matching tiles, when picked.
+    trends.
 - **Activity & fitness:**
   - steps, strain and calories burned per day;
   - workout time, count and calories per week;
@@ -187,7 +190,7 @@ described in [dashboards.md](dashboards.md).
 
 | Rank | Dashboard | Question | Reads | Status |
 |---|---|---|---|---|
-| 1 | **Healthspan** | Are the long-run markers moving the right way? Resting heart rate, HRV, VO₂ max, sleep and its regularity, activity against the 150-minute guideline, weight and body fat, medication taken. | `GarminStats`: `SleepSummary`, `DailyStats`, `VO2_Max`, `ActivitySummary`, `BodyComposition`; `SleepStats..sleep_session`; `BodyStats`: `body_composition`, `body_levels`, `exercise`, `daily_activity`, `medication` | Built |
+| 1 | **Healthspan** | Are the long-run markers moving the right way? WHOOP's nine indicators (sleep consistency and hours, heart-rate zones, strength time, steps, VO₂ max, resting heart rate, lean body mass) on its scales, their age impacts and an estimated WHOOP Age; HRV, weight and body fat, medication taken. | `GarminStats`: `SleepSummary`, `DailyStats`, `VO2_Max`, `ActivitySummary`, `BodyComposition`; `SleepStats..sleep_session`; `BodyStats`: `body_composition`, `body_levels`, `exercise`, `daily_activity`, `medication` | Built |
 | 2 | **Sleep** | How long, how deep and how regular each night is, and what the night's heart said, per device. | `GarminStats..SleepSummary`; `SleepStats..sleep_session` | Built |
 | 3 | **Correlations** | Does a short night cost the next day's tasks? Does evening reading change the night? Does training load show in HRV? | `SleepStats`, `GarminStats`, `TodoistStats..todoist_completion`, `MediaStats..reading_session`, `BodyStats`: `exercise`, `daily_activity` | Built |
 | 4 | **Activity & fitness** | How much you move and train, per device: steps, strain, calories burned, intensity minutes, workouts, heart-rate zones, VO₂ max. | `GarminStats`: `DailyStats`, `ActivitySummary`, `VO2_Max`; `BodyStats`: `daily_activity`, `exercise` | Built |

@@ -75,7 +75,7 @@ Tributary only writes; dashboards read InfluxDB. [grafana/](grafana/) ships:
 
 | Dashboard | Reads | Panels |
 |---|---|---|
-| [Healthspan](grafana/dashboards/healthspan.json) | `GarminStats` (garmin-grafana), `SleepStats`: `sleep_session`, `BodyStats`: `body_composition`, `exercise`, `daily_activity`, `medication` | resting heart rate, HRV, VO₂ max, sleep and its regularity, intensity minutes, steps, workouts, weight, body fat, doses taken: tiles from the source you pick, trends from every source |
+| [Healthspan](grafana/dashboards/healthspan.json) | `GarminStats` (garmin-grafana), `SleepStats`: `sleep_session`, `BodyStats`: `body_composition`, `exercise`, `daily_activity`, `medication` | WHOOP's nine healthspan indicators on its scales and colours, their age impacts and an estimated WHOOP Age, from the source you pick; HRV, weight, body fat, doses taken and every source's trends below |
 | [Sleep](grafana/dashboards/sleep.json) | `GarminStats`: `SleepSummary`, `SleepStats`: `sleep_session` | time asleep, stages, score, resting heart rate, HRV, SpO₂, breathing, recovery, skin temperature, bedtime regularity, one colour per device |
 | [Activity & fitness](grafana/dashboards/activity.json) | `GarminStats`: `DailyStats`, `ActivitySummary`, `VO2_Max`, `BodyStats`: `daily_activity`, `exercise` | steps, strain and calories burned per day, intensity minutes, VO₂ max, workouts per week by source, heart-rate zones |
 | [Correlations](grafana/dashboards/correlations.json) | `SleepStats`, `GarminStats`, `BodyStats`, `TodoistStats`, `MediaStats` | a night (time asleep, HRV, sleep score) against the next day's tasks, evening reading against the night, training against HRV, per day and per week |
