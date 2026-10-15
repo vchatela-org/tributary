@@ -52,7 +52,7 @@ Light or dark follows your system; the other pages are in [docs/ui.md](docs/ui.m
 | [**Sleep as Android**](docs/connectors/sleep_as_android.md) | Sleep | Export, uploaded in the UI | `sleep_session`, `sleep_stage`, `sleep_vitals` → `SleepStats` | none: you import a file |
 | [**Audiobookshelf**](docs/connectors/audiobookshelf.md) | Reading & media | API | `reading_session`, `book_finished` → `MediaStats` | Daily at 03:10 |
 | [**Todoist**](docs/connectors/todoist.md) | Productivity | API | `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` → `TodoistStats` | Daily at 00:30 |
-| [**GitHub**](docs/connectors/github.md) | Productivity | API | `github_commit`, `github_workflow_run`, `github_job` → `DevStats` | Daily at 04:15 |
+| [**GitHub**](docs/connectors/github.md) | Productivity | API (a token per organisation or user) | `github_commit`, `github_actions_usage`, `github_actions_month` → `DevStats` | Daily at 04:15 |
 
 Schedules are in `TRIBUTARY_TZ` and staggered so two runs never overlap;
 change one on the source's page ([scheduling](docs/scheduling.md)). Each

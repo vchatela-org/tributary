@@ -256,27 +256,30 @@ completion rewritten overwrites itself), project names as tags.
 
 ### `DevStats`
 
-Software work on GitHub: who wrote the commits, how the workflow runs ended,
-and where their jobs ran.
+Software work on GitHub: who wrote the commits, and the minutes GitHub's hosted
+runners spent on the workflows.
 
 | Measurement | Tags | Fields | Written by |
 |---|---|---|---|
-| `github_commit` | `source`, `user`, `repository`, `author` (`self`, `agent`, `bot`, `other`), `time_precision` | `count` (int), `additions` (int), `deletions` (int), `local_hour` (int), `local_weekday` (int) | Tributary: `github` |
-| `github_workflow_run` | `source`, `user`, `repository`, `workflow`, `event`, `visibility` (`public`, `private`) | `count` (int), `succeeded` (int), `failed` (int), `cancelled` (int), `attempts` (int), `duration_s` (int) | Tributary: `github` |
-| `github_job` | `source`, `user`, `repository`, `workflow`, `job`, `runner` (`github-hosted`, `self-hosted`), `runner_label`, `conclusion`, `visibility` | `count` (int), `duration_s` (int), `queued_s` (int), `billable_min` (int) | Tributary: `github` |
+| `github_commit` | `source`, `user`, `owner`, `repository`, `author` (`self`, `agent`, `bot`, `other`), `time_precision` | `count` (int), `additions` (int), `deletions` (int), `local_hour` (int), `local_weekday` (int) | Tributary: `github` |
+| `github_actions_usage` | `source`, `user`, `owner`, `repository`, `sku` | `minutes` (float), `gross_usd` (float), `discount_usd` (float), `net_usd` (float), `private` (bool) | Tributary: `github` |
+| `github_actions_month` | `source`, `user`, `owner` | `minutes` (float), `private_minutes` (float), `counted_minutes` (float), `gross_usd` (float), `net_usd` (float) | Tributary: `github` |
 
 - `github_commit`: one point per commit of a repository's default branch
   (merge commits left out), at its author's time, *local time*. `author` is
   `agent` when an agent is among its authors (a `Co-authored-by` trailer
-  included), else `bot`, `self` (the token's account) or `other`.
-- `github_workflow_run`: one point per run, at its creation, which a re-run
-  keeps: the re-run overwrites it. `succeeded`, `failed` (failure, timeout,
-  never started) and `cancelled` are 1 or 0, as the last attempt ended.
-- `github_job`: one point per job that ran, every attempt, at its start.
-  `duration_s` is its run on the runner, `queued_s` its wait for one;
-  `billable_min` the minutes GitHub counts against a plan (hosted jobs of
-  private repositories, rounded up, times the OS multiplier), 0 otherwise.
-  `runner_label` is the job's `runs-on` labels, comma-joined.
+  included), else `bot` when a bot is, else `self` (the token's account) or
+  `other`. `owner` is the organisation or user the repository belongs to.
+- `github_actions_usage`: one point per line of GitHub's billing report with
+  minutes, at its day (UTC midnight): a repository's minutes on one SKU
+  (`Actions Linux`, `Actions Windows`...), with what they cost before and
+  after the discount (the included minutes, and public repositories, which
+  are free). `private` is the repository's visibility when read: a field, so
+  a change overwrites the day rather than doubling it.
+- `github_actions_month`: one point per owner and month, at its first day
+  (UTC): InfluxQL has no calendar month. `counted_minutes` is what counts
+  against a plan's included minutes: the private repositories' standard
+  runners, Windows twice and macOS ten times.
 
 ## Adding a measurement
 
