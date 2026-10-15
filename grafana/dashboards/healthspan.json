@@ -210,7 +210,7 @@
         "type": "query",
         "name": "nights",
         "label": "Night sources",
-        "description": "Every source of nights in SleepStats, for the Sleep from and Heart from lists.",
+        "description": "Every source of nights in SleepStats, for the sleep and heart pickers.",
         "datasource": {
           "type": "influxdb",
           "uid": "${sleep}"
@@ -275,9 +275,21 @@
       },
       {
         "type": "custom",
-        "name": "heart_from",
-        "label": "Heart from",
-        "description": "The source of the resting heart rate and HRV tiles.",
+        "name": "rhr_from",
+        "label": "Resting HR from",
+        "description": "The source of the resting heart rate.",
+        "query": "${nights:csv},garmin",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "custom",
+        "name": "hrv_from",
+        "label": "HRV from",
+        "description": "The source of the overnight HRV. Devices measure it differently.",
         "query": "${nights:csv},garmin",
         "hide": 0,
         "current": {},
@@ -289,7 +301,7 @@
         "type": "custom",
         "name": "sleep_from",
         "label": "Sleep from",
-        "description": "The source of the sleep tiles.",
+        "description": "The source of the time asleep, the stages and the bedtimes.",
         "query": "${nights:csv},garmin",
         "hide": 0,
         "current": {},
@@ -301,7 +313,19 @@
         "type": "custom",
         "name": "activity_from",
         "label": "Activity from",
-        "description": "The source of the steps and training tiles.",
+        "description": "The source of the daily totals (steps).",
+        "query": "${days:csv},garmin",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "custom",
+        "name": "workouts_from",
+        "label": "Workouts from",
+        "description": "The source of the workouts. A workout two apps received is in both: pick one.",
         "query": "${days:csv},garmin,${workouts:csv}",
         "hide": 0,
         "current": {},
@@ -328,7 +352,7 @@
       "type": "stat",
       "title": "Resting HR",
       "id": 1,
-      "description": "Median of the nights in the range, from the source picked in Heart from. Lower is fitter.",
+      "description": "Median of the nights in the range, from the source picked in Resting HR from. Lower is fitter.",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -383,7 +407,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"restingHeartRate\") FROM \"SleepSummary\" WHERE 'garmin' = '${heart_from}' AND $timeFilter",
+          "query": "SELECT median(\"restingHeartRate\") FROM \"SleepSummary\" WHERE 'garmin' = '${rhr_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -394,7 +418,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"resting_hr\") FROM \"sleep_session\" WHERE \"source\" = '${heart_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT median(\"resting_hr\") FROM \"sleep_session\" WHERE \"source\" = '${rhr_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -403,7 +427,7 @@
       "type": "stat",
       "title": "HRV",
       "id": 2,
-      "description": "Median overnight HRV (RMSSD) of the nights in the range, from the source picked in Heart from. Devices measure it differently: compare a source with itself.",
+      "description": "Median overnight HRV (RMSSD) of the nights in the range, from the source picked in HRV from. Devices measure it differently: compare a source with itself.",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -458,7 +482,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE 'garmin' = '${heart_from}' AND $timeFilter",
+          "query": "SELECT median(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE 'garmin' = '${hrv_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -469,7 +493,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${heart_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT median(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${hrv_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -831,7 +855,7 @@
       "type": "stat",
       "title": "Training / week",
       "id": 8,
-      "description": "Hours of workouts per week over the range, from the source picked in Activity from (a workout the watch also sent to a diary is in both: pick one).",
+      "description": "Hours of workouts per week over the range, from the source picked in Workouts from (a workout the watch also sent to a diary is in both: pick one).",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -886,7 +910,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"elapsedDuration\") / 3600 / ((${__to} - ${__from}) / 604800000) FROM \"ActivitySummary\" WHERE 'garmin' = '${activity_from}' AND $timeFilter",
+          "query": "SELECT sum(\"elapsedDuration\") / 3600 / ((${__to} - ${__from}) / 604800000) FROM \"ActivitySummary\" WHERE 'garmin' = '${workouts_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -897,7 +921,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"duration_s\") / 3600 / ((${__to} - ${__from}) / 604800000) FROM \"exercise\" WHERE \"source\" = '${activity_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT sum(\"duration_s\") / 3600 / ((${__to} - ${__from}) / 604800000) FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -1886,7 +1910,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"moderateIntensityMinutes\") + 2 * sum(\"vigorousIntensityMinutes\") FROM \"DailyStats\" WHERE $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"moderateIntensityMinutes\") + 2 * sum(\"vigorousIntensityMinutes\") FROM \"DailyStats\" WHERE $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "garmin"
         }
       ]
@@ -1999,7 +2023,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"elapsedDuration\") / 3600 FROM \"ActivitySummary\" WHERE $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"elapsedDuration\") / 3600 FROM \"ActivitySummary\" WHERE $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -2010,7 +2034,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" != 'adjustment' AND \"user\" = '$user' AND $timeFilter GROUP BY time(1w, 4d), \"source\" fill(0) tz('$tz')",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" != 'adjustment' AND \"user\" = '$user' AND $timeFilter GROUP BY time(1w, -3d), \"source\" fill(0) tz('$tz')",
           "alias": "$tag_source"
         }
       ]
@@ -2483,7 +2507,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"taken\") FROM \"medication\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1w, 4d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"taken\") FROM \"medication\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1w, -3d) fill(none) tz('$tz')",
           "alias": "Doses taken"
         }
       ]

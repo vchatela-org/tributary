@@ -185,9 +185,21 @@
       },
       {
         "type": "custom",
-        "name": "from",
-        "label": "Tiles from",
-        "description": "The one source the tiles and the heart-rate zones read.",
+        "name": "activity_from",
+        "label": "Activity from",
+        "description": "The source of the daily totals (steps).",
+        "query": "${days:csv},garmin",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "custom",
+        "name": "workouts_from",
+        "label": "Workouts from",
+        "description": "The source of the workouts. A workout two apps received is in both: pick one.",
         "query": "${days:csv},garmin,${workouts:csv}",
         "hide": 0,
         "current": {},
@@ -202,7 +214,7 @@
       "type": "stat",
       "title": "Steps / day",
       "id": 1,
-      "description": "Median steps per day, from the source picked in Tiles from (a source of workouts alone has none).",
+      "description": "Median steps per day, from the source picked in Activity from (a source of workouts alone has none).",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -257,7 +269,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"totalSteps\") FROM \"DailyStats\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "query": "SELECT median(\"totalSteps\") FROM \"DailyStats\" WHERE 'garmin' = '${activity_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -268,7 +280,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"steps\") FROM \"daily_activity\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT median(\"steps\") FROM \"daily_activity\" WHERE \"source\" = '${activity_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -405,7 +417,7 @@
       "type": "stat",
       "title": "Workouts",
       "id": 4,
-      "description": "Workouts in the range, from the source picked in Tiles from (a workout two apps received is in both).",
+      "description": "Workouts in the range, from the source picked in Workouts from (a workout two apps received is in both).",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -460,7 +472,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT count(\"elapsedDuration\") FROM \"ActivitySummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "query": "SELECT count(\"elapsedDuration\") FROM \"ActivitySummary\" WHERE 'garmin' = '${workouts_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -471,7 +483,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT count(\"duration_s\") FROM \"exercise\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT count(\"duration_s\") FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -480,7 +492,7 @@
       "type": "stat",
       "title": "Training / week",
       "id": 5,
-      "description": "Hours of workouts per week over the range, from the source picked in Tiles from.",
+      "description": "Hours of workouts per week over the range, from the source picked in Workouts from.",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -535,7 +547,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"elapsedDuration\") / 3600 / ((${__to} - ${__from}) / 604800000) FROM \"ActivitySummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "query": "SELECT sum(\"elapsedDuration\") / 3600 / ((${__to} - ${__from}) / 604800000) FROM \"ActivitySummary\" WHERE 'garmin' = '${workouts_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -546,7 +558,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"duration_s\") / 3600 / ((${__to} - ${__from}) / 604800000) FROM \"exercise\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT sum(\"duration_s\") / 3600 / ((${__to} - ${__from}) / 604800000) FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -555,7 +567,7 @@
       "type": "stat",
       "title": "Workout days",
       "id": 6,
-      "description": "Days with at least one workout, from the source picked in Tiles from.",
+      "description": "Days with at least one workout, from the source picked in Workouts from.",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -610,7 +622,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT count(\"n\") FROM (SELECT count(\"elapsedDuration\") AS \"n\" FROM \"ActivitySummary\" WHERE 'garmin' = '${from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')) WHERE $timeFilter",
+          "query": "SELECT count(\"n\") FROM (SELECT count(\"elapsedDuration\") AS \"n\" FROM \"ActivitySummary\" WHERE 'garmin' = '${workouts_from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')) WHERE $timeFilter",
           "alias": "garmin"
         },
         {
@@ -621,7 +633,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT count(\"n\") FROM (SELECT count(\"duration_s\") AS \"n\" FROM \"exercise\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')) WHERE $timeFilter GROUP BY \"source\"",
+          "query": "SELECT count(\"n\") FROM (SELECT count(\"duration_s\") AS \"n\" FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')) WHERE $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -1175,7 +1187,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"moderateIntensityMinutes\") + 2 * sum(\"vigorousIntensityMinutes\") FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"moderateIntensityMinutes\") + 2 * sum(\"vigorousIntensityMinutes\") FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "garmin"
         }
       ]
@@ -1413,7 +1425,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"elapsedDuration\") / 3600 FROM \"ActivitySummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"elapsedDuration\") / 3600 FROM \"ActivitySummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -1424,7 +1436,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, 4d), \"source\" fill(0) tz('$tz')",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, -3d), \"source\" fill(0) tz('$tz')",
           "alias": "$tag_source"
         }
       ]
@@ -1537,7 +1549,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT count(\"elapsedDuration\") FROM \"ActivitySummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "query": "SELECT count(\"elapsedDuration\") FROM \"ActivitySummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -1548,7 +1560,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT count(\"duration_s\") FROM \"exercise\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, 4d), \"source\" fill(0) tz('$tz')",
+          "query": "SELECT count(\"duration_s\") FROM \"exercise\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, -3d), \"source\" fill(0) tz('$tz')",
           "alias": "$tag_source"
         }
       ]
@@ -1661,7 +1673,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"calories\") FROM \"ActivitySummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"calories\") FROM \"ActivitySummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -1672,16 +1684,16 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, 4d), \"source\" fill(0) tz('$tz')",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, -3d), \"source\" fill(0) tz('$tz')",
           "alias": "$tag_source"
         }
       ]
     },
     {
       "type": "timeseries",
-      "title": "Time in heart-rate zones per week · ${from}",
+      "title": "Time in heart-rate zones per week · ${workouts_from}",
       "id": 24,
-      "description": "Hours of workouts spent in each heart-rate zone, per week, from the source picked in Tiles from (each device draws its own zone boundaries; a diary has none): zone 2 is the easy aerobic base, zones 4 and 5 the hard efforts.",
+      "description": "Hours of workouts spent in each heart-rate zone, per week, from the source picked in Workouts from (each device draws its own zone boundaries; a diary has none): zone 2 is the easy aerobic base, zones 4 and 5 the hard efforts.",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -1816,7 +1828,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"hrTimeInZone_1\") / 3600 AS \"Zone 1\", sum(\"hrTimeInZone_2\") / 3600 AS \"Zone 2\", sum(\"hrTimeInZone_3\") / 3600 AS \"Zone 3\", sum(\"hrTimeInZone_4\") / 3600 AS \"Zone 4\", sum(\"hrTimeInZone_5\") / 3600 AS \"Zone 5\" FROM \"ActivitySummary\" WHERE 'garmin' = '${from}' AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"hrTimeInZone_1\") / 3600 AS \"Zone 1\", sum(\"hrTimeInZone_2\") / 3600 AS \"Zone 2\", sum(\"hrTimeInZone_3\") / 3600 AS \"Zone 3\", sum(\"hrTimeInZone_4\") / 3600 AS \"Zone 4\", sum(\"hrTimeInZone_5\") / 3600 AS \"Zone 5\" FROM \"ActivitySummary\" WHERE 'garmin' = '${workouts_from}' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "$col"
         },
         {
@@ -1827,7 +1839,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"zone1_s\") / 3600 AS \"Zone 1\", sum(\"zone2_s\") / 3600 AS \"Zone 2\", sum(\"zone3_s\") / 3600 AS \"Zone 3\", sum(\"zone4_s\") / 3600 AS \"Zone 4\", sum(\"zone5_s\") / 3600 AS \"Zone 5\" FROM \"exercise\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"zone1_s\") / 3600 AS \"Zone 1\", sum(\"zone2_s\") / 3600 AS \"Zone 2\", sum(\"zone3_s\") / 3600 AS \"Zone 3\", sum(\"zone4_s\") / 3600 AS \"Zone 4\", sum(\"zone5_s\") / 3600 AS \"Zone 5\" FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "$col"
         }
       ]

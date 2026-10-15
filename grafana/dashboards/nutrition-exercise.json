@@ -1455,7 +1455,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'run' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'run' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Running"
@@ -1466,7 +1466,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'bike' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'bike' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Cycling"
@@ -1477,7 +1477,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'strength' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'strength' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Strength"
@@ -1488,7 +1488,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'aerobic' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'aerobic' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Aerobics"
@@ -1499,7 +1499,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" !~ /^(run|bike|strength|aerobic|adjustment)$/ AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" !~ /^(run|bike|strength|aerobic|adjustment)$/ AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Other"
@@ -1667,7 +1667,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'run' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'run' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Running"
@@ -1678,7 +1678,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'bike' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'bike' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Cycling"
@@ -1689,7 +1689,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'strength' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'strength' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Strength"
@@ -1700,7 +1700,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'aerobic' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'aerobic' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Aerobics"
@@ -1711,7 +1711,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" !~ /^(run|bike|strength|aerobic|adjustment)$/ AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" !~ /^(run|bike|strength|aerobic|adjustment)$/ AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Other"
@@ -1879,7 +1879,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'adjustment' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, 4d) fill(0)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'adjustment' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Calorie adjustment"

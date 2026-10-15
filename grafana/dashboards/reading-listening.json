@@ -578,7 +578,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE $timeFilter AND \"source\" =~ /^${source:regex}$/ AND \"kind\" =~ /^${kind:regex}$/ AND \"device\" =~ /^${device:regex}$/ GROUP BY time(1w, 4d), \"source\" fill(0) tz('${tz}')",
+          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE $timeFilter AND \"source\" =~ /^${source:regex}$/ AND \"kind\" =~ /^${kind:regex}$/ AND \"device\" =~ /^${device:regex}$/ GROUP BY time(1w, -3d), \"source\" fill(0) tz('${tz}')",
           "alias": "$tag_source"
         }
       ]
@@ -695,7 +695,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE $timeFilter AND (\"local_hour\" >= 20 OR \"local_hour\" < 3) AND \"source\" =~ /^${source:regex}$/ AND \"kind\" =~ /^${kind:regex}$/ AND \"device\" =~ /^${device:regex}$/ GROUP BY time(1d, 12h) fill(0) tz('${tz}')",
+          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE $timeFilter AND (\"local_hour\" >= 20 OR \"local_hour\" < 3) AND \"source\" =~ /^${source:regex}$/ AND \"kind\" =~ /^${kind:regex}$/ AND \"device\" =~ /^${device:regex}$/ GROUP BY time(1d, -12h) fill(0) tz('${tz}')",
           "alias": "Evening reading"
         }
       ]

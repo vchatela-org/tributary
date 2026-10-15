@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from app import connectors
+from app import connectors, schema
 from app.config import Settings
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -144,12 +144,55 @@ def test_nothing_is_saved_in_the_variables(dashboard):
             assert current.get("value") in (None, ""), (dashboard["uid"], v["name"], current)
 
 
+# docs/dashboards-design.md, rule 3: a number read from one source reads it through
+# the picker of its value, under the same name on every dashboard, so a deployment
+# pins one default per value. {picker: the fields it may select}, Tributary's names
+# and garmin-grafana's.
+BODY = set(schema.BODY_COMPOSITION.fields)
+PICKERS = {
+    "sleep_from": {"asleep_s", "deep_s", "light_s", "rem_s", "awake_s", "bedtime_min", "wake_min",
+                   "sleepTimeSeconds", "deepSleepSeconds", "lightSleepSeconds", "remSleepSeconds",
+                   "awakeSleepSeconds"},
+    "score_from": {"score", "sleepScore"},
+    "hrv_from": {"hrv_rmssd_ms", "avgOvernightHrv"},
+    "rhr_from": {"resting_hr", "restingHeartRate"},
+    "activity_from": {"steps", "totalSteps"},
+    "workouts_from": {"duration_s", "elapsedDuration"} | {f"zone{n}_s" for n in range(6)}
+                     | {f"hrTimeInZone_{n}" for n in range(6)},
+    "weight_from": BODY | {"weight", "bodyFat"},
+}
+# The tags a single-source query may filter on besides its picker's.
+FILTERS = {"source", "user", "kind", "category"}
+
+
+def test_a_single_source_reads_the_picker_of_its_value(dashboard):
+    single = {v["name"] for v in _variables(dashboard) if v["type"] == "custom" and not v.get("multi")}
+    assert single <= set(PICKERS), (dashboard["uid"], single - set(PICKERS))
+    for panel, target in _queries(dashboard):
+        q = target["query"]
+        for name in re.findall(r"= '\$\{(\w+)\}'", q):
+            assert name in single, (dashboard["uid"], panel and panel.get("title"), name)
+            named = set(re.findall(r'"(\w+)"', q)) - set(re.findall(r'FROM\s+"(\w+)"', q)) \
+                - set(re.findall(r'AS\s+"([^"]+)"', q)) - FILTERS
+            assert named <= PICKERS[name], (dashboard["uid"], panel and panel.get("title"), name, named - PICKERS[name])
+
+
 def test_days_are_cut_in_the_tz_variable(dashboard):
     names = {v["name"] for v in _variables(dashboard)}
     for _, target in _queries(dashboard):
         for zone in re.findall(r"tz\('([^']*)'\)", target["query"]):
             assert zone in ("$tz", "${tz}"), (dashboard["uid"], zone)
             assert "tz" in names, dashboard["uid"]
+
+
+def test_an_offset_bucket_is_shifted_backwards(dashboard):
+    """InfluxDB 1.x drops buckets when a positive GROUP BY time() offset meets
+    tz(): time(1d, 12h) tz('Europe/Paris') lost 14 of 569 nights, time(1w, 4d)
+    2.5% of the hours asleep. The same boundaries with a negative offset
+    (time(1d, -12h), time(1w, -3d)) lose none."""
+    for panel, target in _queries(dashboard):
+        for offset in re.findall(r"time\(\w+,\s*([^)]*)\)", target["query"]):
+            assert offset.strip().startswith("-"), (dashboard["uid"], panel and panel.get("title"), offset)
 
 
 def _produced_names(panel):
