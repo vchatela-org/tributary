@@ -31,6 +31,32 @@
         "multi": false
       },
       {
+        "type": "datasource",
+        "name": "garmin",
+        "label": "InfluxDB GarminStats",
+        "query": "influxdb",
+        "regex": "/GarminStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "datasource",
+        "name": "sleep",
+        "label": "InfluxDB SleepStats",
+        "query": "influxdb",
+        "regex": "/SleepStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
         "type": "textbox",
         "name": "tz",
         "label": "Time zone",
@@ -67,6 +93,25 @@
         "multi": true,
         "includeAll": true,
         "allValue": ".*"
+      },
+      {
+        "type": "query",
+        "name": "user",
+        "label": "User",
+        "description": "Whose nights the recovery row draws: the user tag of SleepStats (TodoistStats and GarminStats hold one person and have none).",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${sleep}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"user\"",
+        "query": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"user\"",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
       }
     ]
   },
@@ -1380,12 +1425,390 @@
     },
     {
       "type": "row",
+      "title": "Productivity and recovery",
+      "id": 20,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "id": 21,
+      "title": "Tasks per day",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${todoist}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"n\") FROM (SELECT sum(\"count\") AS \"n\" FROM \"todoist_completion\" WHERE $timeFilter AND \"project\" =~ /^${project:regex}$/ GROUP BY time(1d) fill(0) tz('$tz')) WHERE $timeFilter GROUP BY time($__interval) fill(none) tz('$tz')",
+          "alias": "Per day"
+        }
+      ],
+      "interval": "1d",
+      "maxDataPoints": 300,
+      "gridPos": {
+        "x": 0,
+        "y": 37,
+        "w": 24,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 1,
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8e8e8e"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "lineInterpolation": "linear",
+            "showPoints": "never",
+            "pointSize": 4,
+            "barAlignment": 0,
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "insertNulls": 1296000000,
+            "axisPlacement": "auto",
+            "axisBorderShow": false,
+            "axisWidth": 60,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Per day"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none",
+          "hideZeros": false
+        }
+      },
+      "description": "The same daily average as above, so it lines up with the night's sleep score and HRV below (the crosshair is shared)."
+    },
+    {
+      "type": "timeseries",
+      "title": "Sleep score (each source's own scale)",
+      "id": 22,
+      "description": "The night's sleep score, one line per source, averaged like the tasks above. Each device scores on its own scale: compare a source with itself.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 44,
+        "w": 24,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "insertNulls": 1296000000
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*sleep_as_android$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"sleepScore\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND $timeFilter GROUP BY time($__interval) fill(none) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"v\") FROM (SELECT mean(\"score\") AS \"v\" FROM \"sleep_session\" WHERE \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')) WHERE $timeFilter GROUP BY time($__interval), \"source\" fill(none) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ],
+      "interval": "1d",
+      "maxDataPoints": 300
+    },
+    {
+      "type": "timeseries",
+      "title": "Overnight HRV",
+      "id": 23,
+      "description": "The night's HRV, one line per source. Devices measure it over different parts of the night, so the levels differ by design.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 51,
+        "w": 24,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "insertNulls": 1296000000
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*sleep_as_android$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND $timeFilter GROUP BY time($__interval) fill(none) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"v\") FROM (SELECT mean(\"hrv_rmssd_ms\") AS \"v\" FROM \"sleep_session\" WHERE \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')) WHERE $timeFilter GROUP BY time($__interval), \"source\" fill(none) tz('$tz')",
+          "alias": "$tag_source"
+        }
+      ],
+      "interval": "1d",
+      "maxDataPoints": 300
+    },
+    {
+      "type": "row",
       "id": 19,
       "title": "Every completion",
       "collapsed": true,
       "gridPos": {
         "x": 0,
-        "y": 36,
+        "y": 58,
         "w": 24,
         "h": 1
       },
@@ -1497,5 +1920,30 @@
       }
     ]
   },
-  "links": []
+  "links": [
+    {
+      "type": "link",
+      "title": "Correlations",
+      "url": "/d/tributary-correlations",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    },
+    {
+      "type": "link",
+      "title": "Sleep",
+      "url": "/d/tributary-sleep",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    }
+  ]
 }
