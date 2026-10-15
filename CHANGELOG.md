@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/vchatela-org/tributary/compare/v0.18.0...v0.19.0) (2026-10-15)
+
+
+### Features
+
+* **grafana:** Healthspan prints each bar's scale underneath, as the app does ([#54](https://github.com/vchatela-org/tributary/issues/54)) ([618049b](https://github.com/vchatela-org/tributary/commit/618049b33bc04afcc41c3c5a1281d432ccd54294))
+
 ## [0.18.0](https://github.com/vchatela-org/tributary/compare/v0.17.0...v0.18.0) (2026-10-15)
 
 
