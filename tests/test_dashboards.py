@@ -199,7 +199,10 @@ def test_a_garmin_day_is_read_once(dashboard):
 
 def test_days_are_cut_in_the_tz_variable(dashboard):
     names = {v["name"] for v in _variables(dashboard)}
-    for _, target in _queries(dashboard):
+    for panel, target in _queries(dashboard):
+        for clause in re.findall(r'GROUP BY time\((?:1d|1w)[^)]*\)(?:,\s*"[^"]+")*(?:\s+fill\([^)]*\))?(?:\s+tz\([^)]*\))?',
+                                 target["query"]):
+            assert "tz(" in clause, (dashboard["uid"], panel and panel.get("title"), clause)
         for zone in re.findall(r"tz\('([^']*)'\)", target["query"]):
             assert zone in ("$tz", "${tz}"), (dashboard["uid"], zone)
             assert "tz" in names, dashboard["uid"]

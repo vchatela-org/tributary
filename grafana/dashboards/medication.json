@@ -48,6 +48,25 @@
         "multi": false
       },
       {
+        "type": "textbox",
+        "name": "tz",
+        "label": "Time zone",
+        "description": "IANA time zone the days and weeks are cut in (TRIBUTARY_TZ).",
+        "query": "Europe/Paris",
+        "current": {
+          "text": "Europe/Paris",
+          "value": "Europe/Paris"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "Europe/Paris",
+            "value": "Europe/Paris"
+          }
+        ],
+        "hide": 0
+      },
+      {
         "type": "query",
         "name": "user",
         "label": "User",
@@ -332,7 +351,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT count(\"t\") AS \"Days with a dose taken\" FROM (SELECT max(\"taken\") AS \"t\" FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND \"taken\" = 1 AND $timeFilter GROUP BY time(1d) fill(none)) WHERE $timeFilter",
+          "query": "SELECT count(\"t\") AS \"Days with a dose taken\" FROM (SELECT max(\"taken\") AS \"t\" FROM \"medication\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"med\" =~ /^${med:regex}$/ AND \"taken\" = 1 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')) WHERE $timeFilter",
           "rawQuery": true,
           "resultFormat": "time_series"
         }

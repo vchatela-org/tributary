@@ -140,7 +140,7 @@ Variables: user, sources, *Readings from*.
 Medisafe). Doses taken, the share logged as taken, missed or skipped, days
 with a dose taken; a strip per medication of the share taken in each bucket;
 a table per medication (first and last dose, scheduled, taken) and every dose
-with its status, delay and note. Variables: user, source, medication.
+with its status, delay and note. Variables: time zone, user, source, medication.
 
 ![The Medication dashboard with demo data: doses taken, the share logged as taken, and a strip per medication](screenshots/grafana-medication-light.png)
 

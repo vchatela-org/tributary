@@ -1847,7 +1847,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT last(\"VO2_max_value\") FROM \"VO2_Max\" WHERE $timeFilter GROUP BY time(1d) fill(none)",
+          "query": "SELECT last(\"VO2_max_value\") FROM \"VO2_Max\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "running · garmin"
         },
         {
@@ -1858,7 +1858,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT last(\"VO2_max_value_cycling\") FROM \"VO2_Max\" WHERE $timeFilter GROUP BY time(1d) fill(none)",
+          "query": "SELECT last(\"VO2_max_value_cycling\") FROM \"VO2_Max\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "cycling · garmin"
         }
       ]
