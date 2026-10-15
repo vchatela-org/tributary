@@ -58,7 +58,7 @@ Rules every panel follows:
    | `score_from` | *Sleep score from* | sleep score |
    | `hrv_from` | *HRV from* | overnight HRV |
    | `rhr_from` | *Resting HR from* | resting heart rate |
-   | `activity_from` | *Activity from* | steps and daily totals |
+   | `activity_from` | *Activity from* | steps and daily totals (calories burned) |
    | `workouts_from` | *Workouts from* | workouts, their time and heart-rate zones |
    | `weight_from` | *Weight from*, *Readings from* | weight and body composition |
 
@@ -107,6 +107,11 @@ dashboards read the following.
   left out with it.
 - A `DailyStats` day is read with `max()`, never summed: it holds one
   summary per day, and the same day can be written twice (a test checks).
+- A `DailyStats` day counts in a calorie balance when the watch was worn for
+  most of it: some active calories, and 95% of the day accounted for
+  (`activeSeconds + highlyActiveSeconds + sedentarySeconds + sleepingSeconds
+  >= 82080`). garmin-grafana files unworn time as sedentary, and a day synced
+  mid-way prorates its resting calories with it.
 - `SleepStats` and two `BodyStats` series that Tributary's Whoop connector
   writes with `source=whoop` and a `user` tag ([the schema](schema.md)), listed
   here for the fields the dashboards read: any other writer of the same names
@@ -117,7 +122,7 @@ dashboards read the following.
 |---|---|---|---|
 | `GarminStats` | `SleepSummary` | `sleepTimeSeconds`, `deepSleepSeconds`, `lightSleepSeconds`, `remSleepSeconds`, `awakeSleepSeconds`, `sleepScore`, `restingHeartRate`, `avgOvernightHrv`, `averageSpO2Value`, `averageRespirationValue` (one point per night, at its end) | garmin-grafana |
 | `GarminStats` | `SleepIntraday` | `SleepStageLevel` (0 deep, 1 light, 2 REM, 3 awake), `heartRate`: the samples of a night | garmin-grafana |
-| `GarminStats` | `DailyStats` | `totalSteps`, `activeKilocalories`, `bmrKilocalories`, `moderateIntensityMinutes`, `vigorousIntensityMinutes` | garmin-grafana |
+| `GarminStats` | `DailyStats` | `totalSteps`, `activeKilocalories`, `bmrKilocalories`, `moderateIntensityMinutes`, `vigorousIntensityMinutes`, `activeSeconds`, `highlyActiveSeconds`, `sedentarySeconds`, `sleepingSeconds` | garmin-grafana |
 | `GarminStats` | `ActivitySummary` | `elapsedDuration`, `calories`, `hrTimeInZone_1`...`_5` | garmin-grafana |
 | `GarminStats` | `VO2_Max` | `VO2_max_value`, `VO2_max_value_cycling` | garmin-grafana |
 | `GarminStats` | `BodyComposition` | `weight`, `bodyFat`, `bodyWater`, `boneMass`, `bmi`, `visceralFat` | garmin-grafana |

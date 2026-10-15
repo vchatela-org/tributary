@@ -156,7 +156,8 @@ PICKERS = {
     "score_from": {"score", "sleepScore"},
     "hrv_from": {"hrv_rmssd_ms", "avgOvernightHrv"},
     "rhr_from": {"resting_hr", "restingHeartRate"},
-    "activity_from": {"steps", "totalSteps"},
+    "activity_from": {"steps", "totalSteps", "energy_kcal", "activeKilocalories", "bmrKilocalories",
+                      "activeSeconds", "highlyActiveSeconds", "sedentarySeconds", "sleepingSeconds"},
     "workouts_from": {"duration_s", "elapsedDuration"} | {f"zone{n}_s" for n in range(6)}
                      | {f"hrTimeInZone_{n}" for n in range(6)},
     "weight_from": BODY | {"weight", "bodyFat"},
