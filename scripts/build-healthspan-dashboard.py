@@ -30,6 +30,9 @@ KEPT_ROW = "Other markers, every source"
 
 # The app's two averages: the ▼ and ▲ markers of each bar.
 WINDOWS = [(182, "6 months"), (30, "30 days")]
+# Grid rows of an indicator, and of its bars: the line of its scale takes the
+# rest (in one row, Grafana's padding leaves 12 px, too few for a legible line).
+BLOCK, BAR = 6, 4
 YEAR_DAYS = 365.25
 
 DS = {db: {"type": "influxdb", "uid": "${" + var + "}"}
@@ -238,6 +241,33 @@ def age_sql():
             "WHERE time >= '${birth}' AND time <= ${__to}ms GROUP BY time(1d) fill(0) tz('$tz'))")
 
 
+def label(ind, value):
+    """A value of the scale as the bar prints its own: same unit, same separators."""
+    unit = ind["unit"]
+    if unit.startswith("suffix:"):
+        return f"{value:g}{unit[len('suffix:'):]}"
+    return {"percent": f"{value:g}%", "locale": f"{value:,.0f}"}.get(unit, f"{value:g}")
+
+
+def scale_line(ind):
+    """The line under a bar, as in the app: the scale's two ends, and an arrow at the
+    guideline, the value worth 0 years. Grafana's sanitizer keeps flex and widths,
+    no position: the ends are the first and last items, the arrow's item starts at
+    the guideline's share of the bar. The bar stops short of the panel's right
+    edge by the value's width (bar gauge: 20 % of the panel, between the printed
+    value and 150 px), so the line does too; its cells come in steps of 12 px,
+    which leaves 2 to 13 px more."""
+    lo, hi = ind["scale"]
+    at = (ind["target"] - lo) / (hi - lo) * 100
+    value = len(label(ind, hi)) + ind["decimals"] + 1  # the widest printed value, in characters
+    nbsp = "&nbsp;"
+    return (f'<div style="display: flex; padding-right: calc(max(min(20%, 150px), {value * 10 + 20}px) + 7px); '
+            f'font-size: 13px">'
+            f'<div style="width: calc({at:.2f}% - 4px); font-weight: 500">{label(ind, lo)}</div>'
+            f'<div style="flex-grow: 1">↑{nbsp}0{nbsp}years{nbsp}at{nbsp}{label(ind, ind["target"]).replace(" ", nbsp)}</div>'
+            f'<div style="font-weight: 500">{label(ind, hi)}</div></div>')
+
+
 def target(ref, db, sql, alias):
     return {"refId": ref, "datasource": DS[db], "query": sql, "rawQuery": True,
             "resultFormat": "time_series", "alias": alias}
@@ -394,26 +424,29 @@ def build(existing):
         ref = refs()
         add({
             "type": "bargauge", "title": ind["title"],
-            "description": f"{ind['note']}{picked} The bar spans WHOOP's scale, {lo:g} to {hi:g}, in its "
-                           "colours: orange adds years, grey is about 0, green takes them off.",
+            "description": f"{ind['note']}{picked} The bar spans WHOOP's scale, {lo:g} to {hi:g} (the line "
+                           "under it, with an arrow at 0 years), in its colours: orange adds years, grey is "
+                           "about 0, green takes them off.",
             "datasource": ds,
             "targets": [target(next(ref), s[0], single_sql(ind, s, days), name) for days, name, s in per_window],
             "fieldConfig": {"defaults": {"unit": ind["unit"], "decimals": ind["decimals"], "min": lo, "max": hi,
                                          "color": {"mode": "thresholds"}, "thresholds": thresholds(ind["bands"])},
                             "overrides": []},
             "options": {"displayMode": "lcd", "orientation": "horizontal", "showUnfilled": True,
-                        "valueMode": "text", "namePlacement": "top", "sizing": "manual",
-                        "minVizWidth": 8, "minVizHeight": 46, "maxVizHeight": 46,
+                        "valueMode": "text", "namePlacement": "top", "sizing": "auto",
+                        "minVizWidth": 8, "minVizHeight": 16, "maxVizHeight": 46,
                         "text": {"titleSize": 12, "valueSize": 18},
                         "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False},
                         "legend": {"showLegend": False, "displayMode": "list", "placement": "bottom"}},
-        }, 0, y, 11, 5)
+        }, 0, y, 11, BAR)
+        add({"type": "text", "title": "", "transparent": True,
+             "options": {"mode": "html", "content": scale_line(ind)}}, 0, y + BAR, 11, BLOCK - BAR)
         ref = refs()
         add(stat("Age impact",
                  f"years = {ind['k']:.4g} × (value − {ind['target']:g}), from each average. Negative is younger.",
                  [target(next(ref), s[0], single_sql(ind, s, days, years=True), name) for days, name, s in per_window],
                  [], "suffix: years", 1, YEARS_BANDS, color_mode="background", text_mode="value_and_name"),
-            11, y, 4, 5)
+            11, y, 4, BLOCK)
         panels[-1]["options"]["orientation"] = "vertical"
         ref = refs()
         add({
@@ -434,8 +467,8 @@ def build(existing):
                                               {"id": "custom.lineWidth", "value": 1}]}]},
             "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": False},
                         "tooltip": {"mode": "multi", "sort": "none"}},
-        }, 15, y, 9, 5)
-        y += 5
+        }, 15, y, 9, BLOCK)
+        y += BLOCK
 
     # The last row is kept from the JSON, collapsed: the tiles and every-source
     # trends of the markers outside WHOOP's nine.

@@ -42,8 +42,11 @@ to or takes off an estimated WHOOP Age.
 Each indicator has two bars, the averages of the 6 months and of the 30 days
 that end with the time range (WHOOP's ▼ and ▲ markers), its age impact for
 each, and its trend over the same colour bands. Orange adds years, grey is
-about 0, green takes them off. Step the time range back to see an earlier
-week, as with the app's arrows.
+about 0, green takes them off. Under the bars, as in the app, the two ends
+of the scale (5 h and 8 h for hours of sleep), and an arrow at the
+guideline, the value worth 0 years. Step the time range back to see an
+earlier week, as with the app's arrows. On a phone, Grafana stacks the
+panels in grid order: the scale's line comes after the indicator's trend.
 
 **The model.** WHOOP gives each indicator a guideline worth 0 years. Here each
 age impact is a straight line through it, `years = k × (value − guideline)`,

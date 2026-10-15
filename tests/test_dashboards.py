@@ -336,6 +336,23 @@ def test_a_healthspan_colour_says_years_never_a_source():
             assert defaults["color"] == {"mode": "fixed", "fixedColor": "text"}, p["title"]
 
 
+def test_every_healthspan_bar_has_its_scale_underneath():
+    """As in the app: under each bar, the two ends of its scale and the guideline."""
+    builder = _healthspan_builder()
+    panels = _load(HEALTHSPAN)["panels"]
+    bars = [p for p in panels if p["type"] == "bargauge"]
+    assert len(bars) == len(builder.INDICATORS)
+    for bar, ind in zip(bars, builder.INDICATORS):
+        pos = bar["gridPos"]
+        under = [p for p in panels if p["type"] == "text" and p["gridPos"]["x"] == pos["x"]
+                 and p["gridPos"]["y"] == pos["y"] + pos["h"] and p["gridPos"]["w"] == pos["w"]]
+        assert len(under) == 1, bar["title"]
+        line = under[0]["options"]["content"]
+        lo, hi = ind["scale"]
+        assert line.index(f">{builder.label(ind, lo)}<") < line.index(f">{builder.label(ind, hi)}<"), bar["title"]
+        assert builder.label(ind, ind["target"]).replace(" ", "&nbsp;") in line, bar["title"]
+
+
 def test_links_stay_among_tributary_s_dashboards(dashboard):
     uids = {_load(p)["uid"] for p in DASHBOARDS}
     for link in dashboard.get("links", []):
