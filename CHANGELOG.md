@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.16.0](https://github.com/vchatela-org/tributary/compare/v0.15.0...v0.16.0) (2026-10-15)
+
+
+### Features
+
+* **grafana:** merge the homelab dashboards into Tributary's, and fix what they had found ([#48](https://github.com/vchatela-org/tributary/issues/48)) ([b017988](https://github.com/vchatela-org/tributary/commit/b01798869222781c547696ea6cdfbcc7cefc037b))
+* **grafana:** one source picker per value, and the sleep score against the day's tasks ([#47](https://github.com/vchatela-org/tributary/issues/47)) ([c11ad3f](https://github.com/vchatela-org/tributary/commit/c11ad3f776d29fb3eb6b2f8e195686846d646a29))
+
 ## [0.15.0](https://github.com/vchatela-org/tributary/compare/v0.14.0...v0.15.0) (2026-10-15)
 
 
