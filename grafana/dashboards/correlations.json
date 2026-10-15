@@ -180,7 +180,7 @@
         "type": "query",
         "name": "nights",
         "label": "Night sources",
-        "description": "Every source of nights in SleepStats, for the Sleep from and Heart from lists.",
+        "description": "Every source of nights in SleepStats, for the sleep and heart pickers.",
         "datasource": {
           "type": "influxdb",
           "uid": "${sleep}"
@@ -247,7 +247,7 @@
         "type": "custom",
         "name": "sleep_from",
         "label": "Sleep from",
-        "description": "The source of the time asleep.",
+        "description": "The source of the time asleep, the stages and the bedtimes.",
         "query": "${nights:csv},garmin",
         "hide": 0,
         "current": {},
@@ -257,9 +257,9 @@
       },
       {
         "type": "custom",
-        "name": "heart_from",
-        "label": "Heart from",
-        "description": "The source of the HRV.",
+        "name": "score_from",
+        "label": "Sleep score from",
+        "description": "The source of the sleep score. Each device scores on its own scale.",
         "query": "${nights:csv},garmin",
         "hide": 0,
         "current": {},
@@ -269,9 +269,21 @@
       },
       {
         "type": "custom",
-        "name": "activity_from",
+        "name": "hrv_from",
+        "label": "HRV from",
+        "description": "The source of the overnight HRV. Devices measure it differently.",
+        "query": "${nights:csv},garmin",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "custom",
+        "name": "workouts_from",
         "label": "Workouts from",
-        "description": "The source of the workouts.",
+        "description": "The source of the workouts. A workout two apps received is in both: pick one.",
         "query": "${days:csv},garmin,${workouts:csv}",
         "hide": 0,
         "current": {},
@@ -300,7 +312,7 @@
       "pluginVersion": "13.2.3",
       "title": "Time asleep and the tasks done that day",
       "id": 2,
-      "description": "Each point is a day: the night that ended that morning (from Sleep from) against the Todoist tasks completed that day. A cloud rising to the right means longer nights, more done.",
+      "description": "Each point is a day: the night that ended that morning (picked in Sleep from) against the Todoist tasks completed that day. A cloud rising to the right means longer nights, more done.",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -682,7 +694,7 @@
       "pluginVersion": "13.2.3",
       "title": "Morning HRV and the tasks done that day",
       "id": 5,
-      "description": "Each point is a day: the night's HRV (from Heart from), a readiness signal, against the tasks completed that day.",
+      "description": "Each point is a day: the night's HRV (picked in HRV from), a readiness signal, against the tasks completed that day.",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -797,7 +809,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE 'garmin' = '${heart_from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE 'garmin' = '${hrv_from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "HRV"
         },
         {
@@ -808,7 +820,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${heart_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${hrv_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "HRV"
         },
         {
@@ -834,13 +846,395 @@
       ]
     },
     {
+      "type": "xychart",
+      "pluginVersion": "13.2.3",
+      "title": "Sleep score and the tasks done that day",
+      "id": 14,
+      "description": "Each point is a day: the score of the night that ended that morning (picked in Sleep score from) against the Todoist tasks completed that day. Each device scores on its own scale, so compare a source with itself: switch the picker to read the years another device was worn.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 11,
+        "w": 12,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "show": "points",
+            "pointSize": {
+              "fixed": 7
+            },
+            "pointShape": "circle",
+            "pointStrokeWidth": 1,
+            "fillOpacity": 45,
+            "axisPlacement": "auto",
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "score"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Sleep score (the source's own scale)"
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "tasks"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Tasks completed"
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "mapping": "manual",
+        "series": [
+          {
+            "frame": {
+              "matcher": {
+                "id": "byIndex",
+                "options": 0
+              }
+            },
+            "x": {
+              "matcher": {
+                "id": "byName",
+                "options": "score"
+              }
+            },
+            "y": {
+              "matcher": {
+                "id": "byName",
+                "options": "tasks"
+              }
+            }
+          }
+        ],
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"sleepScore\") FROM \"SleepSummary\" WHERE 'garmin' = '${score_from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "score"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"score\") FROM \"sleep_session\" WHERE \"source\" = '${score_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "score"
+        },
+        {
+          "refId": "K",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"todoist_completion\" WHERE $timeFilter GROUP BY time(1d) fill(0) tz('$tz')",
+          "alias": "tasks"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "inner"
+          }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Tasks / day after a score < 70",
+      "id": 15,
+      "description": "Average tasks completed on the days that followed a night scored below 70 by the source picked in Sleep score from. Whoop calls a night under 70 poor; Garmin calls 60 to 79 fair and under 60 poor.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 11,
+        "w": 12,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "/^tasks$/",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"sleepScore\") FROM \"SleepSummary\" WHERE 'garmin' = '${score_from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "score"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"score\") FROM \"sleep_session\" WHERE \"source\" = '${score_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "score"
+        },
+        {
+          "refId": "K",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"todoist_completion\" WHERE $timeFilter GROUP BY time(1d) fill(0) tz('$tz')",
+          "alias": "tasks"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "inner"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "fieldName": "score",
+                "config": {
+                  "id": "lower",
+                  "options": {
+                    "value": 70
+                  }
+                }
+              }
+            ],
+            "match": "all",
+            "type": "include"
+          }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Tasks / day after a score ≥ 70",
+      "id": 16,
+      "description": "Average tasks completed on the days that followed a night scored at or above 70 by the source picked in Sleep score from. Whoop calls a night under 70 poor; Garmin calls 60 to 79 fair and under 60 poor.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "/^tasks$/",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value",
+        "textMode": "value",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false
+      },
+      "targets": [
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"sleepScore\") FROM \"SleepSummary\" WHERE 'garmin' = '${score_from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "score"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"score\") FROM \"sleep_session\" WHERE \"source\" = '${score_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "score"
+        },
+        {
+          "refId": "K",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${todoist}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"todoist_completion\" WHERE $timeFilter GROUP BY time(1d) fill(0) tz('$tz')",
+          "alias": "tasks"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "inner"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "filters": [
+              {
+                "fieldName": "score",
+                "config": {
+                  "id": "greaterOrEqual",
+                  "options": {
+                    "value": 70
+                  }
+                }
+              }
+            ],
+            "match": "all",
+            "type": "include"
+          }
+        }
+      ]
+    },
+    {
       "type": "row",
       "title": "An evening and the night after (noon to noon)",
       "id": 6,
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 11,
+        "y": 21,
         "w": 24,
         "h": 1
       },
@@ -858,7 +1252,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 22,
         "w": 9,
         "h": 10
       },
@@ -966,7 +1360,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE (\"local_hour\" >= 18 OR \"local_hour\" < 3) AND $timeFilter GROUP BY time(1d, 12h) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE (\"local_hour\" >= 18 OR \"local_hour\" < 3) AND $timeFilter GROUP BY time(1d, -12h) fill(0) tz('$tz')",
           "alias": "reading"
         },
         {
@@ -977,7 +1371,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "asleep"
         },
         {
@@ -988,7 +1382,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "asleep"
         }
       ],
@@ -1013,7 +1407,7 @@
       },
       "gridPos": {
         "x": 9,
-        "y": 12,
+        "y": 22,
         "w": 6,
         "h": 5
       },
@@ -1061,7 +1455,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE (\"local_hour\" >= 18 OR \"local_hour\" < 3) AND $timeFilter GROUP BY time(1d, 12h) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE (\"local_hour\" >= 18 OR \"local_hour\" < 3) AND $timeFilter GROUP BY time(1d, -12h) fill(0) tz('$tz')",
           "alias": "reading"
         },
         {
@@ -1072,7 +1466,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "asleep"
         },
         {
@@ -1083,7 +1477,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "asleep"
         }
       ],
@@ -1126,7 +1520,7 @@
       },
       "gridPos": {
         "x": 9,
-        "y": 17,
+        "y": 27,
         "w": 6,
         "h": 5
       },
@@ -1174,7 +1568,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE (\"local_hour\" >= 18 OR \"local_hour\" < 3) AND $timeFilter GROUP BY time(1d, 12h) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"minutes\") FROM \"reading_session\" WHERE (\"local_hour\" >= 18 OR \"local_hour\" < 3) AND $timeFilter GROUP BY time(1d, -12h) fill(0) tz('$tz')",
           "alias": "reading"
         },
         {
@@ -1185,7 +1579,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "asleep"
         },
         {
@@ -1196,7 +1590,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "asleep"
         }
       ],
@@ -1233,14 +1627,14 @@
       "pluginVersion": "13.2.3",
       "title": "Workout time and the night's HRV",
       "id": 10,
-      "description": "Each point is a noon-to-noon window: minutes of workouts (from Workouts from) against the HRV of the night that ended next morning. Hard sessions often lower it for a night. A morning workout falls in the window of the night before it.",
+      "description": "Each point is a noon-to-noon window: minutes of workouts (picked in Workouts from) against the HRV of the night that ended next morning. Hard sessions often lower it for a night. A morning workout falls in the window of the night before it.",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
       },
       "gridPos": {
         "x": 15,
-        "y": 12,
+        "y": 22,
         "w": 9,
         "h": 10
       },
@@ -1348,7 +1742,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"elapsedDuration\") / 60 FROM \"ActivitySummary\" WHERE 'garmin' = '${activity_from}' AND $timeFilter GROUP BY time(1d, 12h) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"elapsedDuration\") / 60 FROM \"ActivitySummary\" WHERE 'garmin' = '${workouts_from}' AND $timeFilter GROUP BY time(1d, -12h) fill(0) tz('$tz')",
           "alias": "workouts"
         },
         {
@@ -1359,7 +1753,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"duration_s\") / 60 FROM \"exercise\" WHERE \"source\" = '${activity_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1d, 12h) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"duration_s\") / 60 FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1d, -12h) fill(0) tz('$tz')",
           "alias": "workouts"
         },
         {
@@ -1370,7 +1764,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE 'garmin' = '${heart_from}' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE 'garmin' = '${hrv_from}' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "HRV"
         },
         {
@@ -1381,7 +1775,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${heart_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY time(1d, 12h) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${hrv_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "HRV"
         }
       ],
@@ -1402,7 +1796,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 22,
+        "y": 32,
         "w": 24,
         "h": 1
       },
@@ -1420,7 +1814,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 23,
+        "y": 33,
         "w": 12,
         "h": 10
       },
@@ -1528,7 +1922,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"elapsedDuration\") / 3600 FROM \"ActivitySummary\" WHERE 'garmin' = '${activity_from}' AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"elapsedDuration\") / 3600 FROM \"ActivitySummary\" WHERE 'garmin' = '${workouts_from}' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "workouts"
         },
         {
@@ -1539,7 +1933,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"source\" = '${activity_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "workouts"
         },
         {
@@ -1550,7 +1944,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE 'garmin' = '${heart_from}' AND $timeFilter GROUP BY time(1w, 4d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE 'garmin' = '${hrv_from}' AND $timeFilter GROUP BY time(1w, -3d) fill(none) tz('$tz')",
           "alias": "HRV"
         },
         {
@@ -1561,7 +1955,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${heart_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY time(1w, 4d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${hrv_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY time(1w, -3d) fill(none) tz('$tz')",
           "alias": "HRV"
         }
       ],
@@ -1587,7 +1981,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 23,
+        "y": 33,
         "w": 12,
         "h": 10
       },
@@ -1695,7 +2089,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1w, 4d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1w, -3d) fill(none) tz('$tz')",
           "alias": "asleep"
         },
         {
@@ -1706,7 +2100,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"asleep_s\") / count(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1w, 4d) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"asleep_s\") / count(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1w, -3d) fill(none) tz('$tz')",
           "alias": "asleep"
         },
         {
@@ -1717,7 +2111,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"count\") FROM \"todoist_completion\" WHERE $timeFilter GROUP BY time(1w, 4d) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"count\") FROM \"todoist_completion\" WHERE $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "tasks"
         }
       ],

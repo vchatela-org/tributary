@@ -162,9 +162,21 @@
       },
       {
         "type": "custom",
-        "name": "from",
-        "label": "Tiles from",
-        "description": "The one source the tiles, the stages and the regularity read.",
+        "name": "sleep_from",
+        "label": "Sleep from",
+        "description": "The source of the time asleep, the stages and the bedtimes.",
+        "query": "${nights:csv},garmin",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "custom",
+        "name": "score_from",
+        "label": "Sleep score from",
+        "description": "The source of the sleep score. Each device scores on its own scale.",
         "query": "${nights:csv},garmin",
         "hide": 0,
         "current": {},
@@ -179,7 +191,7 @@
       "type": "stat",
       "title": "Sleep / night",
       "id": 1,
-      "description": "Median time asleep per night, from the source picked in Tiles from (naps left out).",
+      "description": "Median time asleep per night, from the source picked in Sleep from (naps left out).",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -234,7 +246,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "query": "SELECT median(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -245,7 +257,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT median(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -309,7 +321,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT count(\"sleepTimeSeconds\") FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "query": "SELECT count(\"sleepTimeSeconds\") FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -320,7 +332,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT count(\"asleep_s\") FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT count(\"asleep_s\") FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -384,7 +396,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"deepSleepSeconds\") / sum(\"sleepTimeSeconds\") FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "query": "SELECT sum(\"deepSleepSeconds\") / sum(\"sleepTimeSeconds\") FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -395,7 +407,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"deep_s\") / sum(\"asleep_s\") FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT sum(\"deep_s\") / sum(\"asleep_s\") FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -459,7 +471,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"remSleepSeconds\") / sum(\"sleepTimeSeconds\") FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "query": "SELECT sum(\"remSleepSeconds\") / sum(\"sleepTimeSeconds\") FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -470,7 +482,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"rem_s\") / sum(\"asleep_s\") FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT sum(\"rem_s\") / sum(\"asleep_s\") FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -534,7 +546,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"awakeSleepSeconds\") / 60 FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "query": "SELECT median(\"awakeSleepSeconds\") / 60 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -545,7 +557,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"awake_s\") / 60 FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT median(\"awake_s\") / 60 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -609,7 +621,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"sleepScore\") FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter",
+          "query": "SELECT median(\"sleepScore\") FROM \"SleepSummary\" WHERE 'garmin' = '${score_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -620,7 +632,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"score\") FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT median(\"score\") FROM \"sleep_session\" WHERE \"source\" = '${score_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -808,9 +820,9 @@
     },
     {
       "type": "timeseries",
-      "title": "Sleep stages per night · ${from}",
+      "title": "Sleep stages per night · ${sleep_from}",
       "id": 12,
-      "description": "Hours of deep, light and REM sleep and time awake, each night, from the source picked in Tiles from (two sources' stages would not add up).",
+      "description": "Hours of deep, light and REM sleep and time awake, each night, from the source picked in Sleep from (two sources' stages would not add up).",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -930,7 +942,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"deepSleepSeconds\") / 3600 AS \"Deep\", sum(\"lightSleepSeconds\") / 3600 AS \"Light\", sum(\"remSleepSeconds\") / 3600 AS \"REM\", sum(\"awakeSleepSeconds\") / 3600 AS \"Awake\" FROM \"SleepSummary\" WHERE 'garmin' = '${from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"deepSleepSeconds\") / 3600 AS \"Deep\", sum(\"lightSleepSeconds\") / 3600 AS \"Light\", sum(\"remSleepSeconds\") / 3600 AS \"REM\", sum(\"awakeSleepSeconds\") / 3600 AS \"Awake\" FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "$col"
         },
         {
@@ -941,7 +953,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"deep_s\") / 3600 AS \"Deep\", sum(\"light_s\") / 3600 AS \"Light\", sum(\"rem_s\") / 3600 AS \"REM\", sum(\"awake_s\") / 3600 AS \"Awake\" FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"deep_s\") / 3600 AS \"Deep\", sum(\"light_s\") / 3600 AS \"Light\", sum(\"rem_s\") / 3600 AS \"REM\", sum(\"awake_s\") / 3600 AS \"Awake\" FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "$col"
         }
       ]
@@ -2138,7 +2150,7 @@
       "type": "stat",
       "title": "Usual bedtime",
       "id": 31,
-      "description": "The average time the source says you fell asleep (local time), from the source picked in Tiles from. Sources that write bedtime_min only: Garmin's summary has no bedtime.",
+      "description": "The average time the source says you fell asleep (local time), from the source picked in Sleep from. Sources that write bedtime_min only: Garmin's summary has no bedtime.",
       "datasource": {
         "type": "influxdb",
         "uid": "${sleep}"
@@ -2194,7 +2206,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT (mean(\"bedtime_min\") + 1440) % 1440 * 60000 FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT (mean(\"bedtime_min\") + 1440) % 1440 * 60000 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -2203,7 +2215,7 @@
       "type": "stat",
       "title": "Usual wake-up",
       "id": 32,
-      "description": "The average time the night ended (local time), from the source picked in Tiles from.",
+      "description": "The average time the night ended (local time), from the source picked in Sleep from.",
       "datasource": {
         "type": "influxdb",
         "uid": "${sleep}"
@@ -2259,7 +2271,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT (mean(\"wake_min\") + 1440) % 1440 * 60000 FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT (mean(\"wake_min\") + 1440) % 1440 * 60000 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -2324,7 +2336,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT stddev(\"bedtime_min\") FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT stddev(\"bedtime_min\") FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -2389,7 +2401,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT stddev(\"wake_min\") FROM \"sleep_session\" WHERE \"source\" = '${from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
+          "query": "SELECT stddev(\"wake_min\") FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
         }
       ]
@@ -2619,7 +2631,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT stddev(\"sleepTimeSeconds\") / 60 FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, 4d) fill(none) tz('$tz')",
+          "query": "SELECT stddev(\"sleepTimeSeconds\") / 60 FROM \"SleepSummary\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, -3d) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -2630,7 +2642,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT stddev(\"asleep_s\") / 60 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1w, 4d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT stddev(\"asleep_s\") / 60 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1w, -3d), \"source\" fill(none) tz('$tz')",
           "alias": "$tag_source"
         }
       ]

@@ -78,7 +78,7 @@ Tributary only writes; dashboards read InfluxDB. [grafana/](grafana/) ships:
 | [Healthspan](grafana/dashboards/healthspan.json) | `GarminStats` (garmin-grafana), `SleepStats`: `sleep_session`, `BodyStats`: `body_composition`, `exercise`, `daily_activity`, `medication` | resting heart rate, HRV, VO₂ max, sleep and its regularity, intensity minutes, steps, workouts, weight, body fat, doses taken: tiles from the source you pick, trends from every source |
 | [Sleep](grafana/dashboards/sleep.json) | `GarminStats`: `SleepSummary`, `SleepStats`: `sleep_session` | time asleep, stages, score, resting heart rate, HRV, SpO₂, breathing, recovery, skin temperature, bedtime regularity, one colour per device |
 | [Activity & fitness](grafana/dashboards/activity.json) | `GarminStats`: `DailyStats`, `ActivitySummary`, `VO2_Max`, `BodyStats`: `daily_activity`, `exercise` | steps, strain and calories burned per day, intensity minutes, VO₂ max, workouts per week by source, heart-rate zones |
-| [Correlations](grafana/dashboards/correlations.json) | `SleepStats`, `GarminStats`, `BodyStats`, `TodoistStats`, `MediaStats` | a night against the next day's tasks, evening reading against the night, training against HRV, per day and per week |
+| [Correlations](grafana/dashboards/correlations.json) | `SleepStats`, `GarminStats`, `BodyStats`, `TodoistStats`, `MediaStats` | a night (time asleep, HRV, sleep score) against the next day's tasks, evening reading against the night, training against HRV, per day and per week |
 | [Reading & listening](grafana/dashboards/reading-listening.json) | `MediaStats`: `reading_session`, `book_finished` | time per day and per week by kind and source, sessions, active days, time by device, evening reading (by local hour), books finished |
 | [Body composition](grafana/dashboards/body-composition.json) | `BodyStats`: `body_composition`, `body_levels`, `body_thresholds` | every metric's latest reading coloured by its level, a detail row per metric, the history by source |
 | [Medication](grafana/dashboards/medication.json) | `BodyStats`: `medication` | doses taken, missed or skipped, the share taken per medication over time, a table per medication and per dose |
@@ -105,9 +105,13 @@ plus Kindle sessions from Takeback). The others are in
   panels.
 - A value several devices measure (weight, heart rate, sleep, steps) is one
   series per source, each source in the same colour on every dashboard; a tile
-  reads the one source you pick ([design](docs/dashboards-design.md)).
+  or a correlation reads the one source you pick, with one picker per value
+  (*Sleep from*, *Sleep score from*, *HRV from*...): never two devices
+  stitched into one series ([design](docs/dashboards-design.md)).
 - They ship with nothing saved in them: no user, source or medication is
-  selected until your data fills the lists.
+  selected until your data fills the lists. To open the pickers on your own
+  sources, save them as defaults in your copy: a provisioned dashboard is
+  overwritten by its file at the next provisioning.
 
 ## Quick start
 

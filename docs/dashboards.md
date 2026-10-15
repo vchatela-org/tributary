@@ -15,10 +15,14 @@ to the same default as `TRIBUTARY_TZ`. The screenshots below show demo data.
 
 A value that several sources measure (weight, heart rate, sleep, steps,
 workouts) is drawn as one series per source, each source in the same colour on
-every dashboard. A single number, such as a tile, reads the one source you pick
-in a variable, because two devices that disagree are never averaged. The rules,
-the series other tools write and the dashboards proposed next are in
-[dashboards-design.md](dashboards-design.md).
+every dashboard. A single number, such as a tile or a correlation, reads the
+one source you pick in a variable, because two devices that disagree are never
+averaged. There is one such picker per value (*Sleep from*, *Sleep score
+from*, *HRV from*, *Resting HR from*, *Activity from*, *Workouts from*,
+*Weight from*), with the same name on every dashboard. To open them on your
+own source, save that source as the variable's default in your copy of the
+dashboard. The rules, the series other tools write and the dashboards proposed
+next are in [dashboards-design.md](dashboards-design.md).
 
 ## Healthspan
 
@@ -34,9 +38,10 @@ The long-run markers on one page. Its 12 tiles are:
 Below the tiles, each marker's trend draws every source in its own colour,
 each night or day as a point and its 7-day average as a line.
 
-Each family of tiles reads the source picked in a variable: *Heart from*,
-*Sleep from*, *Activity from*, *Weight from*. Each lists the sources found
-plus `garmin`, the scale that rates its readings first. Reads:
+Each tile reads the source picked for its value: *Resting HR from*, *HRV
+from*, *Sleep from*, *Activity from*, *Workouts from*, *Weight from*. Each
+lists the sources found plus `garmin`, the scale that rates its readings
+first. Reads:
 - `GarminStats` (garmin-grafana): `SleepSummary`, `DailyStats`, `VO2_Max`,
   `ActivitySummary`, `BodyComposition`;
 - `SleepStats`: `sleep_session`;
@@ -49,8 +54,9 @@ plus `garmin`, the scale that rates its readings first. Reads:
 
 Every night from every sleep tracker: `GarminStats..SleepSummary` and
 `SleepStats..sleep_session`, naps left out.
-- **Tiles**, from the source picked in *Tiles from*: time asleep, nights
-  tracked, deep and REM share, time awake, sleep score.
+- **Tiles**, from the source picked in *Sleep from*: time asleep, nights
+  tracked, deep and REM share, time awake; the sleep score from *Sleep score
+  from*.
 - **Every night:** time asleep per night, one colour per source, against a
   7-hour line; the picked source's stages per night (deep, light, REM,
   awake); sleep score; deep and REM averages.
@@ -60,7 +66,7 @@ Every night from every sleep tracker: `GarminStats..SleepSummary` and
   sources that record a bedtime; the weekly spread of time asleep, every
   source.
 
-Variables: user, sources, *Tiles from*.
+Variables: user, sources, *Sleep from*, *Sleep score from*.
 
 ![The Sleep dashboard with demo data: tiles from one source, time asleep per night from a watch and a strap, and the stages of each night](screenshots/grafana-sleep-light.png)
 
@@ -69,28 +75,32 @@ Variables: user, sources, *Tiles from*.
 How much you move and train, every source side by side. Reads `GarminStats`
 (`DailyStats`, `ActivitySummary`, `VO2_Max`) and `BodyStats` (`daily_activity`,
 `exercise`).
-- **Tiles**, from the source picked in *Tiles from*, devices listed first:
-  steps per day, intensity minutes per week, VO₂ max, workouts, training
-  hours per week, days with a workout.
+- **Tiles**, devices listed first: steps per day from *Activity from*;
+  intensity minutes per week and VO₂ max (`garmin`); workouts, training hours
+  per week and days with a workout from *Workouts from*.
 - **Per day:** steps, strain, calories burned, each source as points and a
   7-day average.
 - **Per week:** intensity minutes against the 150-minute guideline; VO₂ max,
   running and cycling.
 - **Workouts per week, one line per source:** time, count and calories; a
   workout that two apps received is in both lines.
-- **Heart-rate zones:** time per zone, from the picked source.
+- **Heart-rate zones:** time per zone, from the source picked in *Workouts
+  from*.
 
-Variables: user, sources, *Tiles from*.
+Variables: user, sources, *Activity from*, *Workouts from*.
 
 ![The Activity and fitness dashboard with demo data: tiles, steps per day from a watch and a strap, strain and calories burned per day](screenshots/grafana-activity-light.png)
 
 ## Correlations
 
 One domain against another. Each point is one pairing window, and each panel
-reads the sources picked in *Sleep from*, *Heart from* and *Workouts from*.
-- **A night and the day it ends:** time asleep, or the morning's HRV,
-  against the Todoist tasks completed that day. Two tiles give the average
-  tasks after a night under 7 hours and after one of 7 hours or more.
+reads the sources picked in *Sleep from*, *Sleep score from*, *HRV from* and
+*Workouts from*.
+- **A night and the day it ends:** time asleep, the morning's HRV, or the
+  sleep score, against the Todoist tasks completed that day. Tiles give the
+  average tasks after a night under 7 hours and after one of 7 hours or more,
+  and after a score under 70 and of 70 or more (each device scores on its own
+  scale).
 - **An evening and the night after (noon to noon):** evening reading (18:00
   to 03:00, every reading source) against the time asleep, with the same
   split; workout minutes against the next night's HRV.

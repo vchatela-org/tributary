@@ -46,16 +46,44 @@ Rules every panel follows:
    validator, in light and dark, for every pair. A colour is reused only
    across domains that never share a graph, and a legend always names the
    series.
-3. **A single number reads one source, chosen by the reader.** Otherwise a
-   tile, a stage breakdown or a correlation would average two devices that
-   disagree. Each family has a picker: *Weight from*, *Heart from*, *Sleep
-   from* and *Activity from*, or *Readings from*/*Tiles from* on a domain
-   dashboard. It lists the sources found in the tagged measurements plus
-   `garmin`, each once. Nothing is preselected, so the first one is used. The
-   order puts the richest first: a scale that rates its readings
+3. **A single number reads one source, chosen by the reader, per value.**
+   Otherwise a tile, a stage breakdown or a correlation would average two
+   devices that disagree. Each value has its own picker, under the same name
+   on every dashboard that reads it:
+
+   | Picker | Label | Reads |
+   |---|---|---|
+   | `sleep_from` | *Sleep from* | time asleep, stages, time awake, bedtime and wake-up |
+   | `score_from` | *Sleep score from* | sleep score |
+   | `hrv_from` | *HRV from* | overnight HRV |
+   | `rhr_from` | *Resting HR from* | resting heart rate |
+   | `activity_from` | *Activity from* | steps and daily totals |
+   | `workouts_from` | *Workouts from* | workouts, their time and heart-rate zones |
+   | `weight_from` | *Weight from*, *Readings from* | weight and body composition |
+
+   One picker per value, not per family, because a device can be the better
+   source of one value and not of another: a strap's HRV, a watch's sleep
+   stages. A picker lists the sources found in the tagged measurements plus
+   `garmin`. The shipped dashboards preselect nothing, so the first one is
+   used. The order puts the richest first: a scale that rates its readings
    (`body_levels`), a device writing daily totals (steps), then `garmin`, then
-   a diary. A `GarminStats` query honours the picker with
-   `'garmin' = '${heart_from}'`, a constant InfluxQL folds to true or false.
+   a diary. A deployment that has a preferred source pins it as the picker's
+   default in its own copy of the dashboard (Grafana's *Save dashboard* with
+   *Update default variable values*, or the `current` value of the variable
+   in the JSON it provisions). A dashboard provisioned from a file is
+   overwritten by the next provisioning, so the copy is where that default
+   stays. A test checks that every single-source query reads the picker of
+   its own value. A `GarminStats` query honours the picker with
+   `'garmin' = '${hrv_from}'`, a constant InfluxQL folds to true or false.
+
+   **Sources are never stitched into one series.** Someone who wore a watch
+   for years and then a strap could want one long series, the watch's
+   values up to the switch and the strap's after. Two devices score sleep
+   with different algorithms, and measure HRV over different parts of the
+   night. Joined at the switch date, the series steps there, and a
+   correlation over the years reads that step as an effect. A correlation
+   reads the picked source alone, over the time it covers. For the years
+   before, switch the picker to the device worn then.
 4. **Counts of distinct events may be added across sources.** A dose, a
    reading session or a task has exactly one writer. Measured values never
    are: weight, heart rate, sleep, or a workout that two apps both received.
