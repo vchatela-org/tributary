@@ -105,6 +105,8 @@ dashboards read the following.
   every stage sum. The nights a watch scored before it had sleep staging (a
   movement-only algorithm: no REM, and 5 to 12 hours of "deep" sleep) are
   left out with it.
+- A `DailyStats` day is read with `max()`, never summed: it holds one
+  summary per day, and the same day can be written twice (a test checks).
 - `SleepStats` and two `BodyStats` series that Tributary's Whoop connector
   writes with `source=whoop` and a `user` tag ([the schema](schema.md)), listed
   here for the fields the dashboards read: any other writer of the same names

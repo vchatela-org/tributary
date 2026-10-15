@@ -1955,7 +1955,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"moderateIntensityMinutes\") + 2 * sum(\"vigorousIntensityMinutes\") FROM \"DailyStats\" WHERE $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"m\") FROM (SELECT max(\"moderateIntensityMinutes\") + 2 * max(\"vigorousIntensityMinutes\") AS \"m\" FROM \"DailyStats\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')) WHERE $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "garmin"
         }
       ]
@@ -2449,7 +2449,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"totalSteps\") FROM \"DailyStats\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT max(\"totalSteps\") FROM \"DailyStats\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "daily · garmin"
         },
         {
@@ -2460,7 +2460,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(sum(\"totalSteps\"), 7) FROM \"DailyStats\" WHERE time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(max(\"totalSteps\"), 7) FROM \"DailyStats\" WHERE time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {

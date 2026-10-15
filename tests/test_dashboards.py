@@ -188,6 +188,15 @@ def test_a_garmin_night_has_time_asleep_and_rem(dashboard):
             assert GARMIN_NIGHT in target["query"], (dashboard["uid"], panel and panel.get("title"))
 
 
+def test_a_garmin_day_is_read_once(dashboard):
+    """DailyStats holds one summary per day, and a day can be written twice:
+    a per-day value reads it with max(), never a sum."""
+    for panel, target in _queries(dashboard):
+        q = target["query"]
+        for inner in re.findall(r'SELECT ((?:(?!SELECT).)*?)FROM\s+"DailyStats"(?:(?!SELECT).)*?GROUP BY time\(1d\)', q):
+            assert "sum(" not in inner, (dashboard["uid"], panel and panel.get("title"), inner)
+
+
 def test_days_are_cut_in_the_tz_variable(dashboard):
     names = {v["name"] for v in _variables(dashboard)}
     for _, target in _queries(dashboard):
