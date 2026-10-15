@@ -150,9 +150,9 @@ def test_nothing_is_saved_in_the_variables(dashboard):
 # and garmin-grafana's.
 BODY = set(schema.BODY_COMPOSITION.fields)
 PICKERS = {
-    "sleep_from": {"asleep_s", "deep_s", "light_s", "rem_s", "awake_s", "bedtime_min", "wake_min",
+    "sleep_from": {"asleep_s", "deep_s", "light_s", "rem_s", "awake_s", "awakenings", "bedtime_min", "wake_min",
                    "sleepTimeSeconds", "deepSleepSeconds", "lightSleepSeconds", "remSleepSeconds",
-                   "awakeSleepSeconds"},
+                   "awakeSleepSeconds", "awakeCount"},
     "score_from": {"score", "sleepScore"},
     "hrv_from": {"hrv_rmssd_ms", "avgOvernightHrv"},
     "rhr_from": {"resting_hr", "restingHeartRate"},

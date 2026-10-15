@@ -54,7 +54,7 @@ Rules every panel follows:
 
    | Picker | Label | Reads |
    |---|---|---|
-   | `sleep_from` | *Sleep from* | time asleep, stages, time awake, bedtime and wake-up |
+   | `sleep_from` | *Sleep from* | time asleep, stages, time awake and awakenings, bedtime and wake-up |
    | `score_from` | *Sleep score from* | sleep score |
    | `hrv_from` | *HRV from* | overnight HRV |
    | `rhr_from` | *Resting HR from* | resting heart rate |
@@ -120,13 +120,13 @@ dashboards read the following.
 
 | Database | Measurement | Fields the dashboards read | Written by |
 |---|---|---|---|
-| `GarminStats` | `SleepSummary` | `sleepTimeSeconds`, `deepSleepSeconds`, `lightSleepSeconds`, `remSleepSeconds`, `awakeSleepSeconds`, `sleepScore`, `restingHeartRate`, `avgOvernightHrv`, `averageSpO2Value`, `averageRespirationValue` (one point per night, at its end) | garmin-grafana |
+| `GarminStats` | `SleepSummary` | `sleepTimeSeconds`, `deepSleepSeconds`, `lightSleepSeconds`, `remSleepSeconds`, `awakeSleepSeconds`, `awakeCount`, `sleepScore`, `restingHeartRate`, `avgOvernightHrv`, `averageSpO2Value`, `averageRespirationValue` (one point per night, at its end) | garmin-grafana |
 | `GarminStats` | `SleepIntraday` | `SleepStageLevel` (0 deep, 1 light, 2 REM, 3 awake), `heartRate`: the samples of a night | garmin-grafana |
 | `GarminStats` | `DailyStats` | `totalSteps`, `activeKilocalories`, `bmrKilocalories`, `moderateIntensityMinutes`, `vigorousIntensityMinutes`, `activeSeconds`, `highlyActiveSeconds`, `sedentarySeconds`, `sleepingSeconds` | garmin-grafana |
 | `GarminStats` | `ActivitySummary` | `elapsedDuration`, `calories`, `hrTimeInZone_1`...`_5` | garmin-grafana |
 | `GarminStats` | `VO2_Max` | `VO2_max_value`, `VO2_max_value_cycling` | garmin-grafana |
 | `GarminStats` | `BodyComposition` | `weight`, `bodyFat`, `bodyWater`, `boneMass`, `bmi`, `visceralFat` | garmin-grafana |
-| `SleepStats` | `sleep_session` | tag `kind` (`night`, `nap`: naps are left out); `asleep_s`, `deep_s`, `light_s`, `rem_s`, `awake_s`, `bedtime_min`, `wake_min` (int); `score`, `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `respiration_rate`, `recovery_score`, `skin_temp_c` (float). One point per sleep, at its end | Tributary: `whoop`, `sleep_as_android` |
+| `SleepStats` | `sleep_session` | tag `kind` (`night`, `nap`: naps are left out); `asleep_s`, `deep_s`, `light_s`, `rem_s`, `awake_s`, `awakenings`, `bedtime_min`, `wake_min` (int); `score`, `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `respiration_rate`, `recovery_score`, `skin_temp_c`, and Sleep as Android's `min_hr`, `max_hr` (float). One point per sleep, at its end | Tributary: `whoop`, `sleep_as_android` |
 | `BodyStats` | `daily_activity` | `steps` (int); `strain`, `energy_kcal` (float). One point per physiological day, at its start | Tributary: `whoop` |
 | `BodyStats` | `exercise` | beyond MyFitnessPal's fields: `zone1_s`...`zone5_s` (int, seconds per heart-rate zone) | Tributary: `whoop`, next to `myfitnesspal` |
 
