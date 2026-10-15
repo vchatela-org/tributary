@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/vchatela-org/tributary/compare/v0.16.0...v0.17.0) (2026-10-15)
+
+
+### Features
+
+* **grafana:** Healthspan's tiles turn yellow below a published guideline ([#50](https://github.com/vchatela-org/tributary/issues/50)) ([796cf78](https://github.com/vchatela-org/tributary/commit/796cf78e7a25013ea4ed50b6afde5c325794795c))
+
 ## [0.16.0](https://github.com/vchatela-org/tributary/compare/v0.15.0...v0.16.0) (2026-10-15)
 
 
