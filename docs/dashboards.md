@@ -35,8 +35,14 @@ The long-run markers on one page. Its 12 tiles are:
 - weight, its change over the range, body fat;
 - the share of medication doses taken.
 
+A tile turns yellow when its value falls short of a published guideline:
+time asleep below 7 hours a night, intensity minutes below 150 a week, steps
+below 8,000 a day. The other markers have no colour: what is healthy for them
+depends on age, sex or the person.
+
 Below the tiles, each marker's trend draws every source in its own colour,
-each night or day as a point and its 7-day average as a line.
+each night or day as a point and its 7-day average as a line. The same
+guidelines are dashed lines.
 
 Each tile reads the source picked for its value: *Resting HR from*, *HRV
 from*, *Sleep from*, *Activity from*, *Workouts from*, *Weight from*. Each

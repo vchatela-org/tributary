@@ -566,7 +566,7 @@
       "type": "stat",
       "title": "Sleep / night",
       "id": 4,
-      "description": "Median time asleep per night (naps left out), from the source picked in Sleep from.",
+      "description": "Median time asleep per night (naps left out), from the source picked in Sleep from. Yellow below 7 hours, the least the American Academy of Sleep Medicine and the Sleep Research Society recommend for an adult.",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -581,14 +581,17 @@
         "defaults": {
           "unit": "suffix: h",
           "color": {
-            "mode": "fixed",
-            "fixedColor": "text"
+            "mode": "thresholds"
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "value": null,
+                "color": "dark-yellow"
+              },
+              {
+                "value": 7,
                 "color": "text"
               }
             ]
@@ -716,7 +719,7 @@
       "type": "stat",
       "title": "Intensity / week",
       "id": 6,
-      "description": "Moderate minutes plus twice the vigorous ones, per week, averaged over the days the watch recorded. The guideline is 150 or more.",
+      "description": "Moderate minutes plus twice the vigorous ones, per week, averaged over the days the watch recorded. Yellow below 150, the WHO guideline.",
       "datasource": {
         "type": "influxdb",
         "uid": "${garmin}"
@@ -731,14 +734,17 @@
         "defaults": {
           "unit": "suffix: min",
           "color": {
-            "mode": "fixed",
-            "fixedColor": "text"
+            "mode": "thresholds"
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "value": null,
+                "color": "dark-yellow"
+              },
+              {
+                "value": 150,
                 "color": "text"
               }
             ]
@@ -780,7 +786,7 @@
       "type": "stat",
       "title": "Steps / day",
       "id": 7,
-      "description": "Median steps per day, from the source picked in Activity from (a source of workouts alone has none).",
+      "description": "Median steps per day, from the source picked in Activity from (a source of workouts alone has none). Yellow below 8,000, by which studies of mortality see most of the benefit (from 60 years of age, 6,000 to 8,000).",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -795,14 +801,17 @@
         "defaults": {
           "unit": "locale",
           "color": {
-            "mode": "fixed",
-            "fixedColor": "text"
+            "mode": "thresholds"
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "value": null,
+                "color": "dark-yellow"
+              },
+              {
+                "value": 8000,
                 "color": "text"
               }
             ]
@@ -2336,7 +2345,7 @@
       "type": "timeseries",
       "title": "Steps per day",
       "id": 29,
-      "description": "Steps each day (points) and their 7-day average (line), one colour per source.",
+      "description": "Steps each day (points) and their 7-day average (line), one colour per source; the dashed line is 8,000.",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -2367,10 +2376,23 @@
               "group": "A"
             },
             "thresholdsStyle": {
-              "mode": "off"
+              "mode": "dashed"
             }
           },
-          "decimals": 0
+          "decimals": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "transparent"
+              },
+              {
+                "value": 8000,
+                "color": "#8e8e8e"
+              }
+            ]
+          }
         },
         "overrides": [
           {
