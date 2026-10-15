@@ -40,9 +40,10 @@ Rules every panel follows:
    | `garmin` | orange `#d95926` | | `audiobookshelf` | orange `#d95926` |
    | `myfitnesspal` | aqua `#199e70` | | `audible` | aqua `#199e70` |
    | `whoop` | violet `#9085e9` | | | |
+   | `sleep_as_android` | aqua `#199e70` | | | |
 
    Some sources share a graph: a scale, a diary and a watch; a watch, a diary
-   and a strap; three reading apps. Each of those sets passes the palette
+   and a strap; a watch, a strap and a phone (sleep); three reading apps. Each of those sets passes the palette
    validator, in light and dark, for every pair. A colour is reused only
    across domains that never share a graph, and a legend always names the
    series.
@@ -53,11 +54,11 @@ Rules every panel follows:
 
    | Picker | Label | Reads |
    |---|---|---|
-   | `sleep_from` | *Sleep from* | time asleep, stages, time awake, bedtime and wake-up |
+   | `sleep_from` | *Sleep from* | time asleep, stages, time awake and awakenings, bedtime and wake-up |
    | `score_from` | *Sleep score from* | sleep score |
    | `hrv_from` | *HRV from* | overnight HRV |
    | `rhr_from` | *Resting HR from* | resting heart rate |
-   | `activity_from` | *Activity from* | steps and daily totals |
+   | `activity_from` | *Activity from* | steps and daily totals (calories burned) |
    | `workouts_from` | *Workouts from* | workouts, their time and heart-rate zones |
    | `weight_from` | *Weight from*, *Readings from* | weight and body composition |
 
@@ -97,6 +98,20 @@ dashboards read the following.
   skipped by counting a duration. It is assumed to hold one person: it has no
   `user` tag, and garmin-grafana's optional `User_ID` is not filtered.
   Checked against garmin-grafana's `main` branch, October 2026.
+- A `SleepSummary` night counts when it has time asleep and REM
+  (`"sleepTimeSeconds" > 0 AND "remSleepSeconds" > 0`, on every query, a test
+  checks). Without the filter a second copy of each night, written under
+  another `Device` tag with its stages but no time asleep, adds itself to
+  every stage sum. The nights a watch scored before it had sleep staging (a
+  movement-only algorithm: no REM, and 5 to 12 hours of "deep" sleep) are
+  left out with it.
+- A `DailyStats` day is read with `max()`, never summed: it holds one
+  summary per day, and the same day can be written twice (a test checks).
+- A `DailyStats` day counts in a calorie balance when the watch was worn for
+  most of it: some active calories, and 95% of the day accounted for
+  (`activeSeconds + highlyActiveSeconds + sedentarySeconds + sleepingSeconds
+  >= 82080`). garmin-grafana files unworn time as sedentary, and a day synced
+  mid-way prorates its resting calories with it.
 - `SleepStats` and two `BodyStats` series that Tributary's Whoop connector
   writes with `source=whoop` and a `user` tag ([the schema](schema.md)), listed
   here for the fields the dashboards read: any other writer of the same names
@@ -105,12 +120,15 @@ dashboards read the following.
 
 | Database | Measurement | Fields the dashboards read | Written by |
 |---|---|---|---|
-| `GarminStats` | `SleepSummary` | `sleepTimeSeconds`, `deepSleepSeconds`, `lightSleepSeconds`, `remSleepSeconds`, `awakeSleepSeconds`, `sleepScore`, `restingHeartRate`, `avgOvernightHrv`, `averageSpO2Value`, `averageRespirationValue` (one point per night, at its end) | garmin-grafana |
-| `GarminStats` | `DailyStats` | `totalSteps`, `activeKilocalories`, `bmrKilocalories`, `moderateIntensityMinutes`, `vigorousIntensityMinutes` | garmin-grafana |
+| `GarminStats` | `SleepSummary` | `sleepTimeSeconds`, `deepSleepSeconds`, `lightSleepSeconds`, `remSleepSeconds`, `awakeSleepSeconds`, `awakeCount`, `sleepScore`, `restingHeartRate`, `avgOvernightHrv`, `averageSpO2Value`, `averageRespirationValue` (one point per night, at its end) | garmin-grafana |
+| `GarminStats` | `SleepIntraday` | `SleepStageLevel` (0 deep, 1 light, 2 REM, 3 awake), `heartRate`: the samples of a night | garmin-grafana |
+| `GarminStats` | `DailyStats` | `totalSteps`, `activeKilocalories`, `bmrKilocalories`, `moderateIntensityMinutes`, `vigorousIntensityMinutes`, `activeSeconds`, `highlyActiveSeconds`, `sedentarySeconds`, `sleepingSeconds` | garmin-grafana |
 | `GarminStats` | `ActivitySummary` | `elapsedDuration`, `calories`, `hrTimeInZone_1`...`_5` | garmin-grafana |
+| `GarminStats` | `StrengthExerciseSet` | tags `ExerciseCategory`, `ExerciseLabel`; `Reps`, `Weight_kg`, `Duration_s`, `SetOrder`: one point per set of a strength workout | garmin-grafana (newer than v0.5.0: older versions strand a set's old rows when it is edited in Garmin Connect) |
+| `GarminStats` | `StrengthHRZones` | `ZoneNumber`, `SecsInZone`: a strength workout's time per heart-rate zone | garmin-grafana |
 | `GarminStats` | `VO2_Max` | `VO2_max_value`, `VO2_max_value_cycling` | garmin-grafana |
 | `GarminStats` | `BodyComposition` | `weight`, `bodyFat`, `bodyWater`, `boneMass`, `bmi`, `visceralFat` | garmin-grafana |
-| `SleepStats` | `sleep_session` | tag `kind` (`night`, `nap`: naps are left out); `asleep_s`, `deep_s`, `light_s`, `rem_s`, `awake_s`, `bedtime_min`, `wake_min` (int); `score`, `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `respiration_rate`, `recovery_score`, `skin_temp_c` (float). One point per sleep, at its end | Tributary: `whoop`, `sleep_as_android` |
+| `SleepStats` | `sleep_session` | tag `kind` (`night`, `nap`: naps are left out); `asleep_s`, `deep_s`, `light_s`, `rem_s`, `awake_s`, `awakenings`, `bedtime_min`, `wake_min` (int); `score`, `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `respiration_rate`, `recovery_score`, `skin_temp_c`, and Sleep as Android's `min_hr`, `max_hr` (float). One point per sleep, at its end | Tributary: `whoop`, `sleep_as_android` |
 | `BodyStats` | `daily_activity` | `steps` (int); `strain`, `energy_kcal` (float). One point per physiological day, at its start | Tributary: `whoop` |
 | `BodyStats` | `exercise` | beyond MyFitnessPal's fields: `zone1_s`...`zone5_s` (int, seconds per heart-rate zone) | Tributary: `whoop`, next to `myfitnesspal` |
 
@@ -140,8 +158,8 @@ no dashboard change; without it, they show the other sources.
 - **Nutrition & exercise:** the workout panels, when `whoop` is the source
   picked.
 
-The Whoop journal (`SleepStats..journal`) is not drawn yet: see *Habits and
-recovery* below.
+- **Habits & recovery:** the Whoop journal (`SleepStats..journal`), with the
+  recovery, HRV, sleep and strain the connector writes on each answer.
 
 ## Audit of the dashboards that existed
 
@@ -166,10 +184,11 @@ described in [dashboards.md](dashboards.md).
 | 4 | **Activity & fitness** | How much you move and train, per device: steps, strain, calories burned, intensity minutes, workouts, heart-rate zones, VO₂ max. | `GarminStats`: `DailyStats`, `ActivitySummary`, `VO2_Max`; `BodyStats`: `daily_activity`, `exercise` | Built |
 | 5 | Weekly review | This week against the four before: sleep, workouts, reading, tasks, doses, weight. | all of the above, `time(1w)` | Proposed |
 | 6 | Energy balance | Intake against the calories burned, and the weight trend that follows. | `BodyStats`: `nutrition`, `daily_activity`, weights; `GarminStats..DailyStats` | Proposed |
-| 7 | Habits and recovery | Which journal answers (an evening habit, a late meal) go with a higher or lower recovery the next morning? | `SleepStats`: `journal` (Whoop export), `sleep_session` | Proposed: the Whoop connector writes `journal` |
+| 7 | **Habits & recovery** | Which journal answers (an evening habit, a late meal) go with a higher or lower recovery? What goes with a yes to one question? | `SleepStats`: `journal` (Whoop export) | Built |
 | 8 | Medication and vitals | Resting heart rate, HRV and blood pressure across the periods a medication was taken. | `BodyStats..medication`, `GarminStats`: `DailyStats`, `BloodPressure` | Proposed |
 | 9 | Stress and body battery | The watch's daytime stress and recovery. | `GarminStats`: `StressIntraday`, `BodyBatteryIntraday` (garmin-grafana's own dashboard covers it) | Proposed |
 | 10 | Shopping and digital life | Takeback's purchases and activity counts. | `ShoppingStats`, `DigitalStats` (not yet in the schema) | Proposed |
+| 11 | **Strength training** | Is the lifting progressing? Volume, estimated one-rep max and records per exercise, time under tension. | `GarminStats`: `StrengthExerciseSet`, `StrengthHRZones` | Built |
 
 Every new dashboard has these variables, with nothing saved in them:
 - a datasource per database (`/BodyStats/i`, `/GarminStats/i`,

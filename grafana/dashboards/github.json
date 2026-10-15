@@ -1,0 +1,1009 @@
+{
+  "uid": "tributary-github",
+  "title": "GitHub: commits and hosted minutes",
+  "description": "From Tributary's github connector (DevStats): who wrote the commits on the default branches (you alone, you with an agent, a bot, someone else), and GitHub-hosted runner minutes against the 2,000 a free plan includes each month.",
+  "tags": [
+    "tributary",
+    "github"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "",
+  "time": {
+    "from": "now-6M",
+    "to": "now"
+  },
+  "links": [],
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "dev",
+        "label": "InfluxDB DevStats",
+        "query": "influxdb",
+        "regex": "/DevStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "textbox",
+        "name": "tz",
+        "label": "Time zone",
+        "description": "IANA time zone the days and weeks are cut in (TRIBUTARY_TZ).",
+        "query": "Europe/Paris",
+        "current": {
+          "text": "Europe/Paris",
+          "value": "Europe/Paris"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "Europe/Paris",
+            "value": "Europe/Paris"
+          }
+        ],
+        "hide": 0
+      },
+      {
+        "name": "owner",
+        "label": "Account",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${dev}"
+        },
+        "query": "SHOW TAG VALUES FROM \"github_commit\" WITH KEY = \"owner\"",
+        "definition": "SHOW TAG VALUES FROM \"github_commit\" WITH KEY = \"owner\"",
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "options": [],
+        "regex": ""
+      },
+      {
+        "name": "billed",
+        "label": "Billed account",
+        "type": "query",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${dev}"
+        },
+        "query": "SHOW TAG VALUES FROM \"github_actions_month\" WITH KEY = \"owner\" WHERE \"owner\" =~ /^${owner:regex}$/",
+        "definition": "SHOW TAG VALUES FROM \"github_actions_month\" WITH KEY = \"owner\" WHERE \"owner\" =~ /^${owner:regex}$/",
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "options": [],
+        "regex": ""
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Hosted minutes (GitHub's billing report)",
+      "id": 1,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "bargauge",
+      "id": 2,
+      "title": "Included minutes used this month",
+      "description": "What counts against the plan's 2,000 included minutes this month, per account: the private repositories' standard GitHub-hosted runners (Windows twice, macOS ten times). Public repositories and self-hosted (ARC) runners are free. Yellow from 80%, red at 2,000. From Tributary's github connector (github_actions_month), read daily.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${dev}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 24,
+        "h": 4
+      },
+      "timeFrom": "now/M",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT last(\"counted_minutes\") FROM \"github_actions_month\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ GROUP BY \"owner\"",
+          "alias": "$tag_owner"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 2000,
+          "decimals": 0,
+          "unit": "suffix: min",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#0ca30c",
+                "value": null
+              },
+              {
+                "color": "#fab219",
+                "value": 1600
+              },
+              {
+                "color": "#d03b3b",
+                "value": 2000
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "text",
+        "showUnfilled": true,
+        "namePlacement": "left",
+        "sizing": "auto",
+        "minVizHeight": 16,
+        "maxVizHeight": 24,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "legend": {
+          "showLegend": false
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 3,
+      "title": "Included minutes per month: $billed",
+      "description": "Each month's minutes counted against the 2,000 included ones (dashed line), the last 12 months whatever the dashboard's range. The current month is the month so far.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${dev}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "timeFrom": "1y",
+      "repeat": "billed",
+      "repeatDirection": "h",
+      "maxPerRow": 2,
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"counted_minutes\" FROM \"github_actions_month\" WHERE $timeFilter AND \"owner\" = '${billed}'",
+          "alias": "Counted minutes"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "unit": "suffix: min",
+          "min": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "fillOpacity": 100,
+            "lineWidth": 0,
+            "showPoints": "never",
+            "axisSoftMax": 2200,
+            "axisBorderShow": false,
+            "thresholdsStyle": {
+              "mode": "dashed"
+            },
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "#d03b3b",
+                "value": 2000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "type": "table",
+      "id": 4,
+      "title": "Hosted minutes by repository",
+      "description": "GitHub-hosted minutes over the dashboard's range, per repository, as billed (before the Windows and macOS multipliers). Only private repositories' count against the included minutes; a repository deleted since counts as private.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${dev}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT sum(\"minutes\") AS \"Minutes\", last(\"private\") AS \"Private\" FROM \"github_actions_usage\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ GROUP BY \"owner\", \"repository\""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "owner": "Account",
+              "repository": "Repository"
+            },
+            "indexByName": {
+              "repository": 0,
+              "owner": 1,
+              "Minutes": 2,
+              "Private": 3
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Minutes",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Minutes"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "unit",
+                "value": "suffix: min"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "basic",
+                  "valueDisplayMode": "text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Private"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "true": {
+                        "text": "private: counts",
+                        "index": 0
+                      },
+                      "false": {
+                        "text": "public: free",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 160
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": [
+            "sum"
+          ],
+          "fields": [
+            "Minutes"
+          ]
+        }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Commits (default branches, merges left out)",
+      "id": 5,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "id": 6,
+      "title": "Commits by author",
+      "description": "Commits of the selected accounts' default branches over the range. agent: an agent (Claude, Copilot, OpenHands) wrote it or co-authored it; bot: Renovate, GitHub Actions...; self: you alone; other: anyone else, and emails not on your GitHub account.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${dev}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 16,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_commit\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"author\" = 'self'",
+          "alias": "self"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_commit\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"author\" = 'agent'",
+          "alias": "agent"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_commit\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"author\" = 'bot'",
+          "alias": "bot"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_commit\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"author\" = 'other'",
+          "alias": "other"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "vertical",
+        "justifyMode": "center",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "stat",
+      "id": 7,
+      "title": "Of your commits, made with an agent",
+      "description": "agent / (agent + self): the share of the commits you made that an agent wrote or co-wrote. Bots and others left out.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${dev}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 24,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_commit\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"author\" = 'agent'",
+          "hide": true
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_commit\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"author\" = 'self'",
+          "hide": true
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$A / ($A + $B) * 100"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "id": 8,
+      "title": "Commits per week, by author",
+      "description": "Monday-to-Sunday weeks (UTC), stacked: self, agent, bot, other.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${dev}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 24,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_commit\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"author\" = 'self' GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "self"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_commit\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"author\" = 'agent' GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "agent"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_commit\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"author\" = 'bot' GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "bot"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_commit\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"author\" = 'other' GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "other"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "barAlignment": 0,
+            "barWidthFactor": 0.8,
+            "fillOpacity": 100,
+            "lineWidth": 0,
+            "showPoints": "never",
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "self"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "agent"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "bot"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "type": "barchart",
+      "id": 9,
+      "title": "Commits per repository: $owner",
+      "description": "Over the dashboard's range, the repositories with at least one commit, most first.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${dev}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 37,
+        "w": 24,
+        "h": 12
+      },
+      "repeat": "owner",
+      "repeatDirection": "v",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT sum(\"count\") AS \"self\" FROM \"github_commit\" WHERE $timeFilter AND \"owner\" = '${owner}' AND \"author\" = 'self' GROUP BY \"repository\""
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT sum(\"count\") AS \"agent\" FROM \"github_commit\" WHERE $timeFilter AND \"owner\" = '${owner}' AND \"author\" = 'agent' GROUP BY \"repository\""
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT sum(\"count\") AS \"bot\" FROM \"github_commit\" WHERE $timeFilter AND \"owner\" = '${owner}' AND \"author\" = 'bot' GROUP BY \"repository\""
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT sum(\"count\") AS \"other\" FROM \"github_commit\" WHERE $timeFilter AND \"owner\" = '${owner}' AND \"author\" = 'other' GROUP BY \"repository\""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "repository",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "reduceRow",
+            "reduce": {
+              "reducer": "sum",
+              "include": [
+                "self",
+                "agent",
+                "bot",
+                "other"
+              ]
+            },
+            "alias": "Total"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "Total",
+                "config": {
+                  "id": "greater",
+                  "options": {
+                    "value": 0
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Total",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Total": true,
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true,
+              "Time 3": true,
+              "Time 4": true
+            },
+            "renameByName": {
+              "repository": "Repository"
+            },
+            "indexByName": {
+              "repository": 0,
+              "self": 1,
+              "agent": 2,
+              "bot": 3,
+              "other": 4
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "fillOpacity": 100,
+            "lineWidth": 0,
+            "axisBorderShow": false,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "self"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "agent"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "bot"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "Repository",
+        "stacking": "normal",
+        "showValue": "never",
+        "groupWidth": 0.6,
+        "barWidth": 0.9,
+        "barRadius": 0,
+        "fullHighlight": false,
+        "xTickLabelRotation": 0,
+        "xTickLabelMaxLength": 32,
+        "xTickLabelSpacing": 0,
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    }
+  ]
+}

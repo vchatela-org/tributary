@@ -407,7 +407,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"restingHeartRate\") FROM \"SleepSummary\" WHERE 'garmin' = '${rhr_from}' AND $timeFilter",
+          "query": "SELECT median(\"restingHeartRate\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${rhr_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -482,7 +482,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE 'garmin' = '${hrv_from}' AND $timeFilter",
+          "query": "SELECT median(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${hrv_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -621,7 +621,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT median(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter",
+          "query": "SELECT median(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -696,7 +696,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT stddev(\"sleepTimeSeconds\") / 60 FROM \"SleepSummary\" WHERE 'garmin' = '${sleep_from}' AND $timeFilter",
+          "query": "SELECT stddev(\"sleepTimeSeconds\") / 60 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND $timeFilter",
           "alias": "garmin"
         },
         {
@@ -1322,6 +1322,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*sleep_as_android$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1345,7 +1360,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"restingHeartRate\") FROM \"SleepSummary\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"restingHeartRate\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "night · garmin"
         },
         {
@@ -1356,7 +1371,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"restingHeartRate\"), 7) FROM \"SleepSummary\" WHERE time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"restingHeartRate\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -1477,6 +1492,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*sleep_as_android$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1500,7 +1530,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "night · garmin"
         },
         {
@@ -1511,7 +1541,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"avgOvernightHrv\"), 7) FROM \"SleepSummary\" WHERE time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"avgOvernightHrv\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -1645,6 +1675,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*sleep_as_android$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1668,7 +1713,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "night · garmin"
         },
         {
@@ -1679,7 +1724,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(sum(\"sleepTimeSeconds\"), 7) / 3600 FROM \"SleepSummary\" WHERE time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(sum(\"sleepTimeSeconds\"), 7) / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -1802,7 +1847,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT last(\"VO2_max_value\") FROM \"VO2_Max\" WHERE $timeFilter GROUP BY time(1d) fill(none)",
+          "query": "SELECT last(\"VO2_max_value\") FROM \"VO2_Max\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "running · garmin"
         },
         {
@@ -1813,7 +1858,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT last(\"VO2_max_value_cycling\") FROM \"VO2_Max\" WHERE $timeFilter GROUP BY time(1d) fill(none)",
+          "query": "SELECT last(\"VO2_max_value_cycling\") FROM \"VO2_Max\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "cycling · garmin"
         }
       ]
@@ -1910,7 +1955,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"moderateIntensityMinutes\") + 2 * sum(\"vigorousIntensityMinutes\") FROM \"DailyStats\" WHERE $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"m\") FROM (SELECT max(\"moderateIntensityMinutes\") + 2 * max(\"vigorousIntensityMinutes\") AS \"m\" FROM \"DailyStats\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')) WHERE $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "garmin"
         }
       ]
@@ -2404,7 +2449,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"totalSteps\") FROM \"DailyStats\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT max(\"totalSteps\") FROM \"DailyStats\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "daily · garmin"
         },
         {
@@ -2415,7 +2460,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(sum(\"totalSteps\"), 7) FROM \"DailyStats\" WHERE time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(max(\"totalSteps\"), 7) FROM \"DailyStats\" WHERE time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {

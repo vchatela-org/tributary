@@ -150,36 +150,61 @@ def test_nothing_is_saved_in_the_variables(dashboard):
 # and garmin-grafana's.
 BODY = set(schema.BODY_COMPOSITION.fields)
 PICKERS = {
-    "sleep_from": {"asleep_s", "deep_s", "light_s", "rem_s", "awake_s", "bedtime_min", "wake_min",
+    "sleep_from": {"asleep_s", "deep_s", "light_s", "rem_s", "awake_s", "awakenings", "bedtime_min", "wake_min",
                    "sleepTimeSeconds", "deepSleepSeconds", "lightSleepSeconds", "remSleepSeconds",
-                   "awakeSleepSeconds"},
+                   "awakeSleepSeconds", "awakeCount"},
     "score_from": {"score", "sleepScore"},
     "hrv_from": {"hrv_rmssd_ms", "avgOvernightHrv"},
     "rhr_from": {"resting_hr", "restingHeartRate"},
-    "activity_from": {"steps", "totalSteps"},
-    "workouts_from": {"duration_s", "elapsedDuration"} | {f"zone{n}_s" for n in range(6)}
+    "activity_from": {"steps", "totalSteps", "energy_kcal", "activeKilocalories", "bmrKilocalories",
+                      "activeSeconds", "highlyActiveSeconds", "sedentarySeconds", "sleepingSeconds"},
+    "workouts_from": {"duration_s", "elapsedDuration", "strain", "energy_kcal", "avg_hr", "max_hr"}
+                     | {f"zone{n}_s" for n in range(6)} | {f"zone{n}_pct" for n in range(6)}
                      | {f"hrTimeInZone_{n}" for n in range(6)},
     "weight_from": BODY | {"weight", "bodyFat"},
 }
 # The tags a single-source query may filter on besides its picker's.
-FILTERS = {"source", "user", "kind", "category"}
+FILTERS = {"source", "user", "kind", "category", "sport"}
 
 
 def test_a_single_source_reads_the_picker_of_its_value(dashboard):
     single = {v["name"] for v in _variables(dashboard) if v["type"] == "custom" and not v.get("multi")}
     assert single <= set(PICKERS), (dashboard["uid"], single - set(PICKERS))
     for panel, target in _queries(dashboard):
-        q = target["query"]
-        for name in re.findall(r"= '\$\{(\w+)\}'", q):
+        q = target["query"].replace(GARMIN_NIGHT, "")
+        for name in re.findall(r"= '\$\{(\w+_from)\}'", q):
             assert name in single, (dashboard["uid"], panel and panel.get("title"), name)
             named = set(re.findall(r'"(\w+)"', q)) - set(re.findall(r'FROM\s+"(\w+)"', q)) \
                 - set(re.findall(r'AS\s+"([^"]+)"', q)) - FILTERS
             assert named <= PICKERS[name], (dashboard["uid"], panel and panel.get("title"), name, named - PICKERS[name])
 
 
+# docs/dashboards-design.md, "Series written by other tools": a garmin-grafana
+# night counts when it has time asleep and REM.
+GARMIN_NIGHT = '"sleepTimeSeconds" > 0 AND "remSleepSeconds" > 0'
+
+
+def test_a_garmin_night_has_time_asleep_and_rem(dashboard):
+    for panel, target in _queries(dashboard):
+        if re.search(r'FROM\s+"SleepSummary"', target["query"]):
+            assert GARMIN_NIGHT in target["query"], (dashboard["uid"], panel and panel.get("title"))
+
+
+def test_a_garmin_day_is_read_once(dashboard):
+    """DailyStats holds one summary per day, and a day can be written twice:
+    a per-day value reads it with max(), never a sum."""
+    for panel, target in _queries(dashboard):
+        q = target["query"]
+        for inner in re.findall(r'SELECT ((?:(?!SELECT).)*?)FROM\s+"DailyStats"(?:(?!SELECT).)*?GROUP BY time\(1d\)', q):
+            assert "sum(" not in inner, (dashboard["uid"], panel and panel.get("title"), inner)
+
+
 def test_days_are_cut_in_the_tz_variable(dashboard):
     names = {v["name"] for v in _variables(dashboard)}
-    for _, target in _queries(dashboard):
+    for panel, target in _queries(dashboard):
+        for clause in re.findall(r'GROUP BY time\((?:1d|1w)[^)]*\)(?:,\s*"[^"]+")*(?:\s+fill\([^)]*\))?(?:\s+tz\([^)]*\))?',
+                                 target["query"]):
+            assert "tz(" in clause, (dashboard["uid"], panel and panel.get("title"), clause)
         for zone in re.findall(r"tz\('([^']*)'\)", target["query"]):
             assert zone in ("$tz", "${tz}"), (dashboard["uid"], zone)
             assert "tz" in names, dashboard["uid"]

@@ -1,0 +1,806 @@
+{
+  "uid": "tributary-habits",
+  "title": "Habits & recovery",
+  "tags": [
+    "tributary"
+  ],
+  "timezone": "browser",
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "version": 1,
+  "description": "A daily journal (yes or no questions, such as the Whoop journal's) against the recovery, HRV, sleep and strain each answer is written with.",
+  "time": {
+    "from": "now-1y",
+    "to": "now"
+  },
+  "refresh": "",
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "sleep",
+        "label": "InfluxDB SleepStats",
+        "query": "influxdb",
+        "regex": "/SleepStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "textbox",
+        "name": "tz",
+        "label": "Time zone",
+        "description": "IANA time zone the days and weeks are cut in (TRIBUTARY_TZ).",
+        "query": "Europe/Paris",
+        "current": {
+          "text": "Europe/Paris",
+          "value": "Europe/Paris"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "Europe/Paris",
+            "value": "Europe/Paris"
+          }
+        ],
+        "hide": 0
+      },
+      {
+        "type": "query",
+        "name": "user",
+        "label": "User",
+        "description": "Whose journal: the user tag of SleepStats.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${sleep}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"journal\" WITH KEY = \"user\"",
+        "query": "SHOW TAG VALUES FROM \"journal\" WITH KEY = \"user\"",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "source",
+        "label": "Source",
+        "description": "The journals to read.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${sleep}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"journal\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"journal\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "type": "query",
+        "name": "question",
+        "label": "Question",
+        "description": "The question the One question row reads.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${sleep}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"journal\" WITH KEY = \"question\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"journal\" WITH KEY = \"question\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      }
+    ]
+  },
+  "links": [
+    {
+      "type": "link",
+      "title": "Sleep",
+      "url": "/d/tributary-sleep",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    },
+    {
+      "type": "link",
+      "title": "Correlations",
+      "url": "/d/tributary-correlations",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    }
+  ],
+  "panels": [
+    {
+      "type": "row",
+      "title": "Every question",
+      "id": 7,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 1,
+      "title": "Journal calendar",
+      "type": "state-timeline",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${sleep}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 24,
+        "h": 13
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT max(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND $timeFilter GROUP BY time(1d), \"question\" fill(none) tz('$tz')",
+          "alias": "$tag_question"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 1,
+            "insertNulls": 129600000,
+            "spanNulls": false
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "1": {
+                  "text": "Yes",
+                  "color": "blue",
+                  "index": 0
+                },
+                "0": {
+                  "text": "No",
+                  "color": "#3b3f4a",
+                  "index": 1
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#3b3f4a",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "mergeValues": false,
+        "showValue": "never",
+        "alignValue": "center",
+        "rowHeight": 0.9,
+        "legend": {
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "description": "One row per journal question, one cell per day: blue is yes, dark is no, blank is not answered. The colours are neutral on purpose: yes is not always the good answer."
+    },
+    {
+      "id": 2,
+      "title": "Yes rate per question",
+      "type": "bargauge",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${sleep}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 9,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT mean(\"answered_yes\") AS \"Yes rate\" FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND $timeFilter GROUP BY \"question\""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "valueMode": "text",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^Yes rate$/",
+          "values": true
+        },
+        "namePlacement": "left",
+        "text": {
+          "valueSize": 16,
+          "titleSize": 13
+        },
+        "sizing": "auto",
+        "minVizHeight": 14,
+        "maxVizHeight": 24
+      },
+      "description": "The share of the days a question was answered on which the answer was yes."
+    },
+    {
+      "id": 3,
+      "title": "Recovery and HRV, by answer",
+      "type": "table",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${sleep}"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 14,
+        "w": 15,
+        "h": 10
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT count(\"answered_yes\") AS \"Yes days\", mean(\"recovery_score\") AS \"Recovery if yes\", mean(\"hrv_rmssd_ms\") AS \"HRV if yes\" FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND $timeFilter AND \"answered_yes\" = 1 GROUP BY \"question\""
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT count(\"answered_yes\") AS \"No days\", mean(\"recovery_score\") AS \"Recovery if no\", mean(\"hrv_rmssd_ms\") AS \"HRV if no\" FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND $timeFilter AND \"answered_yes\" = 0 GROUP BY \"question\""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1,
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Question"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 300
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Δ.*"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "text",
+                      "value": -1
+                    },
+                    {
+                      "color": "green",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*days"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "description": "The recovery and HRV the day's answer is written with (the recovery that opens the day's cycle), on days answered yes against days answered no. Few yes or no days make the difference noise; this is correlation, not cause.",
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "question",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "alias": "Δ recovery",
+            "replaceFields": false,
+            "binary": {
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Recovery if yes"
+                }
+              },
+              "operator": "-",
+              "right": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Recovery if no"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "alias": "Δ HRV",
+            "replaceFields": false,
+            "binary": {
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "HRV if yes"
+                }
+              },
+              "operator": "-",
+              "right": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "HRV if no"
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Time 1": true,
+              "Time 2": true
+            },
+            "renameByName": {
+              "question": "Question"
+            },
+            "indexByName": {
+              "question": 0,
+              "Yes days": 1,
+              "No days": 2,
+              "Recovery if yes": 3,
+              "Recovery if no": 4,
+              "Δ recovery": 5,
+              "HRV if yes": 6,
+              "HRV if no": 7,
+              "Δ HRV": 8
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "One question",
+      "id": 8,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "bargauge",
+      "title": "What goes with a yes to ${question}",
+      "id": 4,
+      "description": "The share of the days answered yes to the picked question, when each factor is present and when it is not, over the range: two bars that differ point to a link, two alike to none. The night is the sleep that opens the day's cycle, the strain the day's. The days each bar counts are beside it; few days make the difference noise, and this is correlation, not cause.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${sleep}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 16,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "text",
+        "namePlacement": "left",
+        "showUnfilled": true,
+        "sizing": "auto",
+        "minVizHeight": 16,
+        "maxVizHeight": 28,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "F0",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"asleep_s\" < 23400 AND $timeFilter",
+          "alias": "Slept under 6.5 h"
+        },
+        {
+          "refId": "F1",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"asleep_s\" >= 23400 AND $timeFilter",
+          "alias": "Slept 6.5 h or more"
+        },
+        {
+          "refId": "F2",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"recovery_score\" < 50 AND $timeFilter",
+          "alias": "Recovery under 50"
+        },
+        {
+          "refId": "F3",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"recovery_score\" >= 50 AND $timeFilter",
+          "alias": "Recovery 50 or more"
+        },
+        {
+          "refId": "F4",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"strain\" >= 12 AND $timeFilter",
+          "alias": "Strain 12 or more"
+        },
+        {
+          "refId": "F5",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"strain\" < 12 AND $timeFilter",
+          "alias": "Strain under 12"
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "Days counted",
+      "id": 5,
+      "description": "The days answered behind each bar of the panel on the left.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${sleep}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 25,
+        "w": 8,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "min": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8e8e8e"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "text"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "valueMode": "text",
+        "namePlacement": "left",
+        "showUnfilled": true,
+        "sizing": "auto",
+        "minVizHeight": 16,
+        "maxVizHeight": 28,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "F0",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"asleep_s\" < 23400 AND $timeFilter",
+          "alias": "Slept under 6.5 h"
+        },
+        {
+          "refId": "F1",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"asleep_s\" >= 23400 AND $timeFilter",
+          "alias": "Slept 6.5 h or more"
+        },
+        {
+          "refId": "F2",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"recovery_score\" < 50 AND $timeFilter",
+          "alias": "Recovery under 50"
+        },
+        {
+          "refId": "F3",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"recovery_score\" >= 50 AND $timeFilter",
+          "alias": "Recovery 50 or more"
+        },
+        {
+          "refId": "F4",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"strain\" >= 12 AND $timeFilter",
+          "alias": "Strain 12 or more"
+        },
+        {
+          "refId": "F5",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"strain\" < 12 AND $timeFilter",
+          "alias": "Strain under 12"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Yes to ${question}, share of the last 30 days",
+      "id": 6,
+      "description": "The share of the answered days that were a yes, over the 30 days before each day. Only windows with an answer are drawn.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${sleep}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 24,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"answered_yes\"), 30) FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND time >= ${__from}ms - 30d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "yes"
+        }
+      ]
+    }
+  ]
+}

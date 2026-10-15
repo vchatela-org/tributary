@@ -129,6 +129,40 @@
         "multi": false,
         "includeAll": false,
         "description": "Single-select on purpose: the panels sum per day or week, which would merge two sources into one bar."
+      },
+      {
+        "type": "query",
+        "name": "days",
+        "label": "Daily activity sources",
+        "description": "Every source of daily totals in BodyStats, for the Activity from list.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"daily_activity\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"daily_activity\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "type": "custom",
+        "name": "activity_from",
+        "label": "Activity from",
+        "description": "The tracker whose calories burned the daily balance subtracts.",
+        "query": "${days:csv},garmin",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
       }
     ]
   },
@@ -154,7 +188,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT count(\"kcal\") FROM (SELECT sum(\"energy_kcal\") AS \"kcal\", count(\"energy_kcal\") AS \"meals\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)) WHERE $timeFilter",
+          "query": "SELECT count(\"kcal\") FROM (SELECT sum(\"energy_kcal\") AS \"kcal\", count(\"energy_kcal\") AS \"meals\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')) WHERE $timeFilter",
           "rawQuery": true,
           "resultFormat": "time_series"
         }
@@ -216,7 +250,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT median(\"kcal\") FROM (SELECT sum(\"energy_kcal\") AS \"kcal\", count(\"energy_kcal\") AS \"meals\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)) WHERE \"meals\" >= 3 AND $timeFilter",
+          "query": "SELECT median(\"kcal\") FROM (SELECT sum(\"energy_kcal\") AS \"kcal\", count(\"energy_kcal\") AS \"meals\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')) WHERE \"meals\" >= 3 AND $timeFilter",
           "rawQuery": true,
           "resultFormat": "time_series"
         }
@@ -278,7 +312,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT median(\"g\") FROM (SELECT sum(\"protein_g\") AS \"g\", count(\"energy_kcal\") AS \"meals\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)) WHERE \"meals\" >= 3 AND $timeFilter",
+          "query": "SELECT median(\"g\") FROM (SELECT sum(\"protein_g\") AS \"g\", count(\"energy_kcal\") AS \"meals\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')) WHERE \"meals\" >= 3 AND $timeFilter",
           "rawQuery": true,
           "resultFormat": "time_series"
         }
@@ -402,7 +436,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT count(\"n\") FROM (SELECT count(\"energy_kcal\") AS \"n\" FROM \"exercise\" WHERE \"category\" != 'adjustment' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)) WHERE $timeFilter",
+          "query": "SELECT count(\"n\") FROM (SELECT count(\"energy_kcal\") AS \"n\" FROM \"exercise\" WHERE \"category\" != 'adjustment' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')) WHERE $timeFilter",
           "rawQuery": true,
           "resultFormat": "time_series"
         }
@@ -542,7 +576,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"meal\" = 'breakfast' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"meal\" = 'breakfast' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Breakfast"
@@ -553,7 +587,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"meal\" = 'lunch' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"meal\" = 'lunch' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Lunch"
@@ -564,7 +598,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"meal\" = 'dinner' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"meal\" = 'dinner' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Dinner"
@@ -575,7 +609,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"meal\" = 'snacks' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"meal\" = 'snacks' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Snacks"
@@ -707,6 +741,468 @@
       "description": "One stacked bar per logged day. A day with nothing logged is blank, not zero; a short bar with a single meal is a partly logged day."
     },
     {
+      "type": "timeseries",
+      "title": "Calories eaten and burned per day",
+      "id": 18,
+      "description": "Fully logged food days only: lunch and dinner both logged, or at least 3 meals (a day missing a main meal would read as a fake deficit; the bars above still show it). Bars: calories eaten, from the diary picked in source. Lines: calories burned that day, each tracker from its own store, never merged. A watch: resting (dashed) plus active calories, the band between them is the activity; a day counts when the watch was worn for most of it, as resting calories cover the whole day and active ones only the time it was worn. A strap: the calories of its day, which runs from sleep to sleep and is counted on the evening it began.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kcal",
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 4,
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "eaten"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8e8e8e"
+                }
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "bars"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 60
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "burned · garmin"
+            },
+            "properties": [
+              {
+                "id": "custom.fillBelowTo",
+                "value": "resting · garmin"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 20
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "resting · garmin"
+            },
+            "properties": [
+              {
+                "id": "custom.lineWidth",
+                "value": 1
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "eaten"
+        },
+        {
+          "refId": "N",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"energy_kcal\") FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "meals"
+        },
+        {
+          "refId": "LD",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"energy_kcal\") FROM \"nutrition\" WHERE (\"meal\" = 'lunch' OR \"meal\" = 'dinner') AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "lunch_dinner"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT max(\"total\") FROM (SELECT \"bmrKilocalories\" + \"activeKilocalories\" AS \"total\" FROM \"DailyStats\" WHERE \"activeKilocalories\" > 0 AND \"activeSeconds\" + \"highlyActiveSeconds\" + \"sedentarySeconds\" + \"sleepingSeconds\" >= 82080 AND $timeFilter) WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "burned · garmin"
+        },
+        {
+          "refId": "R",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT max(\"bmrKilocalories\") FROM \"DailyStats\" WHERE \"activeKilocalories\" > 0 AND \"activeSeconds\" + \"highlyActiveSeconds\" + \"sedentarySeconds\" + \"sleepingSeconds\" >= 82080 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "resting · garmin"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"daily_activity\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "alias": "burned · $tag_source"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "lunch_dinner",
+                "config": {
+                  "id": "equal",
+                  "options": {
+                    "value": 2
+                  }
+                }
+              },
+              {
+                "fieldName": "meals",
+                "config": {
+                  "id": "greaterOrEqual",
+                  "options": {
+                    "value": 3
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "meals": true,
+              "lunch_dinner": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Daily balance: eaten minus burned · ${activity_from}",
+      "id": 19,
+      "description": "Calories eaten minus the calories burned by the tracker picked in Activity from, on the same fully logged days as above. Above zero is a surplus, below zero a deficit. A day either side has no value for is left out, not read as zero.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kcal",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8e8e8e"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "showPoints": "never",
+            "pointSize": 5,
+            "lineInterpolation": "linear",
+            "spanNulls": false,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "balance"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8e8e8e"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "eaten"
+        },
+        {
+          "refId": "N",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"energy_kcal\") FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "meals"
+        },
+        {
+          "refId": "LD",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"energy_kcal\") FROM \"nutrition\" WHERE (\"meal\" = 'lunch' OR \"meal\" = 'dinner') AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "lunch_dinner"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT max(\"total\") FROM (SELECT \"bmrKilocalories\" + \"activeKilocalories\" AS \"total\" FROM \"DailyStats\" WHERE 'garmin' = '${activity_from}' AND \"activeKilocalories\" > 0 AND \"activeSeconds\" + \"highlyActiveSeconds\" + \"sedentarySeconds\" + \"sleepingSeconds\" >= 82080 AND $timeFilter) WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "burned"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"daily_activity\" WHERE \"source\" = '${activity_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "burned"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "lunch_dinner",
+                "config": {
+                  "id": "equal",
+                  "options": {
+                    "value": 2
+                  }
+                }
+              },
+              {
+                "fieldName": "meals",
+                "config": {
+                  "id": "greaterOrEqual",
+                  "options": {
+                    "value": 3
+                  }
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "binary": {
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "eaten"
+                }
+              },
+              "operator": "-",
+              "right": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "burned"
+                }
+              }
+            },
+            "alias": "balance",
+            "replaceFields": false
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "eaten": true,
+              "meals": true,
+              "lunch_dinner": true,
+              "burned": true
+            }
+          }
+        }
+      ]
+    },
+    {
       "id": 9,
       "type": "timeseries",
       "title": "Workout calories per day, by activity",
@@ -716,7 +1212,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 14,
+        "y": 31,
         "w": 24,
         "h": 8
       },
@@ -928,7 +1424,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 22,
+        "y": 39,
         "w": 24,
         "h": 8
       },
@@ -1088,7 +1584,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 47,
         "w": 12,
         "h": 9
       },
@@ -1099,7 +1595,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"protein_g\") * 4 AS \"Protein\", sum(\"carbs_g\") * 4 AS \"Carbs\", sum(\"fat_g\") * 9 AS \"Fat\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)",
+          "query": "SELECT sum(\"protein_g\") * 4 AS \"Protein\", sum(\"carbs_g\") * 4 AS \"Carbs\", sum(\"fat_g\") * 9 AS \"Fat\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "$col"
@@ -1226,7 +1722,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 30,
+        "y": 47,
         "w": 12,
         "h": 9
       },
@@ -1237,7 +1733,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT count(\"energy_kcal\") AS \"Meals\", sum(\"energy_kcal\") AS \"kcal\", sum(\"protein_g\") AS \"Protein\", sum(\"carbs_g\") AS \"Carbs\", sum(\"fat_g\") AS \"Fat\", sum(\"fiber_g\") AS \"Fiber\", sum(\"sugar_g\") AS \"Sugar\", sum(\"sodium_mg\") AS \"Sodium\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none)",
+          "query": "SELECT count(\"energy_kcal\") AS \"Meals\", sum(\"energy_kcal\") AS \"kcal\", sum(\"protein_g\") AS \"Protein\", sum(\"carbs_g\") AS \"Carbs\", sum(\"fat_g\") AS \"Fat\", sum(\"fiber_g\") AS \"Fiber\", sum(\"sugar_g\") AS \"Sugar\", sum(\"sodium_mg\") AS \"Sodium\" FROM \"nutrition\" WHERE \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "table"
         }
@@ -1426,7 +1922,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 39,
+        "y": 56,
         "w": 24,
         "h": 1
       },
@@ -1444,7 +1940,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 57,
         "w": 12,
         "h": 9
       },
@@ -1455,7 +1951,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'run' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'run' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Running"
@@ -1466,7 +1962,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'bike' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'bike' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Cycling"
@@ -1477,7 +1973,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'strength' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'strength' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Strength"
@@ -1488,7 +1984,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'aerobic' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" = 'aerobic' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Aerobics"
@@ -1499,7 +1995,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" !~ /^(run|bike|strength|aerobic|adjustment)$/ AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
+          "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"category\" !~ /^(run|bike|strength|aerobic|adjustment)$/ AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Other"
@@ -1656,7 +2152,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 40,
+        "y": 57,
         "w": 12,
         "h": 9
       },
@@ -1667,7 +2163,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'run' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'run' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Running"
@@ -1678,7 +2174,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'bike' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'bike' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Cycling"
@@ -1689,7 +2185,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'strength' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'strength' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Strength"
@@ -1700,7 +2196,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'aerobic' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'aerobic' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Aerobics"
@@ -1711,7 +2207,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" !~ /^(run|bike|strength|aerobic|adjustment)$/ AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" !~ /^(run|bike|strength|aerobic|adjustment)$/ AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Other"
@@ -1868,7 +2364,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 49,
+        "y": 66,
         "w": 12,
         "h": 9
       },
@@ -1879,7 +2375,7 @@
             "type": "influxdb",
             "uid": "${body}"
           },
-          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'adjustment' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0)",
+          "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"category\" = 'adjustment' AND \"user\" = '$user' AND \"source\" = '$source' AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "Calorie adjustment"
@@ -1976,7 +2472,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 49,
+        "y": 66,
         "w": 12,
         "h": 9
       },

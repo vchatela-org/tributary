@@ -768,7 +768,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"totalSteps\") FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT max(\"totalSteps\") FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "daily · garmin"
         },
         {
@@ -779,7 +779,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(sum(\"totalSteps\"), 7) FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(max(\"totalSteps\"), 7) FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -1057,7 +1057,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"activeKilocalories\") + sum(\"bmrKilocalories\") FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT max(\"activeKilocalories\") + max(\"bmrKilocalories\") FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "daily · garmin"
         },
         {
@@ -1068,7 +1068,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(sum(\"activeKilocalories\"), 7) + moving_average(sum(\"bmrKilocalories\"), 7) FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(max(\"activeKilocalories\"), 7) + moving_average(max(\"bmrKilocalories\"), 7) FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -1187,7 +1187,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"moderateIntensityMinutes\") + 2 * sum(\"vigorousIntensityMinutes\") FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "query": "SELECT sum(\"m\") FROM (SELECT max(\"moderateIntensityMinutes\") + 2 * max(\"vigorousIntensityMinutes\") AS \"m\" FROM \"DailyStats\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')) WHERE $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
           "alias": "garmin"
         }
       ]
@@ -1288,7 +1288,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT last(\"VO2_max_value\") FROM \"VO2_Max\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none)",
+          "query": "SELECT last(\"VO2_max_value\") FROM \"VO2_Max\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "running · garmin"
         },
         {
@@ -1299,7 +1299,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT last(\"VO2_max_value_cycling\") FROM \"VO2_Max\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none)",
+          "query": "SELECT last(\"VO2_max_value_cycling\") FROM \"VO2_Max\" WHERE 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
           "alias": "cycling · garmin"
         }
       ]
@@ -1843,6 +1843,336 @@
           "alias": "$col"
         }
       ]
+    },
+    {
+      "type": "row",
+      "title": "Workouts by sport",
+      "id": 25,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 46,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 26,
+      "title": "Workouts per week, by sport · ${workouts_from}",
+      "type": "timeseries",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 47,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"duration_s\") FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, -3d), \"sport\" fill(none) tz('$tz')",
+          "alias": "$tag_sport"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "lineWidth": 1
+          },
+          "min": 0,
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "description": "Workouts per week, stacked by the sport the source names, from the source picked in Workouts from."
+    },
+    {
+      "id": 27,
+      "title": "Workouts per sport",
+      "type": "table",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 47,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT count(\"duration_s\") AS \"Workouts\", mean(\"duration_s\") / 60 AS \"Avg min\", mean(\"strain\") AS \"Avg strain\", mean(\"energy_kcal\") AS \"Avg kcal\", mean(\"avg_hr\") AS \"Avg HR\", mean(\"max_hr\") AS \"Max HR\" FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY \"sport\""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Workouts"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Avg HR|Max HR|Avg kcal"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "description": "Per sport over the range, from the source picked in Workouts from: workouts, and the average duration, strain, calories and heart rate (a source that records none leaves the column empty).",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "renameByName": {
+              "sport": "Sport"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "title": "Heart-rate zones per sport",
+      "type": "barchart",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 55,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT mean(\"zone1_pct\") AS \"Z1\", mean(\"zone2_pct\") AS \"Z2\", mean(\"zone3_pct\") AS \"Z3\", mean(\"zone4_pct\") AS \"Z4\", mean(\"zone5_pct\") AS \"Z5\" FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY \"sport\""
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "fillOpacity": 85,
+            "lineWidth": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Z1"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8ab8ff"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Z2"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#73bf69"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Z3"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#fade2a"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Z4"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#ff9830"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Z5"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#f2495c"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "orientation": "horizontal",
+        "stacking": "normal",
+        "xField": "Sport",
+        "legend": {
+          "showLegend": true,
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        },
+        "showValue": "never",
+        "barWidth": 0.8
+      },
+      "description": "The average share of workout time spent in each heart-rate zone, per sport, from the sources that write it (zone1_pct to zone5_pct)."
+    },
+    {
+      "id": 29,
+      "title": "Strain per workout",
+      "type": "timeseries",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 55,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"strain\" FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY \"sport\"",
+          "alias": "$tag_sport"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "points",
+            "pointSize": 7,
+            "showPoints": "always"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "mean",
+            "count"
+          ]
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "description": "Each workout's strain, one colour per sport, from the sources that score it."
     }
   ]
 }
