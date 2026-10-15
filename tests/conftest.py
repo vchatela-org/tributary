@@ -20,6 +20,8 @@ os.environ.update({
     "TRIBUTARY_RENPHO_USER": "",
     "TRIBUTARY_RENPHO_THRESHOLDS": "",
     "TRIBUTARY_TODOIST_TOKEN": "",
+    "TRIBUTARY_GITHUB_TOKEN": "",
+    "TRIBUTARY_GITHUB_OWNER": "",
     "TRIBUTARY_MYTHERAPY_WATCH_DIR": "",
     "TRIBUTARY_MYTHERAPY_NAMES": "",
     "TRIBUTARY_MYTHERAPY_START_DATE": "",
@@ -41,7 +43,8 @@ from app.config import settings  # noqa: E402
 from app.main import app  # noqa: E402,F401 -- creates the tables; scheduler off (nothing configured)
 from tests.fakes import MYTHERAPY_NAMES, THRESHOLDS, TODOIST_TOKEN  # noqa: E402
 from tests.fakes import WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, WHOOP_REDIRECT  # noqa: E402
-from tests.fakes import FakeAbs, FakeInflux, FakeRenpho, FakeTodoist, FakeWhoop  # noqa: E402
+from tests.fakes import GITHUB_TOKEN, GITHUB_TOKEN_2  # noqa: E402
+from tests.fakes import FakeAbs, FakeGitHub, FakeInflux, FakeRenpho, FakeTodoist, FakeWhoop  # noqa: E402
 
 
 @pytest.fixture()
@@ -144,6 +147,39 @@ def no_thread(monkeypatch):
 @pytest.fixture()
 def todoist_connector():
     return connectors.get("todoist")
+
+
+@pytest.fixture()
+def github_connector():
+    return connectors.get("github")
+
+
+@pytest.fixture()
+def github_api(monkeypatch, github_connector):
+    """GitHub configured for an organisation (acme) and the tokens' own account
+    (dana, as account _2), each with its token; its APIs served in-process over
+    HTTP, two items a page; the clock at 2026-10-14 12:00 UTC; retries don't
+    wait (`fake.slept` records them)."""
+    from datetime import datetime, timezone
+
+    from pydantic import SecretStr
+
+    from app.connectors import github
+
+    fake = FakeGitHub()
+    fake.slept = []
+    monkeypatch.setattr(github, "API_URL", fake.url)
+    monkeypatch.setattr(github, "PER_PAGE", 2)
+    monkeypatch.setattr(github, "_sleep", fake.slept.append)
+    monkeypatch.setattr(github, "_now", lambda: datetime(2026, 10, 14, 12, tzinfo=timezone.utc))
+    for name, value in (("owner", "acme"), ("token", SecretStr(GITHUB_TOKEN)),
+                        ("agents", "noreply@anthropic.com,Copilot,openhands-agent"), ("lookback_days", 3),
+                        ("history_months", 12)):
+        monkeypatch.setattr(github_connector.settings, name, value)
+    monkeypatch.setattr(github_connector.settings, "_numbered",
+                        {"TRIBUTARY_GITHUB_OWNER_2": "dana", "TRIBUTARY_GITHUB_TOKEN_2": GITHUB_TOKEN_2})
+    yield fake
+    fake.close()
 
 
 @pytest.fixture()

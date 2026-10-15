@@ -12,7 +12,7 @@ what the connectors declare (`app/schema.py`, each connector's
 - **One database per domain:** `MediaStats` (reading, listening),
   `BodyStats` (weight, body composition, medication, food, workouts, daily
   activity), `SleepStats` (sleep, recovery, the morning journal),
-  `TodoistStats`, `ShoppingStats`, `DigitalStats`... A
+  `TodoistStats`, `DevStats` (commits, CI), `ShoppingStats`, `DigitalStats`... A
   domain's database holds every tracker of that domain.
 - **A `source` tag on every point**, naming the tracker
   (`audiobookshelf`, `kindle`, `renpho`...). Dashboards filter and colour by
@@ -253,6 +253,33 @@ completion rewritten overwrites itself), project names as tags.
 - `content` (the task's name) and `labels` (comma-joined) only with
   `TRIBUTARY_TODOIST_TASK_TEXT`, whole (other texts are cut to 250
   characters).
+
+### `DevStats`
+
+Software work on GitHub: who wrote the commits, and the minutes GitHub's hosted
+runners spent on the workflows.
+
+| Measurement | Tags | Fields | Written by |
+|---|---|---|---|
+| `github_commit` | `source`, `user`, `owner`, `repository`, `author` (`self`, `agent`, `bot`, `other`), `time_precision` | `count` (int), `additions` (int), `deletions` (int), `local_hour` (int), `local_weekday` (int) | Tributary: `github` |
+| `github_actions_usage` | `source`, `user`, `owner`, `repository`, `sku` | `minutes` (float), `gross_usd` (float), `discount_usd` (float), `net_usd` (float), `private` (bool) | Tributary: `github` |
+| `github_actions_month` | `source`, `user`, `owner` | `minutes` (float), `private_minutes` (float), `counted_minutes` (float), `gross_usd` (float), `net_usd` (float) | Tributary: `github` |
+
+- `github_commit`: one point per commit of a repository's default branch
+  (merge commits left out), at its author's time, *local time*. `author` is
+  `agent` when an agent is among its authors (a `Co-authored-by` trailer
+  included), else `bot` when a bot is, else `self` (the token's account) or
+  `other`. `owner` is the organisation or user the repository belongs to.
+- `github_actions_usage`: one point per line of GitHub's billing report with
+  minutes, at its day (UTC midnight): a repository's minutes on one SKU
+  (`Actions Linux`, `Actions Windows`...), with what they cost before and
+  after the discount (the included minutes, and public repositories, which
+  are free). `private` is the repository's visibility when read: a field, so
+  a change overwrites the day rather than doubling it.
+- `github_actions_month`: one point per owner and month, at its first day
+  (UTC): InfluxQL has no calendar month. `counted_minutes` is what counts
+  against a plan's included minutes: the private repositories' standard
+  runners, Windows twice and macOS ten times.
 
 ## Adding a measurement
 

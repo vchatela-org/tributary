@@ -55,3 +55,13 @@ datasources:
       dbName: SleepStats
       httpMode: POST
     editable: true
+
+  - name: InfluxDB DevStats
+    uid: tributary-influxdb-devstats
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    jsonData:
+      dbName: DevStats
+      httpMode: POST
+    editable: true

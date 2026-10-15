@@ -727,6 +727,182 @@ class FakeTodoist:
 
 
 # ────────────────────────────────────────────────
+# GitHub (its REST and GraphQL APIs)
+# ────────────────────────────────────────────────
+
+# Synthetic tokens, accounts and repositories (the "# ggignore" marks tell
+# secret scanners so): an organisation, acme, and the tokens' own account,
+# dana, each with its own token.
+GITHUB_TOKEN = "github-test-token"  # ggignore
+GITHUB_TOKEN_2 = "github-test-token-2"  # ggignore
+GITHUB_ME = "dana"
+GITHUB_SECRETS = (GITHUB_TOKEN, GITHUB_TOKEN_2, "dana@example.com")  # ggignore
+
+_DANA = {"email": "dana@example.com", "user": {"login": GITHUB_ME}}
+_CLAUDE = {"email": "noreply@anthropic.com", "user": {"login": "claude"}}
+_RENOVATE = {"email": "renovate@whitesourcesoftware.com", "user": {"login": "renovate-bot"}}
+
+
+def github_commit(authored, author=_DANA, coauthors=(), additions=1, deletions=0, parents=1):
+    return {"authoredDate": authored, "additions": additions, "deletions": deletions,
+            "parents": {"totalCount": parents}, "author": author,
+            "authors": {"nodes": [author, *coauthors]}}
+
+
+def github_usage(day, repo, minutes, sku="Actions Linux", product="actions", unit="Minutes", price=0.006,
+                 owner="acme"):
+    gross = round(minutes * price, 6)
+    return {"date": f"{day}T00:00:00Z", "product": product, "sku": sku, "quantity": minutes, "unitType": unit,
+            "pricePerUnit": price, "grossAmount": gross, "discountAmount": gross, "netAmount": 0.0,
+            "organizationName": owner, "repositoryName": repo}
+
+
+GITHUB_REPOS = {
+    "acme": [{"name": "api", "visibility": "private", "fork": False},
+             {"name": "site", "visibility": "public", "fork": False},
+             {"name": "upstream", "visibility": "public", "fork": True}],
+    # The token's own account: /user/repos, `private` and no `visibility`.
+    "dana": [{"name": "dotfiles", "private": True, "fork": False}],
+}
+GITHUB_COMMITS = {
+    ("acme", "api"): [
+        github_commit("2026-10-13T21:30:00Z", coauthors=(_CLAUDE,), additions=10, deletions=2),
+        github_commit("2026-10-13T08:00:00Z", additions=3, deletions=1),
+        # Renovate's pull request, opened as dana, squash-merged.
+        github_commit("2026-10-12T07:00:00Z", coauthors=(_RENOVATE,)),
+        github_commit("2026-10-12T06:00:00Z", author=_RENOVATE),
+        github_commit("2026-10-12T05:00:00Z", author={"email": "41898282+github-actions[bot]@users.noreply.github.com",
+                                                     "user": {"login": "github-actions[bot]"}}),
+        github_commit("2026-10-11T12:00:00Z", parents=2),
+        github_commit("2026-10-11T11:00:00Z", author={"email": "someone@elsewhere.example", "user": None}),
+        github_commit("2026-10-10T09:00:00Z", author={"email": "198982749+Copilot@users.noreply.github.com",
+                                                     "user": {"login": "Copilot"}}),
+        github_commit("2025-01-01T09:00:00Z"),
+    ],
+    ("acme", "site"): [github_commit("2026-10-09T18:00:00Z", additions=5)],
+    ("acme", "upstream"): [github_commit("2026-10-09T18:00:00Z")],
+    # An empty repository: no default branch.
+    ("dana", "dotfiles"): None,
+}
+# The billing report, by (owner, year, month).
+GITHUB_USAGE = {
+    ("acme", 2026, 10): [
+        github_usage("2026-10-13", "api", 12.0),
+        github_usage("2026-10-13", "api", 3.0, sku="Actions Windows", price=0.01),
+        github_usage("2026-10-13", "site", 30.0),
+        # A larger runner: billed, never covered by the included minutes.
+        github_usage("2026-10-13", "api", 5.0, sku="Actions Linux 4-core", price=0.012),
+        # A repository deleted since: counted as private.
+        github_usage("2026-10-02", "gone", 2.0),
+        github_usage("2026-10-13", "api", 0.5, product="actions", unit="GigabyteHours", sku="Actions storage"),
+        github_usage("2026-10-13", None, 1.0, product="copilot", unit="UserMonths", sku="Copilot Business"),
+    ],
+    ("acme", 2026, 9): [github_usage("2026-09-30", "api", 40.0)],
+    ("acme", 2025, 11): [github_usage("2025-11-03", "api", 7.0)],
+    ("dana", 2026, 10): [github_usage("2026-10-14", "dotfiles", 4.0, owner=None)],
+}
+
+
+class FakeGitHub:
+    """GitHub's REST and GraphQL APIs as the connector calls them: a bearer
+    token per owner (`tokens`, token -> owner), lists paged by `page_size`
+    (page / per_page), commits filtered by `since` (on the author's time here)
+    and paged by `after`, billing reports by year and month. `fail[path] =
+    [(code, headers), ...]` answers those first. Records every call as
+    (method, path, params, owner of the token)."""
+
+    def __init__(self, page_size=2):
+        self.tokens = {GITHUB_TOKEN: "acme", GITHUB_TOKEN_2: "dana"}
+        self.page_size = page_size
+        self.calls: List[Tuple[str, str, Dict, str]] = []
+        self.user_agents: set = set()
+        self.fail: Dict[str, List[Tuple[int, Dict[str, str]]]] = {}
+        outer = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def _handle(self, method):
+                url = urlparse(self.path)
+                params = {k: v[0] for k, v in parse_qs(url.query).items()}
+                if method == "POST":
+                    params = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)))
+                bearer = (self.headers.get("Authorization") or "").removeprefix("Bearer ")
+                scope = outer.tokens.get(bearer)
+                outer.calls.append((method, url.path, params, scope))
+                outer.user_agents.add(self.headers.get("User-Agent"))
+                if scope is None:
+                    return self._send(401, {"message": "Bad credentials"})
+                if outer.fail.get(url.path):
+                    code, headers = outer.fail[url.path].pop(0)
+                    return self._send(code, {"message": "failed"}, headers)
+                answer = outer.graphql(params) if method == "POST" else outer.answer(url.path, params, scope)
+                if answer is None:
+                    return self._send(404, {"message": "Not Found"})
+                self._send(200, answer)
+
+            def do_GET(self):  # noqa: N802
+                self._handle("GET")
+
+            def do_POST(self):  # noqa: N802
+                self._handle("POST")
+
+            def _send(self, code, payload, headers=None):
+                data = json.dumps(payload).encode()
+                self.send_response(code)
+                for name, value in (headers or {}).items():
+                    self.send_header(name, value)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def log_message(self, *args):
+                pass
+
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server.daemon_threads = True
+        threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True).start()
+        self.url = f"http://127.0.0.1:{self.server.server_port}"
+
+    def _page(self, items, params):
+        size = min(int(params.get("per_page") or 30), self.page_size)
+        start = (int(params.get("page") or 1) - 1) * size
+        return items[start:start + size]
+
+    def answer(self, path, params, scope):
+        parts = path.strip("/").split("/")
+        if parts[0] == "users" and len(parts) == 2:
+            return {"login": parts[1], "type": "Organization" if parts[1] == "acme" else "User"}
+        if parts[:1] == ["orgs"] and parts[2:] == ["repos"] and parts[1] == scope:
+            return self._page(GITHUB_REPOS.get(parts[1], []), params)
+        if parts == ["user", "repos"] and scope == GITHUB_ME:
+            return self._page(GITHUB_REPOS[GITHUB_ME], params)
+        if parts[0] == "users" and parts[2:] == ["repos"]:
+            return self._page([r for r in GITHUB_REPOS.get(parts[1], []) if r.get("visibility") == "public"], params)
+        if parts[0] in ("organizations", "users") and parts[2:] == ["settings", "billing", "usage"] \
+                and parts[1] == scope:
+            return {"usageItems": GITHUB_USAGE.get((parts[1], int(params["year"]), int(params["month"])), [])}
+        return None
+
+    def graphql(self, body):
+        if "viewer" in body["query"]:
+            return {"data": {"viewer": {"login": GITHUB_ME}}}
+        variables = body["variables"]
+        commits = GITHUB_COMMITS.get((variables["owner"], variables["name"]), [])
+        if commits is None:
+            return {"data": {"repository": {"defaultBranchRef": None}}}
+        if variables.get("since"):
+            commits = [c for c in commits if _epoch(c["authoredDate"]) >= _epoch(variables["since"])]
+        start = int(variables.get("after") or 0)
+        end = start + self.page_size
+        return {"data": {"repository": {"defaultBranchRef": {"target": {"history": {
+            "pageInfo": {"hasNextPage": end < len(commits), "endCursor": str(end)},
+            "nodes": commits[start:end]}}}}}}
+
+    def close(self):
+        self.server.shutdown()
+
+
+# ────────────────────────────────────────────────
 # MyTherapy (its export file, built by hand)
 # ────────────────────────────────────────────────
 
