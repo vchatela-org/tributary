@@ -124,6 +124,8 @@ dashboards read the following.
 | `GarminStats` | `SleepIntraday` | `SleepStageLevel` (0 deep, 1 light, 2 REM, 3 awake), `heartRate`: the samples of a night | garmin-grafana |
 | `GarminStats` | `DailyStats` | `totalSteps`, `activeKilocalories`, `bmrKilocalories`, `moderateIntensityMinutes`, `vigorousIntensityMinutes`, `activeSeconds`, `highlyActiveSeconds`, `sedentarySeconds`, `sleepingSeconds` | garmin-grafana |
 | `GarminStats` | `ActivitySummary` | `elapsedDuration`, `calories`, `hrTimeInZone_1`...`_5` | garmin-grafana |
+| `GarminStats` | `StrengthExerciseSet` | tags `ExerciseCategory`, `ExerciseLabel`; `Reps`, `Weight_kg`, `Duration_s`, `SetOrder`: one point per set of a strength workout | garmin-grafana (newer than v0.5.0: older versions strand a set's old rows when it is edited in Garmin Connect) |
+| `GarminStats` | `StrengthHRZones` | `ZoneNumber`, `SecsInZone`: a strength workout's time per heart-rate zone | garmin-grafana |
 | `GarminStats` | `VO2_Max` | `VO2_max_value`, `VO2_max_value_cycling` | garmin-grafana |
 | `GarminStats` | `BodyComposition` | `weight`, `bodyFat`, `bodyWater`, `boneMass`, `bmi`, `visceralFat` | garmin-grafana |
 | `SleepStats` | `sleep_session` | tag `kind` (`night`, `nap`: naps are left out); `asleep_s`, `deep_s`, `light_s`, `rem_s`, `awake_s`, `awakenings`, `bedtime_min`, `wake_min` (int); `score`, `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `respiration_rate`, `recovery_score`, `skin_temp_c`, and Sleep as Android's `min_hr`, `max_hr` (float). One point per sleep, at its end | Tributary: `whoop`, `sleep_as_android` |
@@ -156,8 +158,8 @@ no dashboard change; without it, they show the other sources.
 - **Nutrition & exercise:** the workout panels, when `whoop` is the source
   picked.
 
-The Whoop journal (`SleepStats..journal`) is not drawn yet: see *Habits and
-recovery* below.
+- **Habits & recovery:** the Whoop journal (`SleepStats..journal`), with the
+  recovery, HRV, sleep and strain the connector writes on each answer.
 
 ## Audit of the dashboards that existed
 
@@ -182,10 +184,11 @@ described in [dashboards.md](dashboards.md).
 | 4 | **Activity & fitness** | How much you move and train, per device: steps, strain, calories burned, intensity minutes, workouts, heart-rate zones, VO₂ max. | `GarminStats`: `DailyStats`, `ActivitySummary`, `VO2_Max`; `BodyStats`: `daily_activity`, `exercise` | Built |
 | 5 | Weekly review | This week against the four before: sleep, workouts, reading, tasks, doses, weight. | all of the above, `time(1w)` | Proposed |
 | 6 | Energy balance | Intake against the calories burned, and the weight trend that follows. | `BodyStats`: `nutrition`, `daily_activity`, weights; `GarminStats..DailyStats` | Proposed |
-| 7 | Habits and recovery | Which journal answers (an evening habit, a late meal) go with a higher or lower recovery the next morning? | `SleepStats`: `journal` (Whoop export), `sleep_session` | Proposed: the Whoop connector writes `journal` |
+| 7 | **Habits & recovery** | Which journal answers (an evening habit, a late meal) go with a higher or lower recovery? What goes with a yes to one question? | `SleepStats`: `journal` (Whoop export) | Built |
 | 8 | Medication and vitals | Resting heart rate, HRV and blood pressure across the periods a medication was taken. | `BodyStats..medication`, `GarminStats`: `DailyStats`, `BloodPressure` | Proposed |
 | 9 | Stress and body battery | The watch's daytime stress and recovery. | `GarminStats`: `StressIntraday`, `BodyBatteryIntraday` (garmin-grafana's own dashboard covers it) | Proposed |
 | 10 | Shopping and digital life | Takeback's purchases and activity counts. | `ShoppingStats`, `DigitalStats` (not yet in the schema) | Proposed |
+| 11 | **Strength training** | Is the lifting progressing? Volume, estimated one-rep max and records per exercise, time under tension. | `GarminStats`: `StrengthExerciseSet`, `StrengthHRZones` | Built |
 
 Every new dashboard has these variables, with nothing saved in them:
 - a datasource per database (`/BodyStats/i`, `/GarminStats/i`,

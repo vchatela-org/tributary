@@ -158,12 +158,13 @@ PICKERS = {
     "rhr_from": {"resting_hr", "restingHeartRate"},
     "activity_from": {"steps", "totalSteps", "energy_kcal", "activeKilocalories", "bmrKilocalories",
                       "activeSeconds", "highlyActiveSeconds", "sedentarySeconds", "sleepingSeconds"},
-    "workouts_from": {"duration_s", "elapsedDuration"} | {f"zone{n}_s" for n in range(6)}
+    "workouts_from": {"duration_s", "elapsedDuration", "strain", "energy_kcal", "avg_hr", "max_hr"}
+                     | {f"zone{n}_s" for n in range(6)} | {f"zone{n}_pct" for n in range(6)}
                      | {f"hrTimeInZone_{n}" for n in range(6)},
     "weight_from": BODY | {"weight", "bodyFat"},
 }
 # The tags a single-source query may filter on besides its picker's.
-FILTERS = {"source", "user", "kind", "category"}
+FILTERS = {"source", "user", "kind", "category", "sport"}
 
 
 def test_a_single_source_reads_the_picker_of_its_value(dashboard):
@@ -171,7 +172,7 @@ def test_a_single_source_reads_the_picker_of_its_value(dashboard):
     assert single <= set(PICKERS), (dashboard["uid"], single - set(PICKERS))
     for panel, target in _queries(dashboard):
         q = target["query"].replace(GARMIN_NIGHT, "")
-        for name in re.findall(r"= '\$\{(\w+)\}'", q):
+        for name in re.findall(r"= '\$\{(\w+_from)\}'", q):
             assert name in single, (dashboard["uid"], panel and panel.get("title"), name)
             named = set(re.findall(r'"(\w+)"', q)) - set(re.findall(r'FROM\s+"(\w+)"', q)) \
                 - set(re.findall(r'AS\s+"([^"]+)"', q)) - FILTERS

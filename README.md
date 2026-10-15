@@ -83,7 +83,9 @@ Tributary only writes; dashboards read InfluxDB. [grafana/](grafana/) ships:
 | [Body composition](grafana/dashboards/body-composition.json) | `BodyStats`: `body_composition`, `body_levels`, `body_thresholds` | every metric's latest reading coloured by its level, a detail row per metric, the history by source |
 | [Medication](grafana/dashboards/medication.json) | `BodyStats`: `medication` | doses taken, missed or skipped, the share taken per medication over time, a table per medication and per dose |
 | [Nutrition & exercise](grafana/dashboards/nutrition-exercise.json) | `BodyStats`: `nutrition`, `exercise`, `body_composition` | calories per meal and macro split per logged day, workouts per day and week by activity, weight next to them |
-| [Todoist](grafana/dashboards/todoist.json) | `TodoistStats`: `todoist_completion`, `todoist_task_completed`, `todoist_stats` | completions per day and project, due dates kept or missed, priority, streak and karma |
+| [Todoist](grafana/dashboards/todoist.json) | `TodoistStats`: `todoist_completion`, `todoist_task_completed`, `todoist_stats` | completions per day and project, due dates kept or missed, priority, streak and karma, the tasks above the night's sleep score and HRV |
+| [Habits & recovery](grafana/dashboards/habits-recovery.json) | `SleepStats`: `journal` | a daily journal's answers, the recovery and HRV on yes and no days, what goes with a yes to one question |
+| [Strength training](grafana/dashboards/strength-training.json) | `GarminStats`: `StrengthExerciseSet`, `StrengthHRZones` | volume, sets and reps, estimated one-rep max and records per exercise, time under tension, heart-rate zones |
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/grafana-reading-dark.png">
