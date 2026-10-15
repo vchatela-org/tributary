@@ -26,35 +26,60 @@ next are in [dashboards-design.md](dashboards-design.md).
 
 ## Healthspan
 
-The long-run markers on one page. Its 12 tiles are:
-- resting heart rate and HRV (median of the nights);
-- VO₂ max;
-- time asleep per night, and its spread from night to night;
-- intensity minutes per week (the guideline is 150), steps per day, workout
-  hours per week;
-- weight, its change over the range, body fat;
-- the share of medication doses taken.
+WHOOP's Healthspan screen, for any source: nine indicators of sleep, strain
+and fitness, each on WHOOP's scale and in its colours, with the years it adds
+to or takes off an estimated WHOOP Age.
 
-A tile turns yellow when its value falls short of a published guideline:
-time asleep below 7 hours a night, intensity minutes below 150 a week, steps
-below 8,000 a day. The other markers have no colour: what is healthy for them
-depends on age, sex or the person.
+- **WHOOP Age, estimated:** the chronological age plus the nine age impacts
+  of the last 6 months; the years younger, the same sum on the 30-day
+  averages, and the years younger day by day over the time range.
+- **Sleep:** sleep consistency, hours of sleep.
+- **Strain:** time in heart-rate zones 1-3 and 4-5 per week, strength
+  activity time per week, steps per day.
+- **Fitness:** VO₂ max, resting heart rate, lean body mass (100 % less body
+  fat).
 
-Below the tiles, each marker's trend draws every source in its own colour,
-each night or day as a point and its 7-day average as a line. The same
-guidelines are dashed lines.
+Each indicator has two bars, the averages of the 6 months and of the 30 days
+that end with the time range (WHOOP's ▼ and ▲ markers), its age impact for
+each, and its trend over the same colour bands. Orange adds years, grey is
+about 0, green takes them off. Step the time range back to see an earlier
+week, as with the app's arrows.
 
-Each tile reads the source picked for its value: *Resting HR from*, *HRV
-from*, *Sleep from*, *Activity from*, *Workouts from*, *Weight from*. Each
-lists the sources found plus `garmin`, the scale that rates its readings
-first. Reads:
+**The model.** WHOOP gives each indicator a guideline worth 0 years. Here each
+age impact is a straight line through it, `years = k × (value − guideline)`,
+with `k` fitted on screenshots of the app. WHOOP's own slopes depend on age
+and sex: read the years as an estimate, the bars and the bands as WHOOP's. The
+constants, scales and bands are in
+[`scripts/build-healthspan-dashboard.py`](../scripts/build-healthspan-dashboard.py),
+which writes the JSON. VO₂ max is the watch's (garmin-grafana): WHOOP's own
+estimate is in no export, so a strap alone leaves it out of the sum. An
+indicator with no data counts as 0 years.
+
+WHOOP Age and the chronological age need the *Birth date* variable
+(YYYY-MM-DD), empty as shipped: those two tiles show an error until it is
+set, and nothing else uses it. Save it in your copy of the dashboard, like a
+source.
+
+Below, collapsed, **Other markers, every source**: HRV, the spread of time
+asleep, intensity minutes per week (the WHO guideline is 150), workout hours
+per week, weight, its change and body fat, the share of medication doses
+taken; then each marker's trend from every source in its own colour, each
+night or day as a point and its 7-day average as a line, the guidelines as
+dashed lines.
+
+Each value reads the source picked for it: *Sleep from* (consistency, hours
+of sleep), *Workouts from* (zones, strength), *Activity from* (steps),
+*Resting HR from*, *Weight from* (lean body mass), and *HRV from* for the
+markers below. Strength is the `strength` category (WHOOP's weightlifting,
+powerlifting, functional fitness; MyFitnessPal's), or Garmin's
+`strength_training`. Reads:
 - `GarminStats` (garmin-grafana): `SleepSummary`, `DailyStats`, `VO2_Max`,
   `ActivitySummary`, `BodyComposition`;
 - `SleepStats`: `sleep_session`;
 - `BodyStats`: `body_composition`, `exercise`, `daily_activity`,
   `medication`.
 
-![The Healthspan dashboard with demo data: twelve tiles, each labelled with the source it reads, then resting heart rate, HRV and time asleep from a watch and a strap](screenshots/grafana-healthspan-light.png)
+![The Healthspan dashboard with demo data: WHOOP Age and the years younger, then each indicator's bars on WHOOP's scale, its age impact and its trend](screenshots/grafana-healthspan-light.png)
 
 ## Sleep
 

@@ -3,6 +3,7 @@ carry nobody's. A dashboard exported from a personal Grafana breaks these rules
 in predictable ways (a fixed datasource, a saved user, a panel coloured by one
 person's project names), so each rule is a test.
 """
+import importlib.util
 import json
 import re
 from pathlib import Path
@@ -137,6 +138,9 @@ def test_nothing_is_saved_in_the_variables(dashboard):
         elif v["type"] == "query":
             assert current.get("value") in (None, "", "$__all", ["$__all"]), (dashboard["uid"], v["name"], current)
             assert all(o.get("value") in ("$__all",) for o in v.get("options", [])), (dashboard["uid"], v["name"])
+        elif v["type"] == "textbox" and v["name"] == "birth":
+            # Healthspan's birth date: nobody's, until a deployment pins its own
+            assert v["query"] == "" and current.get("value") in (None, ""), (dashboard["uid"], v["query"], current)
         elif v["type"] == "textbox":
             assert v["name"] == "tz", (dashboard["uid"], v["name"])
             assert v["query"] == Settings.model_fields["tz"].default, (dashboard["uid"], v["query"])
@@ -151,6 +155,7 @@ def test_nothing_is_saved_in_the_variables(dashboard):
 BODY = set(schema.BODY_COMPOSITION.fields)
 PICKERS = {
     "sleep_from": {"asleep_s", "deep_s", "light_s", "rem_s", "awake_s", "awakenings", "bedtime_min", "wake_min",
+                   "consistency_pct",
                    "sleepTimeSeconds", "deepSleepSeconds", "lightSleepSeconds", "remSleepSeconds",
                    "awakeSleepSeconds", "awakeCount"},
     "score_from": {"score", "sleepScore"},
@@ -164,7 +169,7 @@ PICKERS = {
     "weight_from": BODY | {"weight", "bodyFat"},
 }
 # The tags a single-source query may filter on besides its picker's.
-FILTERS = {"source", "user", "kind", "category", "sport"}
+FILTERS = {"source", "user", "kind", "category", "sport", "activityType"}
 
 
 def test_a_single_source_reads_the_picker_of_its_value(dashboard):
@@ -297,17 +302,38 @@ def test_a_series_per_source_is_coloured_by_its_name(dashboard):
             assert mode == "palette-classic-by-name", (dashboard["uid"], p.get("title"), mode)
 
 
-def test_a_healthspan_tile_turns_yellow_below_its_guideline_only():
-    """docs/dashboards-design.md, rule 5: a tile's colour flags a published
-    guideline missed, never a source; met, the tile is in the text colour."""
-    d = _load(ROOT / "grafana" / "dashboards" / "healthspan.json")
-    guided = {p["title"]: p for p in _panels(d["panels"]) if p.get("type") == "stat"
-              and p["fieldConfig"]["defaults"]["color"]["mode"] == "thresholds"}
-    assert set(guided) == {"Sleep / night", "Intensity / week", "Steps / day"}
-    for title, p in guided.items():
-        below, met = p["fieldConfig"]["defaults"]["thresholds"]["steps"]
-        assert (below["value"], below["color"], met["color"]) == (None, "dark-yellow", "text"), title
-        assert f"Yellow below {met['value']:,}" in p["description"], title
+HEALTHSPAN = ROOT / "grafana" / "dashboards" / "healthspan.json"
+
+
+def _healthspan_builder():
+    spec = importlib.util.spec_from_file_location("healthspan", ROOT / "scripts" / "build-healthspan-dashboard.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_healthspan_is_what_its_builder_writes():
+    """scripts/build-healthspan-dashboard.py holds the model; the JSON is its output."""
+    builder = _healthspan_builder()
+    assert builder.build(_load(HEALTHSPAN)) == _load(HEALTHSPAN), "run python3 scripts/build-healthspan-dashboard.py"
+
+
+def test_a_healthspan_colour_says_years_never_a_source():
+    """docs/dashboards-design.md, rule 5: Healthspan colours an indicator by the
+    years it adds or takes off, on one diverging scale, and writes no value in a
+    colour; the other tiles are in the text colour."""
+    builder = _healthspan_builder()
+    scale = {builder.O2, builder.O1, builder.N, builder.G1, builder.G2, "text", "transparent"}
+    for p in _panels(_load(HEALTHSPAN)["panels"]):
+        defaults = p.get("fieldConfig", {}).get("defaults", {})
+        colours = {s["color"] for s in defaults.get("thresholds", {}).get("steps", [])}
+        if p.get("type") == "bargauge":
+            assert colours <= scale and p["options"]["valueMode"] == "text", p["title"]
+        elif p.get("type") == "stat" and defaults["color"]["mode"] == "thresholds":
+            assert colours <= scale, p["title"]
+            assert p["options"]["colorMode"] == "background" or colours == {"text"}, p["title"]
+        elif p.get("type") == "stat":
+            assert defaults["color"] == {"mode": "fixed", "fixedColor": "text"}, p["title"]
 
 
 def test_links_stay_among_tributary_s_dashboards(dashboard):
