@@ -160,6 +160,7 @@ PICKERS = {
                    "awakeSleepSeconds", "awakeCount"},
     "score_from": {"score", "sleepScore"},
     "hrv_from": {"hrv_rmssd_ms", "avgOvernightHrv"},
+    "recovery_from": {"recovery_score"},
     "rhr_from": {"resting_hr", "restingHeartRate"},
     "activity_from": {"steps", "totalSteps", "energy_kcal", "activeKilocalories", "bmrKilocalories",
                       "activeSeconds", "highlyActiveSeconds", "sedentarySeconds", "sleepingSeconds"},

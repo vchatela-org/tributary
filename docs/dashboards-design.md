@@ -57,6 +57,7 @@ Rules every panel follows:
    | `sleep_from` | *Sleep from* | time asleep, stages, time awake and awakenings, bedtime and wake-up, sleep consistency |
    | `score_from` | *Sleep score from* | sleep score |
    | `hrv_from` | *HRV from* | overnight HRV |
+   | `recovery_from` | *Recovery from* | the morning's recovery score |
    | `rhr_from` | *Resting HR from* | resting heart rate |
    | `activity_from` | *Activity from* | steps and daily totals (calories burned) |
    | `workouts_from` | *Workouts from* | workouts, their time and heart-rate zones |

@@ -9,7 +9,7 @@
   "graphTooltip": 1,
   "schemaVersion": 41,
   "version": 1,
-  "description": "A daily journal (yes or no questions, such as the Whoop journal's) against the recovery, HRV, sleep and strain each answer is written with.",
+  "description": "A daily journal (yes or no questions, from any journal) against the night that follows each day, its recovery, HRV and sleep read from the sources picked for each.",
   "time": {
     "from": "now-1y",
     "to": "now"
@@ -17,6 +17,19 @@
   "refresh": "",
   "templating": {
     "list": [
+      {
+        "type": "datasource",
+        "name": "garmin",
+        "label": "InfluxDB GarminStats",
+        "query": "influxdb",
+        "regex": "/GarminStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
       {
         "type": "datasource",
         "name": "sleep",
@@ -103,6 +116,64 @@
         "query": "SHOW TAG VALUES FROM \"journal\" WITH KEY = \"question\" WHERE \"user\" = '$user'",
         "refresh": 1,
         "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "nights",
+        "label": "Night sources",
+        "description": "Every source of nights in SleepStats, for the night pickers.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${sleep}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "type": "custom",
+        "name": "recovery_from",
+        "label": "Recovery from",
+        "description": "The source of the morning's recovery score.",
+        "query": "${nights:csv}",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "custom",
+        "name": "hrv_from",
+        "label": "HRV from",
+        "description": "The source of the overnight HRV. Devices measure it differently.",
+        "query": "${nights:csv},garmin",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "custom",
+        "name": "sleep_from",
+        "label": "Sleep from",
+        "description": "The source of the time asleep.",
+        "query": "${nights:csv},garmin",
         "hide": 0,
         "current": {},
         "options": [],
@@ -244,7 +315,7 @@
       "gridPos": {
         "x": 0,
         "y": 14,
-        "w": 9,
+        "w": 24,
         "h": 10
       },
       "targets": [
@@ -296,16 +367,16 @@
     },
     {
       "id": 3,
-      "title": "Recovery and HRV, by answer",
+      "title": "The night after a yes or a no",
       "type": "table",
       "datasource": {
-        "type": "influxdb",
-        "uid": "${sleep}"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "gridPos": {
-        "x": 9,
-        "y": 14,
-        "w": 15,
+        "x": 0,
+        "y": 24,
+        "w": 24,
         "h": 10
       },
       "targets": [
@@ -316,25 +387,51 @@
             "uid": "${sleep}"
           },
           "rawQuery": true,
-          "resultFormat": "table",
-          "query": "SELECT count(\"answered_yes\") AS \"Yes days\", mean(\"recovery_score\") AS \"Recovery if yes\", mean(\"hrv_rmssd_ms\") AS \"HRV if yes\" FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND $timeFilter AND \"answered_yes\" = 1 GROUP BY \"question\""
+          "resultFormat": "time_series",
+          "query": "SELECT max(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND $timeFilter GROUP BY time(1d, -12h), \"question\" fill(none) tz('$tz')",
+          "alias": "answer"
         },
         {
-          "refId": "B",
+          "refId": "R",
           "datasource": {
             "type": "influxdb",
             "uid": "${sleep}"
           },
           "rawQuery": true,
-          "resultFormat": "table",
-          "query": "SELECT count(\"answered_yes\") AS \"No days\", mean(\"recovery_score\") AS \"Recovery if no\", mean(\"hrv_rmssd_ms\") AS \"HRV if no\" FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND $timeFilter AND \"answered_yes\" = 0 GROUP BY \"question\""
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"recovery_score\") FROM \"sleep_session\" WHERE \"source\" = '${recovery_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "recovery"
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${hrv_from}' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "hrv"
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${hrv_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "hrv"
         }
       ],
       "fieldConfig": {
         "defaults": {
           "decimals": 1,
           "custom": {
-            "align": "auto"
+            "align": "auto",
+            "minWidth": 80,
+            "wrapHeaderText": true
           }
         },
         "overrides": [
@@ -402,8 +499,114 @@
         "showHeader": true,
         "cellHeight": "sm"
       },
-      "description": "The recovery and HRV the day's answer is written with (the recovery that opens the day's cycle), on days answered yes against days answered no. Few yes or no days make the difference noise; this is correlation, not cause.",
+      "description": "For each question, the night after the days answered yes against the night after the days answered no: the next morning's recovery and the night's HRV, from the sources picked in Recovery from and HRV from, whichever journal the answers come from. A day runs noon to noon, so an answer meets the night that ends the next morning. Days counts the days answered; one without a night in the picked source counts there, not in the averages. Few yes or no days make the difference noise; this is correlation, not cause.",
       "transformations": [
+        {
+          "id": "labelsToFields",
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          },
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          },
+          "options": {}
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^(.* )?question$",
+            "renamePattern": "question"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^(Value|answer)$",
+            "renamePattern": "answer"
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "outerTabular"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "all",
+            "filters": [
+              {
+                "fieldName": "question",
+                "config": {
+                  "id": "isNotNull",
+                  "options": {}
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "question": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "answer": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "Time": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "count"
+                ]
+              },
+              "recovery": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "mean"
+                ]
+              },
+              "hrv": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "mean"
+                ]
+              },
+              "asleep": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "mean"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "partitionByValues",
+          "options": {
+            "fields": [
+              "answer"
+            ],
+            "keepFields": false,
+            "naming": {
+              "asLabels": true
+            }
+          }
+        },
         {
           "id": "joinByField",
           "options": {
@@ -421,14 +624,14 @@
               "left": {
                 "matcher": {
                   "id": "byName",
-                  "options": "Recovery if yes"
+                  "options": "recovery (mean) 1"
                 }
               },
               "operator": "-",
               "right": {
                 "matcher": {
                   "id": "byName",
-                  "options": "Recovery if no"
+                  "options": "recovery (mean) 0"
                 }
               }
             }
@@ -444,14 +647,14 @@
               "left": {
                 "matcher": {
                   "id": "byName",
-                  "options": "HRV if yes"
+                  "options": "hrv (mean) 1"
                 }
               },
               "operator": "-",
               "right": {
                 "matcher": {
                   "id": "byName",
-                  "options": "HRV if no"
+                  "options": "hrv (mean) 0"
                 }
               }
             }
@@ -460,23 +663,27 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": {
-              "Time": true,
-              "Time 1": true,
-              "Time 2": true
-            },
+            "excludeByName": {},
             "renameByName": {
-              "question": "Question"
+              "Time (count) 1": "Yes days",
+              "Time (count) 0": "No days",
+              "recovery (mean) 1": "Recovery if yes",
+              "recovery (mean) 0": "Recovery if no",
+              "hrv (mean) 1": "HRV if yes",
+              "hrv (mean) 0": "HRV if no",
+              "question 0": "Question",
+              "question 1": "Question"
             },
             "indexByName": {
-              "question": 0,
-              "Yes days": 1,
-              "No days": 2,
-              "Recovery if yes": 3,
-              "Recovery if no": 4,
+              "question 0": 0,
+              "question 1": 0,
+              "Time (count) 1": 1,
+              "Time (count) 0": 2,
+              "recovery (mean) 1": 3,
+              "recovery (mean) 0": 4,
               "Δ recovery": 5,
-              "HRV if yes": 6,
-              "HRV if no": 7,
+              "hrv (mean) 1": 6,
+              "hrv (mean) 0": 7,
               "Δ HRV": 8
             }
           }
@@ -490,254 +697,294 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 24,
+        "y": 34,
         "w": 24,
         "h": 1
       },
       "panels": []
     },
     {
-      "type": "bargauge",
-      "title": "What goes with a yes to ${question}",
       "id": 4,
-      "description": "The share of the days answered yes to the picked question, when each factor is present and when it is not, over the range: two bars that differ point to a link, two alike to none. The night is the sleep that opens the day's cycle, the strain the day's. The days each bar counts are beside it; few days make the difference noise, and this is correlation, not cause.",
+      "type": "table",
+      "title": "The night after a yes or a no to ${question}",
       "datasource": {
-        "type": "influxdb",
-        "uid": "${sleep}"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
+      "description": "The picked question's days answered yes and no, and the night after them: the next morning's recovery, the night's HRV and time asleep, each from its own picker. A day runs noon to noon. Few days make the difference noise; this is correlation, not cause.",
       "gridPos": {
         "x": 0,
-        "y": 25,
-        "w": 16,
-        "h": 10
+        "y": 35,
+        "w": 24,
+        "h": 5
       },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT max(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND $timeFilter GROUP BY time(1d, -12h), \"question\" fill(none) tz('$tz')",
+          "alias": "answer"
+        },
+        {
+          "refId": "R",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"recovery_score\") FROM \"sleep_session\" WHERE \"source\" = '${recovery_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "recovery"
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${hrv_from}' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "hrv"
+        },
+        {
+          "refId": "I",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${hrv_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "hrv"
+        },
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "asleep"
+        },
+        {
+          "refId": "T",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "asleep"
+        }
+      ],
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit",
-          "decimals": 0,
-          "min": 0,
-          "max": 1,
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#3987e5"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
+          "decimals": 1,
+          "custom": {
+            "align": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Answer"
+            },
+            "properties": [
               {
-                "value": null,
-                "color": "text"
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "Yes",
+                        "index": 0
+                      },
+                      "0": {
+                        "text": "No",
+                        "index": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Days"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Asleep"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: h"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "transformations": [
+        {
+          "id": "labelsToFields",
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          },
+          "options": {
+            "mode": "columns"
+          }
+        },
+        {
+          "id": "merge",
+          "filter": {
+            "id": "byRefId",
+            "options": "A"
+          },
+          "options": {}
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^(.* )?question$",
+            "renamePattern": "question"
+          }
+        },
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^(Value|answer)$",
+            "renamePattern": "answer"
+          }
+        },
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "outerTabular"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "include",
+            "match": "all",
+            "filters": [
+              {
+                "fieldName": "question",
+                "config": {
+                  "id": "isNotNull",
+                  "options": {}
+                }
               }
             ]
           }
         },
-        "overrides": []
-      },
-      "options": {
-        "orientation": "horizontal",
-        "displayMode": "basic",
-        "valueMode": "text",
-        "namePlacement": "left",
-        "showUnfilled": true,
-        "sizing": "auto",
-        "minVizHeight": 16,
-        "maxVizHeight": 28,
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      },
-      "targets": [
         {
-          "refId": "F0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${sleep}"
-          },
-          "rawQuery": true,
-          "resultFormat": "time_series",
-          "query": "SELECT mean(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"asleep_s\" < 23400 AND $timeFilter",
-          "alias": "Slept under 6.5 h"
+          "id": "groupBy",
+          "options": {
+            "fields": {
+              "question": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "answer": {
+                "operation": "groupby",
+                "aggregations": []
+              },
+              "Time": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "count"
+                ]
+              },
+              "recovery": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "mean"
+                ]
+              },
+              "hrv": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "mean"
+                ]
+              },
+              "asleep": {
+                "operation": "aggregate",
+                "aggregations": [
+                  "mean"
+                ]
+              }
+            }
+          }
         },
         {
-          "refId": "F1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${sleep}"
-          },
-          "rawQuery": true,
-          "resultFormat": "time_series",
-          "query": "SELECT mean(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"asleep_s\" >= 23400 AND $timeFilter",
-          "alias": "Slept 6.5 h or more"
-        },
-        {
-          "refId": "F2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${sleep}"
-          },
-          "rawQuery": true,
-          "resultFormat": "time_series",
-          "query": "SELECT mean(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"recovery_score\" < 50 AND $timeFilter",
-          "alias": "Recovery under 50"
-        },
-        {
-          "refId": "F3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${sleep}"
-          },
-          "rawQuery": true,
-          "resultFormat": "time_series",
-          "query": "SELECT mean(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"recovery_score\" >= 50 AND $timeFilter",
-          "alias": "Recovery 50 or more"
-        },
-        {
-          "refId": "F4",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${sleep}"
-          },
-          "rawQuery": true,
-          "resultFormat": "time_series",
-          "query": "SELECT mean(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"strain\" >= 12 AND $timeFilter",
-          "alias": "Strain 12 or more"
-        },
-        {
-          "refId": "F5",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${sleep}"
-          },
-          "rawQuery": true,
-          "resultFormat": "time_series",
-          "query": "SELECT mean(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"strain\" < 12 AND $timeFilter",
-          "alias": "Strain under 12"
-        }
-      ]
-    },
-    {
-      "type": "bargauge",
-      "title": "Days counted",
-      "id": 5,
-      "description": "The days answered behind each bar of the panel on the left.",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "${sleep}"
-      },
-      "gridPos": {
-        "x": 16,
-        "y": 25,
-        "w": 8,
-        "h": 10
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "none",
-          "decimals": 0,
-          "min": 0,
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#8e8e8e"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
+          "id": "sortBy",
+          "options": {
+            "sort": [
               {
-                "value": null,
-                "color": "text"
+                "field": "answer",
+                "desc": true
               }
             ]
           }
         },
-        "overrides": []
-      },
-      "options": {
-        "orientation": "horizontal",
-        "displayMode": "basic",
-        "valueMode": "text",
-        "namePlacement": "left",
-        "showUnfilled": true,
-        "sizing": "auto",
-        "minVizHeight": 16,
-        "maxVizHeight": 28,
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        }
-      },
-      "targets": [
         {
-          "refId": "F0",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${sleep}"
-          },
-          "rawQuery": true,
-          "resultFormat": "time_series",
-          "query": "SELECT count(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"asleep_s\" < 23400 AND $timeFilter",
-          "alias": "Slept under 6.5 h"
-        },
-        {
-          "refId": "F1",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${sleep}"
-          },
-          "rawQuery": true,
-          "resultFormat": "time_series",
-          "query": "SELECT count(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"asleep_s\" >= 23400 AND $timeFilter",
-          "alias": "Slept 6.5 h or more"
-        },
-        {
-          "refId": "F2",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${sleep}"
-          },
-          "rawQuery": true,
-          "resultFormat": "time_series",
-          "query": "SELECT count(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"recovery_score\" < 50 AND $timeFilter",
-          "alias": "Recovery under 50"
-        },
-        {
-          "refId": "F3",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${sleep}"
-          },
-          "rawQuery": true,
-          "resultFormat": "time_series",
-          "query": "SELECT count(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"recovery_score\" >= 50 AND $timeFilter",
-          "alias": "Recovery 50 or more"
-        },
-        {
-          "refId": "F4",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${sleep}"
-          },
-          "rawQuery": true,
-          "resultFormat": "time_series",
-          "query": "SELECT count(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"strain\" >= 12 AND $timeFilter",
-          "alias": "Strain 12 or more"
-        },
-        {
-          "refId": "F5",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "${sleep}"
-          },
-          "rawQuery": true,
-          "resultFormat": "time_series",
-          "query": "SELECT count(\"answered_yes\") FROM \"journal\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"question\" = '${question}' AND \"strain\" < 12 AND $timeFilter",
-          "alias": "Strain under 12"
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "question": true
+            },
+            "renameByName": {
+              "answer": "Answer",
+              "Time (count)": "Days",
+              "recovery (mean)": "Recovery",
+              "hrv (mean)": "HRV",
+              "asleep (mean)": "Asleep"
+            },
+            "indexByName": {
+              "answer": 0,
+              "Time (count)": 1,
+              "recovery (mean)": 2,
+              "hrv (mean)": 3,
+              "asleep (mean)": 4
+            }
+          }
         }
       ]
     },
@@ -752,7 +999,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 35,
+        "y": 40,
         "w": 24,
         "h": 7
       },
