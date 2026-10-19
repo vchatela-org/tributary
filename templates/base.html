@@ -25,6 +25,8 @@
 </head>
 {% import "_macros.html" as nav_m %}
 {% set path = request.url.path %}
+{# The Grafana a browser reaches, with the link to its dashboards (None: no link). #}
+{% set grafana = grafana_dashboards_url() %}
 {# data-poll: the fragment this page re-reads in place. It replaces the status
    bits and the action buttons only -- never a form, so a run in flight cannot
    take a file picker away from the user. Empty by default: a page with no live
@@ -47,6 +49,11 @@
         class="bi bi-clock-history"></i>Run history</a>
     <a class="tb-side-link {% if path.startswith('/settings') %}active{% endif %}" href="/settings"><i
         class="bi bi-sliders"></i>Settings</a>
+    {% if grafana %}
+    {# Not a page of ours: Grafana opens the dashboards shipped in grafana/. #}
+    <a class="tb-side-link" href="{{ grafana }}" rel="noreferrer" title="Open Grafana's dashboards"><i
+        class="bi bi-bar-chart-line"></i>Dashboards<i class="bi bi-box-arrow-up-right ms-auto tb-ext"></i></a>
+    {% endif %}
     {% set sources = nav_sources() %}
     {% if sources %}
     <div class="tb-side-section">Sources</div>
@@ -71,6 +78,9 @@
     <a class="nav-link {% if path == '/' %}active{% endif %}" href="/">Integrations</a>
     <a class="nav-link {% if path.startswith('/runs') %}active{% endif %}" href="/runs">Runs</a>
     <a class="nav-link {% if path.startswith('/settings') %}active{% endif %}" href="/settings">Settings</a>
+    {% if grafana %}
+    <a class="nav-link" href="{{ grafana }}" rel="noreferrer" title="Open Grafana's dashboards">Dashboards</a>
+    {% endif %}
     <span class="ms-auto">{{ theme_toggle() }}</span>
   </nav>
   <main class="tb-content">

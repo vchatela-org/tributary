@@ -2,9 +2,13 @@
 
 Tributary's UI runs and checks the sync; it does not chart the data (that is
 Grafana's job, see the [README](../README.md#graphs-in-grafana)). A sidebar on
-every page leads to the overview, the run history, settings and each source.
-Light and dark follow your system until you pick one at the foot of the
-sidebar. The screenshots on this page show demo data.
+every page leads to the overview, the run history, settings and each source;
+with `TRIBUTARY_GRAFANA_URL` set, *Dashboards* opens Grafana's dashboard
+browser, filtered to the dashboards shipped in
+[grafana/dashboards](../grafana/dashboards/) (the link leaves Tributary, so it
+is marked as an external one). Light and dark follow your system until you
+pick one at the foot of the sidebar. The screenshots on this page show demo
+data.
 
 ## The overview
 

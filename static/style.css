@@ -142,6 +142,8 @@ body { font-size: 15px; background: var(--tb-page); -webkit-font-smoothing: anti
 .tb-side-link:hover { background: var(--tb-surface-2); color: var(--tb-ink); }
 .tb-side-link.active { background: rgba(var(--tb-accent-rgb), .12); color: var(--tb-ink); font-weight: 600; }
 .tb-side-link > .bi { width: 1.15rem; text-align: center; font-size: 1.02rem; }
+/* A link out of the app (Dashboards): the marker is not a nav icon. */
+.tb-side-link > .bi.tb-ext { width: auto; font-size: .75rem; opacity: .55; }
 .tb-side-foot {
   margin-top: auto; padding: 1rem .6rem 0; border-top: 1px solid var(--tb-hairline);
   display: flex; align-items: center; justify-content: space-between;

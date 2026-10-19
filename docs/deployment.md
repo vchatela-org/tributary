@@ -36,6 +36,7 @@ Every setting is an environment variable (or a line in `.env`).
 | `TRIBUTARY_INFLUXDB_USER` | – | The `user` tag of every point. |
 | `TRIBUTARY_INFLUXDB_CREATE_DATABASES` | `true` | Create missing databases (52-week shards). Existing ones are never altered. |
 | `TRIBUTARY_TZ` | `Europe/Paris` | Time zone of `local_hour` / `local_weekday`, and of the UI's times. |
+| `TRIBUTARY_GRAFANA_URL` | – | The Grafana a browser reaches (`https://grafana.example.com`, a subpath works): the UI's *Dashboards* link opens its dashboard browser, filtered to the dashboards in `grafana/dashboards`. Tributary never calls it. Unset: no link. |
 | `TRIBUTARY_DATA_DIR` | `./data` (`/app/data` in the image) | Run history and cursors (SQLite). |
 | `TRIBUTARY_FIRST_RUN_DELAY` | `60` | Seconds between the start and the first scheduled run. |
 | `TRIBUTARY_MAX_UPLOAD_MB` | `200` | Largest file the upload form takes. |

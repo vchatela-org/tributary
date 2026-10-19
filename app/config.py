@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     garmin_grafana_database: str = "GarminStats"
     garmin_grafana_stale_hours: float = 24.0
 
+    # The Grafana a browser reaches, e.g. https://grafana.example.com (a subpath
+    # works too). Set, the UI links to its dashboard browser, filtered to the
+    # dashboards shipped in grafana/dashboards. Empty: no link (Tributary never
+    # calls Grafana itself).
+    grafana_url: Optional[str] = None
+
     # The key that encrypts what Tributary keeps of an OAuth connection (its
     # tokens, app/secretbox.py): the base64 of 32 random bytes
     # (`openssl rand -base64 32`), or a file holding it. Without one, no OAuth
@@ -59,6 +65,15 @@ class Settings(BaseSettings):
     @property
     def db_url(self) -> str:
         return self.database_url or f"sqlite:///{Path(self.data_dir) / 'tributary.db'}"
+
+    @property
+    def grafana_dashboards_url(self) -> Optional[str]:
+        """Grafana's dashboard browser, filtered to the `tributary` tag every
+        shipped dashboard carries; None when no Grafana URL is set. A subpath
+        (`https://host/grafana/`) keeps its own prefix."""
+        if not self.grafana_url:
+            return None
+        return self.grafana_url.rstrip("/") + "/dashboards?tag=tributary"
 
 
 settings = Settings()
