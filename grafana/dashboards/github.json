@@ -450,7 +450,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"duration_s\", \"result\", \"attempts\" FROM \"github_workflow_run\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ ORDER BY time DESC LIMIT 50"
+          "query": "SELECT \"duration_s\", \"result\", \"attempts\" FROM \"github_workflow_run\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ GROUP BY \"repository\", \"workflow\" ORDER BY time DESC LIMIT 50"
         }
       ],
       "transformations": [
