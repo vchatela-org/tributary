@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/vchatela-org/tributary/compare/v0.20.0...v0.21.0) (2026-10-19)
+
+
+### Features
+
+* **ui:** link to Grafana's dashboards from the sidebar ([#67](https://github.com/vchatela-org/tributary/issues/67)) ([bf51199](https://github.com/vchatela-org/tributary/commit/bf51199aa9e18fc49ace1f9857b33480987de7e1))
+
 ## [0.20.0](https://github.com/vchatela-org/tributary/compare/v0.19.1...v0.20.0) (2026-10-19)
 
 
