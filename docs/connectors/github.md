@@ -46,6 +46,7 @@ and keeps nothing.
    | `TRIBUTARY_GITHUB_OWNER_2`, `TRIBUTARY_GITHUB_TOKEN_2`... | The next ones, numbered without a gap. |
    | `TRIBUTARY_GITHUB_AGENTS` | Commit authors that are agents: emails or GitHub logins, comma-separated (default `noreply@anthropic.com,Copilot,openhands-agent`: Claude, GitHub Copilot, OpenHands). |
    | `TRIBUTARY_GITHUB_HISTORY_DAYS` | Days of workflow runs a first or full sync reads (default 30). |
+   | `TRIBUTARY_GITHUB_MAX_JOBS_RUNS` | Runs whose jobs one sync reads at most, a request each; a longer backfill carries on next sync (default 3000). |
    | `TRIBUTARY_GITHUB_HISTORY_MONTHS` | Months of billing a first or full sync reads, the current one included (default 12). Commits are read whole. |
    | `TRIBUTARY_GITHUB_LOOKBACK_DAYS` | Days of commits and runs read again before the last sync (default 3). |
    | `TRIBUTARY_GITHUB_SCHEDULE` | A 5-field cron expression, in `TRIBUTARY_TZ` (default: daily at 04:15). Set it on the source's page instead, when you can: see [Scheduling](../scheduling.md). |
@@ -59,7 +60,7 @@ and keeps nothing.
 | Measurement | One point per | Time | Tags | Fields |
 |---|---|---|---|---|
 | `github_commit` | commit of a repository's default branch | its author's time | `owner`, `repository`, `author` (`self`, `agent`, `bot`, `other`) | `count` (1), `additions`, `deletions`; `local_hour`, `local_weekday` |
-| `github_workflow_run` | completed workflow run | its creation | `owner`, `repository`, `workflow`, `event`, `visibility` | `count` (1), `succeeded`, `failed`, `cancelled`, `attempts`, `duration_s`, `result` (1 success, 2 failed, 3 cancelled, 0 other) |
+| `github_workflow_run` | completed workflow run | its creation | `owner`, `repository`, `workflow`, `event`, `visibility` | `count` (1), `succeeded`, `failed`, `cancelled`, `attempts`, `duration_s`, `result` (1 success, 2 failed, 3 cancelled, 0 other), `hosted` (1 a job ran on a GitHub-hosted runner, 0 all self-hosted, -1 not read yet) |
 | `github_actions_usage` | day, repository and SKU of the billing report | the day (UTC) | `owner`, `repository`, `sku` | `minutes`, `gross_usd`, `discount_usd`, `net_usd`, `private` |
 | `github_actions_month` | owner and month | its first day (UTC) | `owner` | `minutes`, `private_minutes`, `counted_minutes`, `gross_usd`, `net_usd` |
 
@@ -79,6 +80,13 @@ and keeps nothing.
   workflow's own name, never the run's, which may carry a pull request's
   title. Every run is written, self-hosted (ARC) ones included: the billing
   report says which repositories hosted minutes were billed to.
+- `hosted` says whether a job of the run ran on a GitHub-hosted runner (its
+  runner group is `GitHub Actions`) or they all ran self-hosted: the jobs
+  API tells, a request a run, so a first sync walks the older runs over
+  several syncs (`TRIBUTARY_GITHUB_MAX_JOBS_RUNS` a sync) and writes `-1`
+  until it reads them. It is a field, so the later read overwrites the point
+  rather than adding a second one; a dashboard filters `"hosted" = 1` for
+  the runs that used GitHub's runners.
 - `sku` is GitHub's: `Actions Linux`, `Actions Windows`, `Actions macOS`,
   and a larger runner's own. `gross_usd` is the minutes' list price,
   `discount_usd` what the included minutes and public repositories' free
@@ -101,6 +109,11 @@ and keeps nothing.
 - Each later sync reads the commits and runs from the previous one, minus the
   lookback, and the billing from the month before the previous sync's (GitHub
   completes a day's usage later): the same points overwrite themselves.
+- A run's jobs, which say whether GitHub hosted it, cost a request each:
+  `TRIBUTARY_GITHUB_MAX_JOBS_RUNS` of them a sync, and a run stops when the
+  token's hourly quota has 200 calls left (the other sources share it). The
+  runs the budget leaves unread keep `hosted` = -1, and the backfill carries
+  on from where it stopped on the next sync, oldest last.
 - Each owner is read with its own token; one that fails, or one of its parts
   (its commits, its runs, its billing), doesn't stop the others, and is read
   again by the next sync.

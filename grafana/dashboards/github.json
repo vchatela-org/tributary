@@ -426,10 +426,171 @@
       }
     },
     {
+      "type": "timeseries",
+      "id": 12,
+      "title": "GitHub-hosted workflow runs per day, by result",
+      "description": "Runs that used a GitHub-hosted runner, per day in the dashboard's time zone, stacked by outcome. Self-hosted (ARC) runs are left out.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${dev}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "S",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_workflow_run\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"hosted\" = 1 AND \"result\" = 1 GROUP BY time(1d) fill(0) tz('$tz')",
+          "alias": "success"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_workflow_run\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"hosted\" = 1 AND \"result\" = 2 GROUP BY time(1d) fill(0) tz('$tz')",
+          "alias": "failed"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_workflow_run\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"hosted\" = 1 AND \"result\" = 3 GROUP BY time(1d) fill(0) tz('$tz')",
+          "alias": "cancelled"
+        },
+        {
+          "refId": "O",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"count\") FROM \"github_workflow_run\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"hosted\" = 1 AND \"result\" = 0 GROUP BY time(1d) fill(0) tz('$tz')",
+          "alias": "other"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 0,
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "barAlignment": 0,
+            "barWidthFactor": 0.8,
+            "fillOpacity": 100,
+            "lineWidth": 0,
+            "showPoints": "never",
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "success"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#0ca30c"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "failed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d03b3b"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cancelled"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#fab219"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#8e8e8e"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": [
+            "sum"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
       "type": "table",
       "id": 10,
       "title": "Last 50 workflow runs",
-      "description": "The 50 latest runs of the selected accounts' repositories, 10 a page, whatever the dashboard's range. Every run is listed, self-hosted (ARC) ones included: the billing report says which repositories hosted minutes were billed to. Duration is run_started_at to updated_at; a re-run replaces its first attempt.",
+      "description": "The 50 latest runs that used a GitHub-hosted runner, 10 a page, whatever the dashboard's range. duration is run_started_at to updated_at; a re-run replaces its first attempt.",
       "datasource": {
         "type": "influxdb",
         "uid": "${dev}"
@@ -437,7 +598,7 @@
       "timeFrom": "2y",
       "gridPos": {
         "x": 0,
-        "y": 23,
+        "y": 31,
         "w": 14,
         "h": 12
       },
@@ -450,7 +611,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT \"duration_s\", \"result\", \"attempts\" FROM \"github_workflow_run\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ GROUP BY \"repository\", \"workflow\" ORDER BY time DESC LIMIT 50"
+          "query": "SELECT \"duration_s\", \"result\", \"attempts\" FROM \"github_workflow_run\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"hosted\" = 1 GROUP BY \"repository\", \"workflow\" ORDER BY time DESC LIMIT 50"
         }
       ],
       "transformations": [
@@ -617,14 +778,14 @@
       "type": "table",
       "id": 11,
       "title": "Longest runs in the selected period",
-      "description": "The 20 longest runs created over the dashboard's range, by duration (run_started_at to updated_at). Every run is listed, self-hosted (ARC) ones included.",
+      "description": "The 20 longest runs on GitHub-hosted runners created over the dashboard's range, by duration (run_started_at to updated_at), newest first. Self-hosted (ARC) runs are left out.",
       "datasource": {
         "type": "influxdb",
         "uid": "${dev}"
       },
       "gridPos": {
         "x": 14,
-        "y": 23,
+        "y": 31,
         "w": 10,
         "h": 12
       },
@@ -637,7 +798,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT TOP(\"duration_s\", \"repository\", \"workflow\", \"event\", 20) FROM \"github_workflow_run\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/"
+          "query": "SELECT TOP(\"duration_s\", \"repository\", \"workflow\", \"event\", 20) FROM \"github_workflow_run\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ AND \"hosted\" = 1"
         }
       ],
       "transformations": [
@@ -646,7 +807,7 @@
           "options": {
             "sort": [
               {
-                "field": "top",
+                "field": "Time",
                 "desc": true
               }
             ]
@@ -742,7 +903,7 @@
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 35,
+        "y": 43,
         "w": 24,
         "h": 1
       },
@@ -759,7 +920,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 36,
+        "y": 44,
         "w": 16,
         "h": 4
       },
@@ -849,7 +1010,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 36,
+        "y": 44,
         "w": 8,
         "h": 4
       },
@@ -924,7 +1085,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 48,
         "w": 24,
         "h": 9
       },
@@ -1085,7 +1246,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 49,
+        "y": 57,
         "w": 24,
         "h": 12
       },

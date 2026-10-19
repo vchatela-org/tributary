@@ -19,6 +19,13 @@ auth `Authorization: Bearer <token>`:
                                         call, newest first: event, conclusion,
                                         attempt and how long it took. Not a
                                         call per run.
+  GET /repos/{owner}/{repo}/actions/runs/{id}/jobs
+                                        a run's jobs, 100 a call: their
+                                        runner's name and group say whether
+                                        GitHub hosted it (its group is
+                                        `GitHub Actions`) or it was
+                                        self-hosted (ARC). A call a run, so a
+                                        first sync walks them with a budget.
   GET /organizations/{org}/settings/billing/usage?year=&month=
   GET /users/{user}/settings/billing/usage?year=&month=
                                         the month's billed usage, a line per
@@ -54,9 +61,12 @@ Mapping (times in UTC seconds):
                         may carry a pull request's title, is never read),
                         event, visibility. Fields count=1, succeeded, failed,
                         cancelled, attempts, duration_s (run_started_at to
-                        updated_at), and result (1 success, 2 failed, 3
-                        cancelled, 0 other, for a table's mappings). Every
-                        run is written, self-hosted (ARC)
+                        updated_at), result (1 success, 2 failed, 3
+                        cancelled, 0 other, for a table's mappings), and
+                        hosted (1 when a job ran on a GitHub-hosted runner,
+                        0 when they all ran self-hosted, -1 until its jobs
+                        are read: a field, so a later read overwrites it).
+                        Every run is written, self-hosted (ARC)
                         ones included: the billing report says which
                         repositories hosted minutes were billed to.
   github_actions_usage  one per line of the billing report with minutes (its
@@ -78,7 +88,10 @@ Cursor, per owner: when its commits, its runs and its billing were last read.
 Commits are read from then, minus TRIBUTARY_GITHUB_LOOKBACK_DAYS, and the
 whole history on a first or full run (100 a call: cheap). Runs are read the
 same way, TRIBUTARY_GITHUB_HISTORY_DAYS on a first or full run; the lookback
-reads again the runs still in progress. Billing is read a month at a time:
+reads again the runs still in progress. A run's jobs cost a call each, so
+TRIBUTARY_GITHUB_MAX_JOBS_RUNS of them are read per sync (and the token keeps
+a reserve of its hourly quota): what is left is read by the next sync, from
+where this one stopped. Billing is read a month at a time:
 TRIBUTARY_GITHUB_HISTORY_MONTHS on a first or full run, then from the month
 before the last run's (GitHub completes a day's usage later). Append only:
 nothing is dropped.
@@ -117,6 +130,9 @@ MAX_ACCOUNTS = 9
 RETRIES = 3
 RETRY_AFTER_MAX = 60
 _RETRYABLE = {500, 502, 503, 504}
+# Calls of the hourly quota (5,000 for a token) left for everything else: below
+# it, a run stops reading jobs and carries on next time.
+QUOTA_RESERVE = 200
 # Conclusions counted as failed: the run did not do its job.
 FAILED = frozenset({"failure", "timed_out", "startup_failure"})
 # A run's outcome as one number, for a table's value mappings.
@@ -142,7 +158,7 @@ WORKFLOW_RUN = Measurement(
     database=DATABASE, name="github_workflow_run",
     tags=("owner", "repository", "workflow", "event", "visibility"),
     fields={"count": int, "succeeded": int, "failed": int, "cancelled": int, "attempts": int, "duration_s": int,
-            "result": int},
+            "result": int, "hosted": int},
 )
 ACTIONS_USAGE = Measurement(
     database=DATABASE, name="github_actions_usage", tags=("owner", "repository", "sku"),
@@ -210,6 +226,9 @@ class GitHubSettings(ConnectorSettings):
     lookback_days: int = 3
     # Days of workflow runs a first or full run reads.
     history_days: int = 30
+    # Runs whose jobs one sync reads at most (a call each): a longer backfill
+    # goes on next run, from where this one stopped.
+    max_jobs_runs: int = 3000
     # Months of billing a first or full run reads, the current one included.
     history_months: int = 12
 
@@ -321,7 +340,21 @@ def workflow_name(run: Mapping, workflows: Mapping[int, str]) -> str:
     return path.rsplit("/", 1)[-1] or "(unknown)"
 
 
-def run_point(run: Mapping, repo: Repo, workflow: str) -> Optional[Point]:
+def run_hosted(jobs: List[Dict]) -> int:
+    """1 when a job of the run ran on a GitHub-hosted runner, 0 when they all
+    ran self-hosted (ARC), -1 when none ran (all skipped) or they are not read
+    yet: GitHub's own runners are in its `GitHub Actions` group, and their
+    runner's name says so too."""
+    ran = [job for job in jobs if job.get("runner_name")]
+    if not ran:
+        return -1
+    return int(any(str(job.get("runner_group_name") or "") == "GitHub Actions"
+                   or ("runner_group_id" in job and job["runner_group_id"] == 0)
+                   or str(job.get("runner_name")).startswith("GitHub Actions ")
+                   for job in ran))
+
+
+def run_point(run: Mapping, repo: Repo, workflow: str, hosted: int = -1) -> Optional[Point]:
     """A completed run, at its creation; a re-run overwrites it."""
     created = parse_datetime(run.get("created_at"))
     if created is None or run.get("status") != "completed":
@@ -332,7 +365,7 @@ def run_point(run: Mapping, repo: Repo, workflow: str) -> Optional[Point]:
     fields: Dict[str, Any] = {"count": 1, "succeeded": int(conclusion == "success"),
                               "failed": int(conclusion in FAILED), "cancelled": int(conclusion == "cancelled"),
                               "attempts": max(1, _int(run.get("run_attempt"))), "duration_s": 0,
-                              "result": result}
+                              "result": result, "hosted": hosted}
     started, updated = parse_datetime(run.get("run_started_at")), parse_datetime(run.get("updated_at"))
     if started is not None and updated is not None and updated >= started:
         fields["duration_s"] = int((updated - started).total_seconds())
@@ -431,6 +464,12 @@ class GitHubConnector(Connector):
     measurements = (COMMIT, WORKFLOW_RUN, ACTIONS_USAGE, ACTIONS_MONTH)
     required_env = (f"{PREFIX}OWNER", f"{PREFIX}TOKEN")
 
+    def __init__(self) -> None:
+        super().__init__()
+        # Each token's calls left this hour, from GitHub's answer; None until
+        # a call says it.
+        self._remaining: Dict[str, int] = {}
+
     def api_configured(self) -> bool:
         return bool(self.settings.owner.strip() and self.settings.token
                     and self.settings.token.get_secret_value().strip())
@@ -478,6 +517,9 @@ class GitHubConnector(Connector):
             retry_after: Optional[str] = None
             try:
                 with _opener.open(Request(url, data=data, headers=headers), timeout=TIMEOUT_SECONDS) as response:
+                    remaining = response.headers.get("X-RateLimit-Remaining")
+                    if remaining and remaining.isdigit():
+                        self._remaining[account.token] = int(remaining)
                     return json.load(response)
             except HTTPError as exc:
                 if exc.code == 401:
@@ -570,10 +612,19 @@ class GitHubConnector(Connector):
             names.update({_int(w.get("id")): str(w.get("name") or "") for w in page if _int(w.get("id"))})
         return names
 
-    def _runs(self, account: Account, repo: Repo, since: datetime, now: datetime) -> Iterator[List[Dict]]:
-        """The runs created in [since, now], newest first."""
+    def _runs(self, account: Account, repo: Repo, since: datetime, until: datetime) -> Iterator[List[Dict]]:
+        """The runs created in [since, until], newest first."""
         yield from self._pages(account, f"/repos/{quote(repo.owner)}/{quote(repo.name)}/actions/runs",
-                               {"created": f"{_iso(since)}..{_iso(now)}"}, key="workflow_runs")
+                               {"created": f"{_iso(since)}..{_iso(until)}", "sort": "created",
+                                "direction": "desc"}, key="workflow_runs")
+
+    def _jobs(self, account: Account, repo: Repo, run: Mapping) -> List[Dict]:
+        """Every job of a run, the skipped ones included."""
+        jobs: List[Dict] = []
+        for page in self._pages(account, f"/repos/{quote(repo.owner)}/{quote(repo.name)}/actions/runs/"
+                                         f"{_int(run.get('id'))}/jobs", {"filter": "all"}, key="jobs"):
+            jobs += page
+        return jobs
 
     def _usage(self, account: Account, organisation: bool, month: datetime) -> List[Dict]:
         owner = quote(account.owner)
@@ -591,6 +642,43 @@ class GitHubConnector(Connector):
         return [item for item in items if isinstance(item, dict)]
 
     # -- Sync ----------------------------------------------------------------
+
+    def _run_points(self, account: Account, repo: Repo, since: datetime, until: datetime,
+                    read: Dict[str, Any], jobs: bool = True) -> Tuple[List[Point], int, Optional[datetime], bool]:
+        """The completed runs created in [since, until), newest first, their
+        jobs read while the sync's budget (`read`) allows (`jobs`): the
+        points, the runs still in progress, the creation time of the oldest
+        run whose jobs were read, and whether the whole window was read (the
+        budget didn't stop it)."""
+        points: List[Point] = []
+        in_progress = 0
+        oldest: Optional[datetime] = None
+        stopped_before = read["stopped"]
+        workflows: Optional[Dict[int, str]] = None
+        for page in self._runs(account, repo, since, until):
+            for run in page:
+                created = parse_datetime(run.get("created_at"))
+                if created is None or created < since or created >= until:
+                    continue
+                if run.get("status") != "completed":
+                    in_progress += 1
+                    continue
+                if workflows is None:
+                    workflows = self._workflows(account, repo)
+                hosted = -1
+                if jobs and not read["stopped"]:
+                    if (read["jobs"] >= self.settings.max_jobs_runs
+                            or self._remaining.get(account.token, QUOTA_RESERVE) < QUOTA_RESERVE):
+                        read["stopped"] = True
+                    else:
+                        read["jobs"] += 1
+                        hosted = run_hosted(self._jobs(account, repo, run))
+                        read["hosted"] += hosted == 1
+                        oldest = created
+                point = run_point(run, repo, workflow_name(run, workflows), hosted)
+                if point is not None:
+                    points.append(point)
+        return points, in_progress, oldest, jobs and not stopped_before and not read["stopped"]
 
     def _sync_account(self, account: Account, known: Dict, now: datetime, tz: ZoneInfo
                       ) -> Tuple[List[Point], List[str], List[str], Dict]:
@@ -630,27 +718,79 @@ class GitHubConnector(Connector):
         runs_until = _epoch(known.get("runs_until"))
         runs_since = min(runs_until, now) - timedelta(days=max(0, self.settings.lookback_days)) \
             if runs_until else now - timedelta(days=max(0, self.settings.history_days))
+        history_start = now - timedelta(days=max(0, self.settings.history_days))
+        jobs_done = bool(known.get("jobs_done"))
+        floors = {name: int(floor.timestamp()) for name, floor in
+                  ((name, _epoch(value)) for name, value in _dict(known.get("jobs_floors")).items())
+                  if floor is not None}
+        names = {repo.name for repo in repos}
+        floors = {name: floor for name, floor in floors.items() if name in names}
+        read: Dict[str, Any] = {"jobs": 0, "hosted": 0, "stopped": False}
         try:
+            # Until the older runs' jobs are read, the main pass only reads
+            # new runs (since the last sync, or the whole history on a first
+            # one, written with hosted=-1) and the backfill below carries on
+            # from its floor, so neither spends the budget on the other's.
+            first_sync = runs_until is None
+            recent = runs_until if runs_until is not None and not jobs_done else runs_since
             runs: List[Point] = []
             in_progress = 0
             for repo in repos:
-                workflows: Optional[Dict[int, str]] = None
-                for page in self._runs(account, repo, runs_since, now):
-                    for run in page:
-                        if run.get("status") != "completed":
-                            in_progress += 1
-                            continue
-                        if workflows is None:
-                            workflows = self._workflows(account, repo)
-                        point = run_point(run, repo, workflow_name(run, workflows))
-                        if point is not None:
-                            runs.append(point)
+                finished = False
+                oldest: Optional[datetime] = None
+                if not first_sync:
+                    found, waiting, oldest, finished = self._run_points(
+                        account, repo, recent, now, read, jobs=True)
+                    runs += found
+                    in_progress += waiting
+                if jobs_done:
+                    continue
+                if finished:
+                    target = int(recent.timestamp())
+                    floors[repo.name] = min(floors.get(repo.name, target), target)
+                elif oldest is not None:
+                    reached = int(oldest.timestamp())
+                    floors[repo.name] = min(floors.get(repo.name, reached), reached)
+            if not jobs_done:
+                for repo in repos:
+                    # A repository the main pass didn't reach has no floor:
+                    # read all of its history window. One it did keeps its
+                    # floor, or this sync's window start when the floor is
+                    # newer (that part was just read).
+                    found_floor = floors.get(repo.name)
+                    upper = int(now.timestamp()) if found_floor is None \
+                        else min(found_floor, int(recent.timestamp()))
+                    if upper <= int(history_start.timestamp()):
+                        continue
+                    found, waiting, oldest, finished = self._run_points(
+                        account, repo, history_start, datetime.fromtimestamp(upper, timezone.utc), read)
+                    runs += found
+                    in_progress += waiting
+                    if finished:
+                        floors[repo.name] = int(history_start.timestamp())
+                    elif oldest is not None:
+                        floors[repo.name] = min(floors.get(repo.name, int(oldest.timestamp())),
+                                                int(oldest.timestamp()))
+                jobs_done = all(floor <= int(history_start.timestamp()) for floor in floors.values()) \
+                    and len(floors) >= len(repos)
+            label = history_start if not first_sync and not jobs_done else recent
             summary.append(f"{account.owner}: {len(runs)} workflow run(s) since "
-                           f"{runs_since.astimezone(tz).date().isoformat()}")
+                           f"{label.astimezone(tz).date().isoformat()}")
             if in_progress:
                 summary.append(f"{account.owner}: {in_progress} run(s) still in progress, read again next run")
+            if read["jobs"]:
+                summary.append(f"{account.owner}: {read['jobs']} run(s)' jobs read, "
+                               f"{read['hosted']} on GitHub-hosted runners")
+            if not jobs_done:
+                summary.append(f"{account.owner}: the older runs' jobs are still being read, "
+                               "the next run carries on")
             points += runs
             cursor["runs_until"] = int(now.timestamp())
+            cursor["jobs_done"] = jobs_done
+            if jobs_done:
+                cursor.pop("jobs_floors", None)
+            else:
+                cursor["jobs_floors"] = {name: int(floor) for name, floor in floors.items()}
         except ConnectorError as exc:
             errors.append(f"{account.owner}: {exc}")
 
@@ -681,6 +821,7 @@ class GitHubConnector(Connector):
         accounts = self.accounts()
         tz = ZoneInfo(app_settings.tz)
         now = _now()
+        self._remaining = {}
         points: List[Point] = []
         summary: List[str] = []
         errors: List[str] = []
