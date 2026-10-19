@@ -263,12 +263,13 @@ completion rewritten overwrites itself), project names as tags.
 
 ### `DevStats`
 
-Software work on GitHub: who wrote the commits, and the minutes GitHub's hosted
-runners spent on the workflows.
+Software work on GitHub: who wrote the commits, the workflow runs and how long
+they took, and the minutes GitHub's hosted runners spent on them.
 
 | Measurement | Tags | Fields | Written by |
 |---|---|---|---|
 | `github_commit` | `source`, `user`, `owner`, `repository`, `author` (`self`, `agent`, `bot`, `other`), `time_precision` | `count` (int), `additions` (int), `deletions` (int), `local_hour` (int), `local_weekday` (int) | Tributary: `github` |
+| `github_workflow_run` | `source`, `user`, `owner`, `repository`, `workflow`, `event`, `visibility` | `count` (int), `succeeded` (int), `failed` (int), `cancelled` (int), `attempts` (int), `duration_s` (int), `result` (int) | Tributary: `github` |
 | `github_actions_usage` | `source`, `user`, `owner`, `repository`, `sku` | `minutes` (float), `gross_usd` (float), `discount_usd` (float), `net_usd` (float), `private` (bool) | Tributary: `github` |
 | `github_actions_month` | `source`, `user`, `owner` | `minutes` (float), `private_minutes` (float), `counted_minutes` (float), `gross_usd` (float), `net_usd` (float) | Tributary: `github` |
 
@@ -277,6 +278,14 @@ runners spent on the workflows.
   `agent` when an agent is among its authors (a `Co-authored-by` trailer
   included), else `bot` when a bot is, else `self` (the token's account) or
   `other`. `owner` is the organisation or user the repository belongs to.
+- `github_workflow_run`: one point per completed run, at its creation (a
+  re-run keeps that time, so its point overwrites the first attempt's).
+  `workflow` is the workflow's own name, `event` what started it (`push`,
+  `schedule`...), `visibility` whether the repository is private.
+  `duration_s` is `run_started_at` to `updated_at`; `attempts` is
+  `run_attempt`; `result` is 1 success, 2 failed, 3 cancelled, 0 other (a
+  table maps it to words). Every run is written, self-hosted (ARC) ones
+  included.
 - `github_actions_usage`: one point per line of GitHub's billing report with
   minutes, at its day (UTC midnight): a repository's minutes on one SKU
   (`Actions Linux`, `Actions Windows`...), with what they cost before and

@@ -52,7 +52,7 @@ Light or dark follows your system; the other pages are in [docs/ui.md](docs/ui.m
 | [**Sleep as Android**](docs/connectors/sleep_as_android.md) | Sleep | Export, uploaded in the UI | `sleep_session`, `sleep_stage`, `sleep_vitals` → `SleepStats` | none: you import a file |
 | [**Audiobookshelf**](docs/connectors/audiobookshelf.md) | Reading & media | API | `reading_session`, `book_finished` → `MediaStats` | Daily at 03:10 |
 | [**Todoist**](docs/connectors/todoist.md) | Productivity | API | `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` → `TodoistStats` | Daily at 00:30 |
-| [**GitHub**](docs/connectors/github.md) | Productivity | API (a token per organisation or user) | `github_commit`, `github_actions_usage`, `github_actions_month` → `DevStats` | Daily at 04:15 |
+| [**GitHub**](docs/connectors/github.md) | Productivity | API (a token per organisation or user) | `github_commit`, `github_workflow_run`, `github_actions_usage`, `github_actions_month` → `DevStats` | Daily at 04:15 |
 
 Schedules are in `TRIBUTARY_TZ` and staggered so two runs never overlap;
 change one on the source's page ([scheduling](docs/scheduling.md)). Each
@@ -84,7 +84,7 @@ Tributary only writes; dashboards read InfluxDB. [grafana/](grafana/) ships:
 | [Medication](grafana/dashboards/medication.json) | `BodyStats`: `medication` | doses taken, missed or skipped, the share taken per medication over time, a table per medication and per dose |
 | [Nutrition & exercise](grafana/dashboards/nutrition-exercise.json) | `BodyStats`: `nutrition`, `exercise`, `body_composition` | calories per meal and macro split per logged day, workouts per day and week by activity, weight next to them |
 | [Todoist](grafana/dashboards/todoist.json) | `TodoistStats`: `todoist_completion`, `todoist_task_completed`, `todoist_stats` | completions per day and project, due dates kept or missed, priority, streak and karma, the tasks above the night's sleep score and HRV |
-| [GitHub](grafana/dashboards/github.json) | `DevStats`: `github_commit`, `github_actions_month`, `github_actions_usage` | commits by author (you, you with an agent, a bot, someone else), per week and per repository; hosted runner minutes against the included ones |
+| [GitHub](grafana/dashboards/github.json) | `DevStats`: `github_commit`, `github_workflow_run`, `github_actions_month`, `github_actions_usage` | commits by author (you, you with an agent, a bot, someone else), per week and per repository; the latest and longest workflow runs; hosted runner minutes against the included ones |
 | [Habits & recovery](grafana/dashboards/habits-recovery.json) | `SleepStats`: `journal`, `sleep_session`, `GarminStats`: `SleepSummary` | a daily journal's answers from any source, and the night after a yes against the night after a no: recovery, HRV, time asleep, each from its picker |
 | [Strength training](grafana/dashboards/strength-training.json) | `GarminStats`: `StrengthExerciseSet`, `StrengthHRZones` | volume, sets and reps, estimated one-rep max and records per exercise, time under tension, heart-rate zones |
 
