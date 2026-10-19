@@ -784,6 +784,46 @@ GITHUB_COMMITS = {
     # An empty repository: no default branch.
     ("dana", "dotfiles"): None,
 }
+def github_run(created, workflow_id, path=".github/workflows/tests.yml", conclusion="success", event="push",
+               attempt=1, status="completed", started=None, updated=None):
+    return {"id": _epoch(created) * 10 + attempt, "created_at": created,
+            "run_started_at": started, "updated_at": updated, "status": status, "conclusion": conclusion,
+            "run_attempt": attempt, "event": event, "workflow_id": workflow_id, "path": path}
+
+
+GITHUB_WORKFLOWS = {
+    ("acme", "api"): [{"id": 1, "name": "Tests"}, {"id": 2, "name": "Deploy"}, {"id": 3, "name": "Pages"}],
+    ("acme", "site"): [{"id": 4, "name": "Pages"}],
+    ("dana", "dotfiles"): [{"id": 5, "name": "Sync"}],
+}
+# Newest first, as GitHub lists them.
+GITHUB_RUNS = {
+    ("acme", "api"): [
+        # A re-run: the same creation, a second attempt.
+        github_run("2026-10-13T22:00:00Z", 1, attempt=2, started="2026-10-13T22:00:10Z",
+                   updated="2026-10-13T22:04:10Z"),
+        github_run("2026-10-13T20:00:00Z", 2, path=".github/workflows/deploy.yml", conclusion="timed_out",
+                   event="workflow_dispatch", started="2026-10-13T20:00:30Z",
+                   updated="2026-10-13T20:10:30Z"),
+        # Still running: not written, read again next sync.
+        github_run("2026-10-12T09:00:00Z", 3, status="in_progress", conclusion=None,
+                   started="2026-10-12T09:00:05Z", updated="2026-10-12T09:01:00Z"),
+        # A workflow the list no longer has: its file's name.
+        github_run("2026-09-20T08:00:00Z", 99, path=".github/workflows/old.yml", event="schedule",
+                   started="2026-09-20T08:00:05Z", updated="2026-09-20T08:01:05Z"),
+        # Before the first sync's window: never read.
+        github_run("2025-01-01T08:00:00Z", 1, started="2025-01-01T08:00:05Z",
+                   updated="2025-01-01T08:02:05Z"),
+    ],
+    ("acme", "site"): [
+        github_run("2026-10-10T18:00:00Z", 4, path=".github/workflows/pages.yml", event="workflow_dispatch",
+                   started="2026-10-10T18:00:02Z", updated="2026-10-10T18:00:32Z"),
+    ],
+    ("dana", "dotfiles"): [
+        github_run("2026-10-14T06:00:00Z", 5, started="2026-10-14T06:00:01Z",
+                   updated="2026-10-14T06:00:41Z"),
+    ],
+}
 # The billing report, by (owner, year, month).
 GITHUB_USAGE = {
     ("acme", 2026, 10): [
@@ -881,6 +921,17 @@ class FakeGitHub:
         if parts[0] in ("organizations", "users") and parts[2:] == ["settings", "billing", "usage"] \
                 and parts[1] == scope:
             return {"usageItems": GITHUB_USAGE.get((parts[1], int(params["year"]), int(params["month"])), [])}
+        if parts[0] == "repos" and parts[1] == scope and parts[3:] == ["actions", "workflows"]:
+            return {"total_count": len(GITHUB_WORKFLOWS.get((parts[1], parts[2]), [])),
+                    "workflows": self._page(GITHUB_WORKFLOWS.get((parts[1], parts[2]), []), params)}
+        if parts[0] == "repos" and parts[1] == scope and parts[3:] == ["actions", "runs"]:
+            runs = GITHUB_RUNS.get((parts[1], parts[2]), [])
+            if params.get("created"):
+                start, _, end = params["created"].partition("..")
+                runs = [run for run in runs
+                        if (not start or _epoch(run["created_at"]) >= _epoch(start))
+                        and (not end or _epoch(run["created_at"]) <= _epoch(end))]
+            return {"total_count": len(runs), "workflow_runs": self._page(runs, params)}
         return None
 
     def graphql(self, body):

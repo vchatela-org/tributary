@@ -1,7 +1,7 @@
 {
   "uid": "tributary-github",
   "title": "GitHub: commits and hosted minutes",
-  "description": "From Tributary's github connector (DevStats): who wrote the commits on the default branches (you alone, you with an agent, a bot, someone else), and GitHub-hosted runner minutes against the 2,000 a free plan includes each month.",
+  "description": "From Tributary's github connector (DevStats): who wrote the commits on the default branches (you alone, you with an agent, a bot, someone else), the workflow runs and how long they took, and GitHub-hosted runner minutes against the 2,000 a free plan includes each month.",
   "tags": [
     "tributary",
     "github"
@@ -426,13 +426,323 @@
       }
     },
     {
+      "type": "table",
+      "id": 10,
+      "title": "Last 50 workflow runs",
+      "description": "The 50 latest runs of the selected accounts' repositories, 10 a page, whatever the dashboard's range. Every run is listed, self-hosted (ARC) ones included: the billing report says which repositories hosted minutes were billed to. Duration is run_started_at to updated_at; a re-run replaces its first attempt.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${dev}"
+      },
+      "timeFrom": "2y",
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 14,
+        "h": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"duration_s\", \"result\", \"attempts\" FROM \"github_workflow_run\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/ ORDER BY time DESC LIMIT 50"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Time",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "limit",
+          "options": {
+            "limitField": 50
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "owner": true,
+              "event": true,
+              "visibility": true,
+              "succeeded": true,
+              "failed": true,
+              "cancelled": true,
+              "count": true
+            },
+            "renameByName": {
+              "duration_s": "Duration",
+              "result": "Result",
+              "attempts": "Attempts",
+              "repository": "Repository",
+              "workflow": "Workflow"
+            },
+            "indexByName": {
+              "Time": 0,
+              "Repository": 1,
+              "Workflow": 2,
+              "Result": 3,
+              "Duration": 4,
+              "Attempts": 5
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Attempts"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Result"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 120
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "0": {
+                        "text": "other",
+                        "index": 0
+                      },
+                      "1": {
+                        "text": "success",
+                        "index": 1,
+                        "color": "#0ca30c"
+                      },
+                      "2": {
+                        "text": "failed",
+                        "index": 2,
+                        "color": "#d03b3b"
+                      },
+                      "3": {
+                        "text": "cancelled",
+                        "index": 3,
+                        "color": "#fab219"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Repository"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 170
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "enablePagination": true,
+        "pageSize": 10
+      }
+    },
+    {
+      "type": "table",
+      "id": 11,
+      "title": "Longest runs in the selected period",
+      "description": "The 20 longest runs created over the dashboard's range, by duration (run_started_at to updated_at). Every run is listed, self-hosted (ARC) ones included.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${dev}"
+      },
+      "gridPos": {
+        "x": 14,
+        "y": 23,
+        "w": 10,
+        "h": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${dev}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT TOP(\"duration_s\", \"repository\", \"workflow\", \"event\", 20) FROM \"github_workflow_run\" WHERE $timeFilter AND \"owner\" =~ /^${owner:regex}$/"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "top",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "renameByName": {
+              "top": "Duration",
+              "repository": "Repository",
+              "workflow": "Workflow",
+              "event": "Event"
+            },
+            "indexByName": {
+              "Time": 0,
+              "Repository": 1,
+              "Workflow": 2,
+              "Event": 3,
+              "Duration": 4
+            }
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Repository"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Event"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "enablePagination": true,
+        "pageSize": 10
+      }
+    },
+    {
       "type": "row",
       "title": "Commits (default branches, merges left out)",
       "id": 5,
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 23,
+        "y": 35,
         "w": 24,
         "h": 1
       },
@@ -449,7 +759,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 24,
+        "y": 36,
         "w": 16,
         "h": 4
       },
@@ -539,7 +849,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 24,
+        "y": 36,
         "w": 8,
         "h": 4
       },
@@ -614,7 +924,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 28,
+        "y": 40,
         "w": 24,
         "h": 9
       },
@@ -775,7 +1085,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 37,
+        "y": 49,
         "w": 24,
         "h": 12
       },

@@ -1,6 +1,6 @@
-"""GitHub: who wrote the commits (you, an agent, a bot) and the minutes GitHub's
-hosted runners spent on your workflows, against the plan's included minutes,
-from the GitHub API, into DevStats.
+"""GitHub: who wrote the commits (you, an agent, a bot), the workflow runs and
+how long they took, and the minutes GitHub's hosted runners spent on them,
+against the plan's included minutes, from the GitHub API, into DevStats.
 
 API (https://docs.github.com/en/rest, https://docs.github.com/en/graphql),
 auth `Authorization: Bearer <token>`:
@@ -12,6 +12,13 @@ auth `Authorization: Bearer <token>`:
   GET /users/{owner}                    an organisation or a user.
   GET /orgs/{owner}/repos, /user/repos (the token's own), /users/{owner}/repos
                                         the repositories: name, visibility.
+  GET /repos/{owner}/{repo}/actions/workflows
+                                        a repository's workflows: their names.
+  GET /repos/{owner}/{repo}/actions/runs?created=
+                                        the runs created in a range, 100 a
+                                        call, newest first: event, conclusion,
+                                        attempt and how long it took. Not a
+                                        call per run.
   GET /organizations/{org}/settings/billing/usage?year=&month=
   GET /users/{user}/settings/billing/usage?year=&month=
                                         the month's billed usage, a line per
@@ -26,7 +33,7 @@ follow it).
 Accounts: one token per owner, as a fine-grained token reads one:
 TRIBUTARY_GITHUB_OWNER / _TOKEN, then TRIBUTARY_GITHUB_OWNER_2 / _TOKEN_2,
 _3... (up to _9). An account that fails, or a part of one (its commits, its
-billing), doesn't stop the others.
+runs, its billing), doesn't stop the others.
 
 Mapping (times in UTC seconds):
   github_commit         one per commit of a repository's default branch (merge
@@ -40,6 +47,18 @@ Mapping (times in UTC seconds):
                         you co-authors their squash commits); else `self` (the
                         token's account) or `other` (an email no account
                         claims included). Fields count=1, additions, deletions.
+  github_workflow_run   one per completed run, at its creation (a re-run
+                        keeps that time, so its point overwrites the first
+                        attempt's). Tags owner, repository, workflow (its own
+                        name, from the workflow list; the run's name, which
+                        may carry a pull request's title, is never read),
+                        event, visibility. Fields count=1, succeeded, failed,
+                        cancelled, attempts, duration_s (run_started_at to
+                        updated_at), and result (1 success, 2 failed, 3
+                        cancelled, 0 other, for a table's mappings). Every
+                        run is written, self-hosted (ARC)
+                        ones included: the billing report says which
+                        repositories hosted minutes were billed to.
   github_actions_usage  one per line of the billing report with minutes (its
                         storage left out): a day (UTC midnight), owner,
                         repository and SKU (`Actions Linux`...). Fields
@@ -55,12 +74,14 @@ Mapping (times in UTC seconds):
                         calendar month: this is the monthly graph's.
 No commit message, title, branch, email or login is written.
 
-Cursor, per owner: when its commits and its billing were last read. Commits
-are read from then, minus TRIBUTARY_GITHUB_LOOKBACK_DAYS, and the whole
-history on a first or full run (100 a call: cheap). Billing is read a month at
-a time: TRIBUTARY_GITHUB_HISTORY_MONTHS on a first or full run, then from the
-month before the last run's (GitHub completes a day's usage later). Append
-only: nothing is dropped.
+Cursor, per owner: when its commits, its runs and its billing were last read.
+Commits are read from then, minus TRIBUTARY_GITHUB_LOOKBACK_DAYS, and the
+whole history on a first or full run (100 a call: cheap). Runs are read the
+same way, TRIBUTARY_GITHUB_HISTORY_DAYS on a first or full run; the lookback
+reads again the runs still in progress. Billing is read a month at a time:
+TRIBUTARY_GITHUB_HISTORY_MONTHS on a first or full run, then from the month
+before the last run's (GitHub completes a day's usage later). Append only:
+nothing is dropped.
 """
 import http.client
 import json
@@ -96,6 +117,10 @@ MAX_ACCOUNTS = 9
 RETRIES = 3
 RETRY_AFTER_MAX = 60
 _RETRYABLE = {500, 502, 503, 504}
+# Conclusions counted as failed: the run did not do its job.
+FAILED = frozenset({"failure", "timed_out", "startup_failure"})
+# A run's outcome as one number, for a table's value mappings.
+RESULT_OTHER, RESULT_SUCCESS, RESULT_FAILED, RESULT_CANCELLED = 0, 1, 2, 3
 # How a plan's included minutes count a standard hosted runner's minute; other
 # SKUs (larger runners) are never covered by them.
 INCLUDED_MULTIPLIERS = {"actions linux": 1, "actions windows": 2, "actions macos": 10}
@@ -112,6 +137,12 @@ COMMIT = Measurement(
     database=DATABASE, name="github_commit", tags=("owner", "repository", "author"),
     fields={"count": int, "additions": int, "deletions": int},
     local_time=True,
+)
+WORKFLOW_RUN = Measurement(
+    database=DATABASE, name="github_workflow_run",
+    tags=("owner", "repository", "workflow", "event", "visibility"),
+    fields={"count": int, "succeeded": int, "failed": int, "cancelled": int, "attempts": int, "duration_s": int,
+            "result": int},
 )
 ACTIONS_USAGE = Measurement(
     database=DATABASE, name="github_actions_usage", tags=("owner", "repository", "sku"),
@@ -175,8 +206,10 @@ class GitHubSettings(ConnectorSettings):
     # Commit authors that are agents, as a co-author or the author: emails or
     # GitHub logins, comma-separated (Claude, GitHub Copilot, OpenHands).
     agents: str = "noreply@anthropic.com,Copilot,openhands-agent"
-    # Days of commits read again before the last run's end.
+    # Days of commits and runs read again before the last run's end.
     lookback_days: int = 3
+    # Days of workflow runs a first or full run reads.
+    history_days: int = 30
     # Months of billing a first or full run reads, the current one included.
     history_months: int = 12
 
@@ -279,6 +312,35 @@ def commit_points(commits: List[Dict], repo: Repo, me: str, agents: FrozenSet[st
     return points
 
 
+def workflow_name(run: Mapping, workflows: Mapping[int, str]) -> str:
+    """The workflow's own name; its file's when the list lacks it."""
+    name = workflows.get(_int(run.get("workflow_id")))
+    if name:
+        return name
+    path = str(run.get("path") or "")
+    return path.rsplit("/", 1)[-1] or "(unknown)"
+
+
+def run_point(run: Mapping, repo: Repo, workflow: str) -> Optional[Point]:
+    """A completed run, at its creation; a re-run overwrites it."""
+    created = parse_datetime(run.get("created_at"))
+    if created is None or run.get("status") != "completed":
+        return None
+    conclusion = run.get("conclusion")
+    result = (RESULT_SUCCESS if conclusion == "success" else RESULT_FAILED if conclusion in FAILED
+              else RESULT_CANCELLED if conclusion == "cancelled" else RESULT_OTHER)
+    fields: Dict[str, Any] = {"count": 1, "succeeded": int(conclusion == "success"),
+                              "failed": int(conclusion in FAILED), "cancelled": int(conclusion == "cancelled"),
+                              "attempts": max(1, _int(run.get("run_attempt"))), "duration_s": 0,
+                              "result": result}
+    started, updated = parse_datetime(run.get("run_started_at")), parse_datetime(run.get("updated_at"))
+    if started is not None and updated is not None and updated >= started:
+        fields["duration_s"] = int((updated - started).total_seconds())
+    return Point(WORKFLOW_RUN, created, {"owner": repo.owner, "repository": repo.name, "workflow": workflow,
+                                         "event": str(run.get("event") or ""),
+                                         "visibility": "private" if repo.private else "public"}, fields)
+
+
 def _sku(raw: Any) -> str:
     """`Actions Linux` (the report) and `actions_linux` (its summary) alike."""
     return str(raw or "").replace("_", " ").strip()
@@ -358,15 +420,15 @@ _opener = build_opener(_NoRedirect)
 class GitHubConnector(Connector):
     key = "github"
     label = "GitHub"
-    description = ("Who wrote the commits (you, an agent, a bot), and the minutes GitHub's hosted runners spent "
-                   "on your workflows, against the plan's included minutes.")
+    description = ("Who wrote the commits (you, an agent, a bot), the workflow runs and how long they took, "
+                   "and the minutes GitHub's hosted runners spent on them, against the plan's included minutes.")
     icon = "bi-github"
     category = "Productivity"
     # Commits carry their own time and the billing report is daily: once a
     # day, at night.
     default_schedule = "15 4 * * *"
     settings_class = GitHubSettings
-    measurements = (COMMIT, ACTIONS_USAGE, ACTIONS_MONTH)
+    measurements = (COMMIT, WORKFLOW_RUN, ACTIONS_USAGE, ACTIONS_MONTH)
     required_env = (f"{PREFIX}OWNER", f"{PREFIX}TOKEN")
 
     def api_configured(self) -> bool:
@@ -454,10 +516,13 @@ class GitHubConnector(Connector):
             raise ConnectorError(f"GitHub's GraphQL API answered: {message[:200]}")
         return _dict(answer.get("data"))
 
-    def _pages(self, account: Account, path: str, params: Optional[Dict[str, Any]] = None) -> Iterator[List[Dict]]:
+    def _pages(self, account: Account, path: str, params: Optional[Dict[str, Any]] = None,
+               key: Optional[str] = None) -> Iterator[List[Dict]]:
+        """Each page's items: the answer's list, or `key` of its object."""
         page = 1
         while True:
-            items = self._call(account, path, {**(params or {}), "per_page": PER_PAGE, "page": page})
+            answer = self._call(account, path, {**(params or {}), "per_page": PER_PAGE, "page": page})
+            items = _dict(answer).get(key) if key else answer
             if not isinstance(items, list):
                 raise ConnectorError(f"Unexpected answer from GitHub on {path}.")
             yield [item for item in items if isinstance(item, dict)]
@@ -496,6 +561,19 @@ class GitHubConnector(Connector):
             if not info.get("hasNextPage") or not info.get("endCursor"):
                 return
             after = info["endCursor"]
+
+    def _workflows(self, account: Account, repo: Repo) -> Dict[int, str]:
+        """A repository's workflows: their id to their own name."""
+        names: Dict[int, str] = {}
+        for page in self._pages(account, f"/repos/{quote(repo.owner)}/{quote(repo.name)}/actions/workflows",
+                                key="workflows"):
+            names.update({_int(w.get("id")): str(w.get("name") or "") for w in page if _int(w.get("id"))})
+        return names
+
+    def _runs(self, account: Account, repo: Repo, since: datetime, now: datetime) -> Iterator[List[Dict]]:
+        """The runs created in [since, now], newest first."""
+        yield from self._pages(account, f"/repos/{quote(repo.owner)}/{quote(repo.name)}/actions/runs",
+                               {"created": f"{_iso(since)}..{_iso(now)}"}, key="workflow_runs")
 
     def _usage(self, account: Account, organisation: bool, month: datetime) -> List[Dict]:
         owner = quote(account.owner)
@@ -549,6 +627,33 @@ class GitHubConnector(Connector):
         except ConnectorError as exc:
             errors.append(f"{account.owner}: {exc}")
 
+        runs_until = _epoch(known.get("runs_until"))
+        runs_since = min(runs_until, now) - timedelta(days=max(0, self.settings.lookback_days)) \
+            if runs_until else now - timedelta(days=max(0, self.settings.history_days))
+        try:
+            runs: List[Point] = []
+            in_progress = 0
+            for repo in repos:
+                workflows: Optional[Dict[int, str]] = None
+                for page in self._runs(account, repo, runs_since, now):
+                    for run in page:
+                        if run.get("status") != "completed":
+                            in_progress += 1
+                            continue
+                        if workflows is None:
+                            workflows = self._workflows(account, repo)
+                        point = run_point(run, repo, workflow_name(run, workflows))
+                        if point is not None:
+                            runs.append(point)
+            summary.append(f"{account.owner}: {len(runs)} workflow run(s) since "
+                           f"{runs_since.astimezone(tz).date().isoformat()}")
+            if in_progress:
+                summary.append(f"{account.owner}: {in_progress} run(s) still in progress, read again next run")
+            points += runs
+            cursor["runs_until"] = int(now.timestamp())
+        except ConnectorError as exc:
+            errors.append(f"{account.owner}: {exc}")
+
         usage_until = _epoch(known.get("usage_until"))
         first = month_start(month_start(min(usage_until, now)) - timedelta(days=1)) if usage_until \
             else months_back(now, self.settings.history_months)
@@ -595,7 +700,7 @@ class GitHubConnector(Connector):
             summary += said
             errors += wrong
             new_cursor[key] = state
-            failed += len(wrong) == 2
+            failed += len(wrong) == 3
         if failed == len(accounts):
             raise ConnectorError(" ".join(errors))
         return SyncResult(points=points, summary=summary, errors=errors, cursor={"accounts": new_cursor})
