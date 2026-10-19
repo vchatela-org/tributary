@@ -60,8 +60,9 @@ Export (whoop_export.py: the zip, or one of its CSV files):
     API returned (history before its reach) is written whole at its own
     time; a newer unmatched one is left out: the API's to write, at its own
     time. Once the API is connected, an import waits for its first run.
-  - journal (SleepStats, export only): one point per answer, at its cycle's
-    start (the API cycle's pinned time when one matches), tag question =
+  - journal (SleepStats, export only): one point per answer, at 12:00 local
+    on the day it is about (the day before the morning it was given: the
+    cycle's start, its bedtime, minus 12 hours), tag question =
     WHOOP's wording, custom questions included; fields answered_yes (0/1),
     count (1), and the cycle's recovery, sleep and strain (recovery_score,
     hrv_rmssd_ms, asleep_s, strain — so a panel can compare them on yes-days
@@ -75,7 +76,7 @@ expire or once after a 401, never logged, returned or shown.
 """
 import bisect
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
@@ -99,6 +100,12 @@ KJ_PER_KCAL = 4.184
 # close (the export is to the second, in local time; the API to the
 # millisecond, in UTC).
 MATCH_SECONDS = 60
+# A journal answer is about the day before the morning it is given, and WHOOP
+# keys it to the cycle that starts with that night's sleep: the day is the
+# local date of that bedtime minus this, so 23:10 and 00:22 both name the
+# evening's day.
+JOURNAL_DAY_SHIFT = timedelta(hours=12)
+JOURNAL_HOUR = time(12)
 # A record awaiting its score holds the cursor back (the next run reads it
 # again), but not one older than this: WHOOP left it unscored for good, and
 # re-reading from it every day would only grow the window.
@@ -352,6 +359,12 @@ def workout_fields(workout: Dict) -> Dict[str, Any]:
     for n, word in enumerate(("zero", "one", "two", "three", "four", "five")):
         _put(fields, f"zone{n}_s", _seconds(zones.get(f"zone_{word}_milli")), int)
     return fields
+
+
+def journal_day(cycle_start: datetime, zone: Any) -> date:
+    """The day a journal answer is about, from the start (the bedtime) of the
+    cycle WHOOP keys it to, read in the cycle's own time zone."""
+    return (cycle_start.astimezone(zone) - JOURNAL_DAY_SHIFT).date()
 
 
 def _at(seconds: int) -> datetime:
@@ -646,11 +659,15 @@ def export_points(tables: Dict[str, List[Dict]], pins: Dict[str, Dict[str, list]
     # answered yes vs no without joining two measurements (InfluxQL cannot).
     cycles_by_start = {row["cycle_start"]: row for row in tables.get("cycles", [])}
     journal: List[Point] = []
+    days: List[date] = []
     for row in tables.get("journal", []):
         question = " ".join(str(row.get("question") or "").split())
         if not question:
             continue
-        pin = matcher.match("cycle", row["cycle_start"])
+        day = journal_day(row["cycle_start"], row.get("tz") or tz)
+        # Earlier versions stamped an answer at its cycle's start: the span
+        # covers that day too, so an import replaces those points as well.
+        days += [day, row["cycle_start"].astimezone(tz).date()]
         fields: Dict[str, Any] = {"count": 1}
         if isinstance(row.get("answered_yes"), bool):
             fields["answered_yes"] = int(row["answered_yes"])
@@ -660,13 +677,10 @@ def export_points(tables: Dict[str, List[Dict]], pins: Dict[str, Dict[str, list]
             _put(fields, "hrv_rmssd_ms", cycle.get("hrv_rmssd_ms"))
             _put(fields, "asleep_s", _seconds(cycle.get("asleep_ms")), int)
             _put(fields, "strain", cycle.get("strain"))
-        journal.append(Point(JOURNAL, _at(pin[0]) if pin is not None else row["cycle_start"],
+        journal.append(Point(JOURNAL, datetime.combine(day, JOURNAL_HOUR, tzinfo=tz),
                              {"question": question[:200]}, fields))
     journal = collapse(journal)
-    span = None
-    if journal:
-        days = sorted(point.time.astimezone(tz).date() for point in journal)
-        span = Span(days[0], days[-1])
+    span = Span(min(days), max(days)) if journal else None
 
     summary = [f"{what}: {matched} on the API's points, {alone} from before the API's first record"
                + (f", {left} left out (the API's to write: let it run, then import again)" if left else "")

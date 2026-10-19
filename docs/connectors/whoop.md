@@ -118,7 +118,7 @@ the full contract is in [the schema](../schema.md).
 | `SleepStats..sleep_session` | sleep (night or nap), with the recovery scored from it | the sleep's **end** | `kind` (`night`, `nap`) | `start`, `in_bed_s`, `awake_s`, `light_s`, `deep_s` (slow wave), `rem_s`, `asleep_s` (light + deep + REM), `no_data_s`, `cycles`, `awakenings`, `score` (sleep performance %), `respiration_rate`, `efficiency_pct`, `consistency_pct`, `need_baseline_s`, `need_debt_s`, `need_strain_s`, `need_nap_s`, `tz_offset_min`, `bedtime_min`, `wake_min`; the recovery's `recovery_score`, `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `skin_temp_c`, `calibrating`; from the export, `sleep_need_s`, `sleep_debt_s` |
 | `BodyStats..daily_activity` | physiological cycle (sleep onset to the next) | its start | none | `strain`, `energy_kcal` (WHOOP's kJ / 4.184), `avg_hr`, `max_hr`, `steps`, `duration_s` (absent while open) |
 | `BodyStats..exercise` (shared with MyFitnessPal) | workout | its start | `category` (`run`, `bike`, `strength`... as MyFitnessPal's), `sport` (WHOOP's own sport name) | `activity` (WHOOP's sport name), `duration_s`, `energy_kcal`, `strain`, `avg_hr`, `max_hr`, `distance_m`, `altitude_gain_m`, `altitude_change_m`, `percent_recorded`, `zone0_s` ... `zone5_s`; from the export, `zone1_pct` ... `zone5_pct`, `gps_enabled` |
-| `SleepStats..journal` (export only) | journal answer | the start of the cycle it was answered for | `question` (WHOOP's wording) | `answered_yes` (0/1), `count` (1), and that cycle's `recovery_score`, `hrv_rmssd_ms`, `asleep_s`, `strain` |
+| `SleepStats..journal` (export only) | journal answer | 12:00 local on the day it is about (the day before the morning it was given) | `question` (WHOOP's wording) | `answered_yes` (0/1), `count` (1), and that cycle's `recovery_score`, `hrv_rmssd_ms`, `asleep_s`, `strain` |
 
 - **Scores.** A record WHOOP has scored carries its score. One still
   awaiting its score (`PENDING_SCORE`) is not written yet: the next run reads
@@ -184,7 +184,8 @@ one re-saved by a spreadsheet (other separators, other date formats) is refused.
   written at its own time.
 - **The journal** is rebuilt from each export: every export holds the whole
   history, so an import replaces this source's journal over the days it
-  covers (an answer deleted in the app goes too). Nothing else is ever
+  covers (an answer deleted in the app goes too, and an answer an earlier
+  version stamped at its bedtime is moved onto its day). Nothing else is ever
   dropped. It needs `TRIBUTARY_INFLUXDB_USER`, like every import that
   replaces days.
 - The check's message counts what was matched: *sleeps: 412 on the API's

@@ -23,7 +23,8 @@ What is compared, per UTC day:
   cycle     whoop_cycle (by its start)      daily_activity points with a `strain`
   workout   whoop_workout (by its start)    exercise points (source=whoop)
   journal   whoop_export_journal (by its    journal points
-            cycle start)
+            cycle start minus 12 hours:
+            the day it is about)
 A day in InfluxDB only is expected where Whoops never stored the record (an
 unscored sleep, today's open cycle, history only an export holds); a day in
 PostgreSQL only, or with fewer points, is a record to look at.
@@ -50,7 +51,8 @@ SQL = {
              "FROM whoop_cycle GROUP BY 2",
     "workout": "SELECT 'workout', to_char((start AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD'), count(*) "
                "FROM whoop_workout GROUP BY 2",
-    "journal": "SELECT 'journal', to_char((cycle_start AT TIME ZONE 'UTC')::date, 'YYYY-MM-DD'), count(*) "
+    "journal": "SELECT 'journal', to_char((cycle_start AT TIME ZONE 'UTC' - interval '12 hours')::date, "
+               "'YYYY-MM-DD'), count(*) "
                "FROM whoop_export_journal GROUP BY 2",
 }
 
