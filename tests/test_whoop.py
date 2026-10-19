@@ -473,6 +473,34 @@ def test_a_cycle_timezone_without_a_cycle_is_still_named(whoop_connector, tmp_pa
         whoop_connector.import_file(write_whoop_export(tmp_path / "export.zip", files))
 
 
+def test_an_answer_whoop_places_on_a_cycle_later_is_imported_then(
+        whoop_connected, whoop_connector, influx, db, alice, tmp_path):
+    """An export taken before the night can hold an answer whose cycle does
+    not exist yet: left out now, it lands when a later export gives it one --
+    the import rewrites every day of the journal it covers."""
+    runner.run(db, whoop_connector)
+    files = dict(WHOOP_EXPORT)
+    files["journal_entries.csv"] = WHOOP_JOURNAL_HEADER + "\n" + (
+        "2026-10-01 23:10:00,2026-10-02 23:30:00,UTC+02:00,Have any alcoholic drinks?,true,\n"
+        ",,,Did you do spaced repetition practice?,false,\n")
+    path = write_whoop_export(tmp_path / "export.zip", files)
+    result = runner.run(db, whoop_connector, file=str(path), filename=path.name, trigger="upload")
+    assert result.status == "ok"
+    assert "1 journal answer(s) with no cycle, left out (no date to place them)" in result.message
+    assert [(t["question"], ts) for t, _f, ts in influx.stored("journal")] == \
+        [("Have any alcoholic drinks?", 1790848800)]
+    # Tomorrow's export: WHOOP has given that answer the cycle it belongs to.
+    files["journal_entries.csv"] = WHOOP_JOURNAL_HEADER + "\n" + (
+        "2026-10-01 23:10:00,2026-10-02 23:30:00,UTC+02:00,Have any alcoholic drinks?,true,\n"
+        "2026-10-19 23:00:00,2026-10-20 07:00:00,UTC+02:00,Did you do spaced repetition practice?,false,\n")
+    path = write_whoop_export(tmp_path / "export2.zip", files)
+    result = runner.run(db, whoop_connector, file=str(path), filename=path.name, trigger="upload")
+    assert result.status == "ok" and "no cycle" not in result.message
+    assert [(t["question"], ts) for t, _f, ts in influx.stored("journal")] == \
+        [("Have any alcoholic drinks?", 1790848800),
+         ("Did you do spaced repetition practice?", int(datetime(2026, 10, 19, 10, tzinfo=timezone.utc).timestamp()))]
+
+
 def test_a_new_export_replaces_the_journal_only(whoop_connected, whoop_connector, influx, db, alice, tmp_path):
     runner.run(db, whoop_connector)
     path = write_whoop_export(tmp_path / "export.zip")
