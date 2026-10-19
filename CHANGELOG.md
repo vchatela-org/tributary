@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.20.0](https://github.com/vchatela-org/tributary/compare/v0.19.1...v0.20.0) (2026-10-19)
+
+
+### Features
+
+* **grafana:** Habits & recovery reads the night after an answer from any journal and the picked sources ([#66](https://github.com/vchatela-org/tributary/issues/66)) ([455058d](https://github.com/vchatela-org/tributary/commit/455058d062366f2c1ed0609cc7401e6dd1c5459a))
+
+
+### Bug Fixes
+
+* **whoop:** a journal answer lands on the day it is about, whatever the bedtime ([#65](https://github.com/vchatela-org/tributary/issues/65)) ([01dc463](https://github.com/vchatela-org/tributary/commit/01dc463f54d8527741c59b0ed67b937e46824539))
+
 ## [0.19.0](https://github.com/vchatela-org/tributary/compare/v0.18.0...v0.19.0) (2026-10-15)
 
 
