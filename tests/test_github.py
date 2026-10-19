@@ -35,7 +35,7 @@ def months_read(fake, path=BILLING):
 
 def cursor_at(moment=NOW):
     state = {"commits_until": int(moment.timestamp()), "runs_until": int(moment.timestamp()),
-             "usage_until": int(moment.timestamp())}
+             "jobs_done": True, "usage_until": int(moment.timestamp())}
     return {"accounts": {"acme": dict(state), "dana": dict(state)}}
 
 
@@ -117,16 +117,19 @@ def test_each_completed_run_is_a_point_with_its_duration(github_api, github_conn
     # A re-run: the second attempt at the first run's creation.
     tags, fields = runs[("acme", "api", "Tests", at("2026-10-13T22:00:00Z"))]
     assert fields == {"count": "1i", "succeeded": "1i", "failed": "0i", "cancelled": "0i", "attempts": "2i",
-                      "duration_s": "240i", "result": "1i"}
+                      "duration_s": "240i", "result": "1i", "hosted": "0i"}
     assert tags["visibility"] == "private" and tags["event"] == "push"
-    # timed_out counts as failed; run_started_at to updated_at.
+    # timed_out counts as failed; run_started_at to updated_at; a job ran on a
+    # GitHub-hosted runner.
     _tags, fields = runs[("acme", "api", "Deploy", at("2026-10-13T20:00:00Z"))]
     assert fields["failed"] == "1i" and fields["duration_s"] == "600i" and fields["result"] == "2i"
+    assert fields["hosted"] == "1i"
     # A workflow the list lacks: its file's name.
     assert ("acme", "api", "old.yml", at("2026-09-20T08:00:00Z")) in runs
     # A public repository's run, and the account's own.
-    assert runs[("acme", "site", "Pages", at("2026-10-10T18:00:00Z"))][0]["visibility"] == "public"
+    assert runs[("acme", "site", "Pages", at("2026-10-10T18:00:00Z"))][1]["hosted"] == "1i"
     assert runs[("dana", "dotfiles", "Sync", at("2026-10-14T06:00:00Z"))][1]["duration_s"] == "40i"
+    assert runs[("dana", "dotfiles", "Sync", at("2026-10-14T06:00:00Z"))][1]["hosted"] == "1i"
     # In progress: not written, read again next sync. Outside the window: never read.
     assert at("2026-10-12T09:00:00Z") not in {ts for _o, _r, _w, ts in runs}
     assert at("2025-01-01T08:00:00Z") not in {ts for _o, _r, _w, ts in runs}
@@ -138,6 +141,33 @@ def test_a_first_run_reads_history_days_of_runs_and_a_later_one_the_lookback(git
     github_api.calls.clear()
     github_connector.sync(cursor_at())
     assert {p["created"] for p in runs_read(github_api)} == {"2026-10-11T12:00:00Z..2026-10-14T12:00:00Z"}
+
+
+def test_the_jobs_walk_carries_on_across_syncs(github_api, github_connector, monkeypatch):
+    monkeypatch.setattr(github_connector.settings, "max_jobs_runs", 2)
+    first = github_connector.sync(None)
+    acme = first.cursor["accounts"]["acme"]
+    # api's two newest completed runs; the rest waits for the next sync.
+    assert not acme["jobs_done"]
+    assert acme["jobs_floors"] == {"api": at("2026-10-13T20:00:00Z")}
+    assert any("older runs' jobs are still being read" in line for line in first.summary)
+    # The next sync reads the rest of api and site.
+    second = github_connector.sync(first.cursor)
+    assert second.cursor["accounts"]["acme"]["jobs_done"] is True
+    assert "jobs_floors" not in second.cursor["accounts"]["acme"]
+    assert "acme: 2 run(s)' jobs read, 1 on GitHub-hosted runners" in second.summary
+    # Then it only reads the lookback each sync.
+    third = github_connector.sync(second.cursor)
+    assert "acme: 2 run(s)' jobs read, 1 on GitHub-hosted runners" in third.summary
+
+
+def test_the_jobs_walk_keeps_a_reserve_of_the_hourly_quota(github_api, github_connector):
+    github_api.remaining = "100"
+    result = github_connector.sync(None)
+    # The runs are written, their jobs left for the next sync.
+    assert {fields["hosted"] for _m, _t, fields, _ts in of(lines_of(result), "github_workflow_run")} == {"-1i"}
+    assert any("older runs' jobs are still being read" in line for line in result.summary)
+    assert not any("jobs read" in line for line in result.summary)
 
 
 def test_the_workflow_list_is_read_once_per_repository_that_has_a_run(github_api, github_connector):
@@ -158,9 +188,11 @@ def test_a_first_run_reads_every_commit_and_a_year_of_billing(github_api, github
     assert result.summary == ["acme: 9 commit(s) in 2 repositories (2 agent, 3 bot, 1 other, 3 self)",
                               "acme: 4 workflow run(s) since 2026-09-14",
                               "acme: 1 run(s) still in progress, read again next run",
+                              "acme: 4 run(s)' jobs read, 2 on GitHub-hosted runners",
                               "acme: 52 hosted minute(s) this month, 20 counted against the included minutes",
                               "dana: 0 commit(s) in 1 repositories",
                               "dana: 1 workflow run(s) since 2026-09-14",
+                              "dana: 1 run(s)' jobs read, 1 on GitHub-hosted runners",
                               "dana: 4 hosted minute(s) this month, 4 counted against the included minutes"]
     assert not result.errors
 
@@ -193,7 +225,7 @@ def test_a_part_that_fails_keeps_its_cursor_and_the_rest_is_written(github_api, 
     assert {tags["owner"] for _m, tags, _f, _ts in of(lines_of(result), "github_actions_usage")} == {"dana"}
     assert result.cursor["accounts"]["acme"] == {"commits_until": int(NOW.timestamp()),
                                                  "runs_until": int(NOW.timestamp()),
-                                                 "usage_until": int(NOW.timestamp())}
+                                                 "jobs_done": True, "usage_until": int(NOW.timestamp())}
     # A first run's billing that fails leaves it unread: the next run reads the whole year.
     github_api.fail[BILLING] = [(404, {})]
     assert "usage_until" not in github_connector.sync(None).cursor["accounts"]["acme"]

@@ -824,6 +824,20 @@ GITHUB_RUNS = {
                    updated="2026-10-14T06:00:41Z"),
     ],
 }
+def github_job(runner="", group="", group_id=1, conclusion="success"):
+    return {"runner_name": runner, "runner_group_name": group, "runner_group_id": group_id,
+            "conclusion": conclusion, "status": "completed"}
+
+
+# A run's jobs, by its id: GitHub's own runners say so by their group, ARC's
+# by their runner's name.
+GITHUB_JOBS = {
+    GITHUB_RUNS[("acme", "api")][0]["id"]: [github_job("arc-runner-1", "arc-runners")],
+    GITHUB_RUNS[("acme", "api")][1]["id"]: [github_job("GitHub Actions 2", "GitHub Actions", 0)],
+    GITHUB_RUNS[("acme", "api")][3]["id"]: [github_job("arc-runner-1", "arc-runners")],
+    GITHUB_RUNS[("acme", "site")][0]["id"]: [github_job("GitHub Actions 1", "GitHub Actions", 0)],
+    GITHUB_RUNS[("dana", "dotfiles")][0]["id"]: [github_job("GitHub Actions 3", "GitHub Actions", 0)],
+}
 # The billing report, by (owner, year, month).
 GITHUB_USAGE = {
     ("acme", 2026, 10): [
@@ -857,6 +871,8 @@ class FakeGitHub:
         self.calls: List[Tuple[str, str, Dict, str]] = []
         self.user_agents: set = set()
         self.fail: Dict[str, List[Tuple[int, Dict[str, str]]]] = {}
+        # X-RateLimit-Remaining on every answer, when set.
+        self.remaining: Optional[str] = None
         outer = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -890,6 +906,8 @@ class FakeGitHub:
                 self.send_response(code)
                 for name, value in (headers or {}).items():
                     self.send_header(name, value)
+                if outer.remaining is not None:
+                    self.send_header("X-RateLimit-Remaining", outer.remaining)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
@@ -932,6 +950,10 @@ class FakeGitHub:
                         if (not start or _epoch(run["created_at"]) >= _epoch(start))
                         and (not end or _epoch(run["created_at"]) <= _epoch(end))]
             return {"total_count": len(runs), "workflow_runs": self._page(runs, params)}
+        if parts[0] == "repos" and parts[1] == scope and parts[3:5] == ["actions", "runs"] \
+                and parts[6:] == ["jobs"]:
+            jobs = GITHUB_JOBS.get(int(parts[5]), [])
+            return {"total_count": len(jobs), "jobs": self._page(jobs, params)}
         return None
 
     def graphql(self, body):

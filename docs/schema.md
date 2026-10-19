@@ -269,7 +269,7 @@ they took, and the minutes GitHub's hosted runners spent on them.
 | Measurement | Tags | Fields | Written by |
 |---|---|---|---|
 | `github_commit` | `source`, `user`, `owner`, `repository`, `author` (`self`, `agent`, `bot`, `other`), `time_precision` | `count` (int), `additions` (int), `deletions` (int), `local_hour` (int), `local_weekday` (int) | Tributary: `github` |
-| `github_workflow_run` | `source`, `user`, `owner`, `repository`, `workflow`, `event`, `visibility` | `count` (int), `succeeded` (int), `failed` (int), `cancelled` (int), `attempts` (int), `duration_s` (int), `result` (int) | Tributary: `github` |
+| `github_workflow_run` | `source`, `user`, `owner`, `repository`, `workflow`, `event`, `visibility` | `count` (int), `succeeded` (int), `failed` (int), `cancelled` (int), `attempts` (int), `duration_s` (int), `result` (int), `hosted` (int) | Tributary: `github` |
 | `github_actions_usage` | `source`, `user`, `owner`, `repository`, `sku` | `minutes` (float), `gross_usd` (float), `discount_usd` (float), `net_usd` (float), `private` (bool) | Tributary: `github` |
 | `github_actions_month` | `source`, `user`, `owner` | `minutes` (float), `private_minutes` (float), `counted_minutes` (float), `gross_usd` (float), `net_usd` (float) | Tributary: `github` |
 
@@ -284,8 +284,10 @@ they took, and the minutes GitHub's hosted runners spent on them.
   `schedule`...), `visibility` whether the repository is private.
   `duration_s` is `run_started_at` to `updated_at`; `attempts` is
   `run_attempt`; `result` is 1 success, 2 failed, 3 cancelled, 0 other (a
-  table maps it to words). Every run is written, self-hosted (ARC) ones
-  included.
+  table maps it to words); `hosted` is 1 when a job ran on a GitHub-hosted
+  runner, 0 when they all ran self-hosted, -1 until its jobs are read (a
+  field, so the later read overwrites the point). Every run is written,
+  self-hosted (ARC) ones included.
 - `github_actions_usage`: one point per line of GitHub's billing report with
   minutes, at its day (UTC midnight): a repository's minutes on one SKU
   (`Actions Linux`, `Actions Windows`...), with what they cost before and
