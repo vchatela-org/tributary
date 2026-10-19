@@ -15,6 +15,9 @@ services:
         required: false
     environment:
       TRIBUTARY_INFLUXDB_URL: http://influxdb:8086
+      # The browser's Grafana (this stack binds it to 127.0.0.1:3000 too): the
+      # sidebar's Dashboards link opens it, filtered to Tributary's dashboards.
+      TRIBUTARY_GRAFANA_URL: http://127.0.0.1:3000
     ports:
       - "127.0.0.1:8000:8000"
     volumes:

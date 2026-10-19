@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import connectors, runner, scheduler
+from app.config import Settings, settings
 from app.connectors.base import Connector, ConnectorError, ConnectorSettings
 from app.database import uploads_dir
 from app.main import app
@@ -51,6 +52,27 @@ def steps():
 
 
 # -- Pages ----------------------------------------------------------------------------------
+
+def test_the_dashboards_link_appears_only_when_grafana_is_configured(client, monkeypatch):
+    """The sidebar leaves for Grafana's own browser, filtered to the tag every
+    shipped dashboard carries: shown on every page, and never when unset."""
+    monkeypatch.setattr(settings, "grafana_url", None)
+    assert "/dashboards?tag=tributary" not in client.get("/").text
+    assert "TRIBUTARY_GRAFANA_URL" in client.get("/settings").text
+
+    monkeypatch.setattr(settings, "grafana_url", "https://grafana.example.com/")
+    link = 'href="https://grafana.example.com/dashboards?tag=tributary"'
+    # Sidebar and top bar, on the overview and on another page.
+    assert client.get("/").text.count(link) == 2
+    assert link in client.get("/runs").text
+    assert link in client.get("/settings").text
+
+
+def test_the_grafana_link_keeps_a_subpath_and_drops_a_trailing_slash():
+    assert Settings(grafana_url="https://host/grafana/").grafana_dashboards_url == \
+        "https://host/grafana/dashboards?tag=tributary"
+    assert Settings(grafana_url="").grafana_dashboards_url is None
+
 
 def test_integrations_page_lists_connectors_and_what_they_need(client):
     page = client.get("/").text

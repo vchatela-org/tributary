@@ -81,6 +81,10 @@
     <div><dt>Time zone</dt><dd>{{ tz }}</dd></div>
     <div><dt>InfluxDB</dt>
       <dd>{% if influxdb_configured %}configured{% if influxdb_user %} as {{ influxdb_user }}{% endif %}{% else %}not configured{% endif %}</dd></div>
+    <div><dt>Grafana</dt>
+      {% set grafana = grafana_dashboards_url() %}
+      <dd>{% if grafana %}<a href="{{ grafana }}" rel="noreferrer">its dashboards</a>{% else %}not linked
+        (<code class="tb-mono">TRIBUTARY_GRAFANA_URL</code>){% endif %}</dd></div>
     <div><dt>Checked files kept</dt><dd>{{ staged_ttl_hours | int }} h</dd></div>
   </dl>
   <p class="tb-hint mt-3 mb-0">These come from the environment (the deployment) and are not set from here;

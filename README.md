@@ -132,6 +132,8 @@ This builds Tributary and starts it with InfluxDB 1.x and Grafana:
 - Tributary: <http://127.0.0.1:8000>. Each configured source runs on its
   schedule; *Run now* and *Dry run* show what it does before that. An export
   source is imported from its page: the file is checked first, then imported.
+  Its sidebar's *Dashboards* opens Grafana's, filtered to the ones below
+  (`TRIBUTARY_GRAFANA_URL`; the compose file sets it).
 - Grafana: <http://127.0.0.1:3000> (first login `admin` / `admin`), with the
   datasource and the dashboards of [grafana/](grafana/) in a *Tributary*
   folder.

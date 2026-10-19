@@ -44,10 +44,17 @@ def nav_sources() -> list:
         return views.nav(db)
 
 
+def grafana_dashboards_url() -> Optional[str]:
+    """Where the sidebar's Dashboards link goes (None: no link). A function, not
+    a value, so a changed setting is seen without restarting the templates."""
+    return settings.grafana_dashboards_url
+
+
 templates.env.filters["localtime"] = localtime
 templates.env.filters["code_spans"] = code_spans
 templates.env.globals["duration"] = duration
 templates.env.globals["app_version"] = __version__
+templates.env.globals["grafana_dashboards_url"] = grafana_dashboards_url
 templates.env.globals["tz"] = settings.tz
 templates.env.globals["max_upload_mb"] = settings.max_upload_mb
 templates.env.globals["staged_ttl_hours"] = settings.staged_upload_ttl_hours
