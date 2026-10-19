@@ -85,7 +85,7 @@ Tributary only writes; dashboards read InfluxDB. [grafana/](grafana/) ships:
 | [Nutrition & exercise](grafana/dashboards/nutrition-exercise.json) | `BodyStats`: `nutrition`, `exercise`, `body_composition` | calories per meal and macro split per logged day, workouts per day and week by activity, weight next to them |
 | [Todoist](grafana/dashboards/todoist.json) | `TodoistStats`: `todoist_completion`, `todoist_task_completed`, `todoist_stats` | completions per day and project, due dates kept or missed, priority, streak and karma, the tasks above the night's sleep score and HRV |
 | [GitHub](grafana/dashboards/github.json) | `DevStats`: `github_commit`, `github_actions_month`, `github_actions_usage` | commits by author (you, you with an agent, a bot, someone else), per week and per repository; hosted runner minutes against the included ones |
-| [Habits & recovery](grafana/dashboards/habits-recovery.json) | `SleepStats`: `journal` | a daily journal's answers, the recovery and HRV on yes and no days, what goes with a yes to one question |
+| [Habits & recovery](grafana/dashboards/habits-recovery.json) | `SleepStats`: `journal`, `sleep_session`, `GarminStats`: `SleepSummary` | a daily journal's answers from any source, and the night after a yes against the night after a no: recovery, HRV, time asleep, each from its picker |
 | [Strength training](grafana/dashboards/strength-training.json) | `GarminStats`: `StrengthExerciseSet`, `StrengthHRZones` | volume, sets and reps, estimated one-rep max and records per exercise, time under tension, heart-rate zones |
 
 <picture>

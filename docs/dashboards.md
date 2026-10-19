@@ -235,19 +235,22 @@ on one time axis. Variables: time zone, project, user (whose nights).
 
 ## Habits & recovery
 
-`SleepStats..journal`: a daily journal of yes or no questions (the Whoop
-journal, from the Whoop connector's export import), each answer written with
-the day's recovery, HRV, sleep and strain.
+`SleepStats..journal`: a daily journal of yes or no questions, from any
+source that writes one (the Whoop journal, from the Whoop connector's export
+import, or another tool's), against the night that follows each day, read
+from the sources picked in *Recovery from*, *HRV from* and *Sleep from*. A day
+runs noon to noon, so an answer, stamped at noon on its day, meets the night
+that ends the next morning, whichever journal it comes from.
 - **Every question:** a calendar of the answers, the yes rate per question,
-  and the recovery and HRV on days answered yes against days answered no.
-- **One question** (picked in *Question*): the share of yes days when the
-  night was short (under 6.5 h), the recovery low (under 50) or the strain
-  high (12 or more), against the days without, with the days each counts;
-  the share of yes days over the last 30.
+  and, per question, the next morning's recovery and the night's HRV after
+  the days answered yes against the days answered no.
+- **One question** (picked in *Question*): the same for that question, with
+  the time asleep; the share of yes days over the last 30.
 
-It is correlation, not cause: a factor and an answer can share a third
-reason, and few days make the difference noise. Variables: time zone, user,
-source, question.
+A day with no answer is a day the question was not tracked or not logged,
+never a no. It is correlation, not cause: a factor and an answer can share a
+third reason, and few days make the difference noise. Variables: time zone,
+user, source, question, recovery from, HRV from, sleep from.
 
 ## Strength training
 
