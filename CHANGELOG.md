@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/vchatela-org/tributary/compare/v0.21.0...v0.22.0) (2026-10-19)
+
+
+### Features
+
+* **github:** read the workflow runs, their durations and outcomes ([#69](https://github.com/vchatela-org/tributary/issues/69)) ([e2fc937](https://github.com/vchatela-org/tributary/commit/e2fc937fbb995d321d023b52843422ec55249778))
+
 ## [0.21.0](https://github.com/vchatela-org/tributary/compare/v0.20.0...v0.21.0) (2026-10-19)
 
 
