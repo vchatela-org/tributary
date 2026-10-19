@@ -3,7 +3,7 @@ samples and checked line by line), score_state, the cursor and its pins, the
 lookback, rate limits, and the export merged onto the API's points. OAuth and
 the secret key are tests/test_oauth.py's."""
 import copy
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -62,22 +62,23 @@ OLD_RIDE = ('exercise,category=bike,source=whoop,sport=Cycling,user=alice activi
             "energy_kcal=450.0,gps_enabled=0i,max_hr=160.0,strain=10.1,zone1_pct=10.0,zone2_pct=40.0,"
             "zone3_pct=30.0,zone4_pct=15.0,zone5_pct=5.0 1773162000")
 JOURNAL = ["journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=alice answered_yes=0i,count=1i "
-           "1773093600",
+           "1773054000",
            "journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=alice answered_yes=1i,count=1i "
-           "1790889000",
+           "1790848800",
            # A question the member wrote: written too (the owner's decision).
            "journal,question=Read\\ in\\ bed\\ before\\ sleeping?,source=whoop,user=alice answered_yes=0i,count=1i "
-           "1790889000"]
+           "1790848800"]
 
 # The same answers, once the export's cycles are in the upload: each carries the
 # recovery, the night's sleep and the day's strain of the cycle it is keyed to.
+# Every answer is stamped 12:00 local on the day it is about: the bedtime's day.
 JOURNAL_FROM_EXPORT = [
     "journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=alice answered_yes=0i,asleep_s=25200i,"
-    "count=1i,hrv_rmssd_ms=48.0,recovery_score=61.0,strain=9.8 1773093600",
+    "count=1i,hrv_rmssd_ms=48.0,recovery_score=61.0,strain=9.8 1773054000",
     "journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=alice answered_yes=1i,asleep_s=27420i,"
-    "count=1i,hrv_rmssd_ms=31.8,recovery_score=44.0,strain=12.4 1790889000",
+    "count=1i,hrv_rmssd_ms=31.8,recovery_score=44.0,strain=12.4 1790848800",
     "journal,question=Read\\ in\\ bed\\ before\\ sleeping?,source=whoop,user=alice answered_yes=0i,asleep_s=27420i,"
-    "count=1i,hrv_rmssd_ms=31.8,recovery_score=44.0,strain=12.4 1790889000",
+    "count=1i,hrv_rmssd_ms=31.8,recovery_score=44.0,strain=12.4 1790848800",
 ]
 
 
@@ -422,6 +423,32 @@ def test_the_journal_keeps_custom_questions_and_never_a_note(whoop_connector, tm
     assert whoop.JOURNAL.tag_keys == ("source", "user", "question")
 
 
+def test_an_answer_lands_on_the_day_it_is_about_whatever_the_bedtime():
+    """The answers given on waking are about the day before: WHOOP keys them to
+    the cycle that starts with that night's sleep, before or after midnight."""
+    paris = whoop_export.parse_timezone("UTC+02:00")
+    before = datetime(2026, 10, 13, 21, 10, tzinfo=timezone.utc)   # 23:10 local
+    after = datetime(2026, 10, 14, 0, 30, tzinfo=timezone.utc)     # 02:30 local, the next date
+    assert whoop.journal_day(before, paris) == whoop.journal_day(after, paris) == date(2026, 10, 13)
+    # Read in the cycle's own zone: 23:30 in New York is still that evening.
+    assert whoop.journal_day(datetime(2026, 10, 14, 3, 30, tzinfo=timezone.utc),
+                             whoop_export.parse_timezone("UTC-04:00")) == date(2026, 10, 13)
+
+
+def test_an_import_replaces_answers_stamped_at_their_bedtime(whoop_connector, tmp_path, monkeypatch):
+    """Earlier versions stamped an answer at its cycle's start: an after-midnight
+    bedtime put it on the next date. The span covers that date too, so the
+    import drops the old point it replaces."""
+    monkeypatch.setattr(settings, "influxdb_user", "alice")
+    files = {"journal_entries.csv": WHOOP_JOURNAL_HEADER + "\n"
+             "2026-10-14 00:30:00,2026-10-14 23:30:00,UTC+02:00,Have any alcoholic drinks?,true,\n"}
+    result = whoop_connector.import_file(write_whoop_export(tmp_path / "journal_entries.csv", files, zipped=False))
+    assert lines_of(result.points) == [
+        "journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=alice answered_yes=1i,count=1i "
+        "1791885600"]
+    assert result.spans == {"journal": whoop.Span(date(2026, 10, 13), date(2026, 10, 14))}
+
+
 def test_a_new_export_replaces_the_journal_only(whoop_connected, whoop_connector, influx, db, alice, tmp_path):
     runner.run(db, whoop_connector)
     path = write_whoop_export(tmp_path / "export.zip")
@@ -434,7 +461,7 @@ def test_a_new_export_replaces_the_journal_only(whoop_connected, whoop_connector
     path = write_whoop_export(tmp_path / "export.zip", files)
     assert runner.run(db, whoop_connector, file=str(path), filename=path.name, trigger="upload").status == "ok"
     assert [(t["question"], ts) for t, _f, ts in influx.stored("journal")] == \
-        [("Have any alcoholic drinks?", 1773093600), ("Have any alcoholic drinks?", 1790889000)]
+        [("Have any alcoholic drinks?", 1773054000), ("Have any alcoholic drinks?", 1790848800)]
     # The API's series and the export's other points are all still there.
     assert stored_line(influx, "sleep_session", 1790918744) and stored_line(influx, "sleep_session", 1773121500)
     assert stored_line(influx, "daily_activity", 1773093600) and stored_line(influx, "exercise", 1773162000)

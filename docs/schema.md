@@ -216,14 +216,21 @@ goes with it. No *local time*: a sleep carries its own local minutes
   time: whichever the app recorded -- `hr_bpm`, `spo2_pct`, `sdnn_ms`.
   Both of these carry milliseconds in the export and whole seconds here
   (Tributary's precision); two samples in one second keep the later one.
-- `journal`: one point per answer of WHOOP's journal, at the start of the
-  cycle it was answered for (the cycle that starts with the night it is
-  read against). `question` is the question as WHOOP words it, the member's
-  own custom questions included; `answered_yes` is 1 or 0, `count` 1. The
-  answer also carries the recovery of the cycle it is keyed to
-  (`recovery_score`, `hrv_rmssd_ms`, `asleep_s`, `strain`), so a panel can compare recovery, sleep and strain on days
-  a question was answered yes against no without joining two measurements. The
-  notes typed with an answer are never written.
+- `journal`: one point per answer to a daily yes/no question, at **12:00
+  local on the day the answer is about**, whatever the source, so a day's
+  answers group onto that day. **No point means not tracked or not logged,
+  never "no"**: a question has points only from the day it was added to the
+  day it was dropped, and a day not filled in has none. `question` is the
+  question as the source words it, the member's own custom questions
+  included; `answered_yes` is 1 or 0, `count` 1. The notes typed with an
+  answer are never written.
+  - WHOOP's: the answers given on waking are about the day before, and WHOOP
+    keys them to the cycle that starts with that night's sleep; their day
+    is the local date of that bedtime minus 12 hours (23:10 and 00:22 both
+    name the evening's day). The answer also carries the recovery of the
+    cycle it is keyed to (`recovery_score`, `hrv_rmssd_ms`, `asleep_s`,
+    `strain`), so a panel can compare recovery, sleep and strain on days a
+    question was answered yes against no without joining two measurements.
 
 ### `TodoistStats`
 
