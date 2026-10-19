@@ -449,6 +449,58 @@ def test_an_import_replaces_answers_stamped_at_their_bedtime(whoop_connector, tm
     assert result.spans == {"journal": whoop.Span(date(2026, 10, 13), date(2026, 10, 14))}
 
 
+def test_a_journal_answer_without_a_cycle_is_left_out_and_counted(whoop_connector, tmp_path):
+    """The export can carry answers to custom questions with no cycle at all:
+    no start and no time zone, so no day to put them on. The import writes the
+    rest and counts what it could not place, rather than failing whole."""
+    files = {"journal_entries.csv": WHOOP_JOURNAL_HEADER + "\n"
+             "2026-10-14 00:30:00,2026-10-14 23:30:00,UTC+02:00,Have any alcoholic drinks?,true,\n"
+             ",,,Did you do spaced repetition practice?,false,\n"}
+    result = whoop_connector.import_file(write_whoop_export(tmp_path / "export.zip", files))
+    assert lines_of(result.points) == [
+        "journal,question=Have\\ any\\ alcoholic\\ drinks?,source=whoop,user=alice answered_yes=1i,count=1i "
+        "1791885600"]
+    assert result.summary == ["1 journal answer(s)",
+                              "1 journal answer(s) with no cycle, left out (no date to place them)"]
+
+
+# A cycle-start-less row with a time zone is malformed, not the no-cycle shape:
+# there is a time zone but no cycle to read it against, and it still fails.
+def test_a_cycle_timezone_without_a_cycle_is_still_named(whoop_connector, tmp_path):
+    files = {"journal_entries.csv": WHOOP_JOURNAL_HEADER + "\n"
+             ",,UTC+02:00,Have any alcoholic drinks?,true,\n"}
+    with pytest.raises(ConnectorError, match="line 2: column 'Cycle start time' is empty"):
+        whoop_connector.import_file(write_whoop_export(tmp_path / "export.zip", files))
+
+
+def test_an_answer_whoop_places_on_a_cycle_later_is_imported_then(
+        whoop_connected, whoop_connector, influx, db, alice, tmp_path):
+    """An export taken before the night can hold an answer whose cycle does
+    not exist yet: left out now, it lands when a later export gives it one --
+    the import rewrites every day of the journal it covers."""
+    runner.run(db, whoop_connector)
+    files = dict(WHOOP_EXPORT)
+    files["journal_entries.csv"] = WHOOP_JOURNAL_HEADER + "\n" + (
+        "2026-10-01 23:10:00,2026-10-02 23:30:00,UTC+02:00,Have any alcoholic drinks?,true,\n"
+        ",,,Did you do spaced repetition practice?,false,\n")
+    path = write_whoop_export(tmp_path / "export.zip", files)
+    result = runner.run(db, whoop_connector, file=str(path), filename=path.name, trigger="upload")
+    assert result.status == "ok"
+    assert "1 journal answer(s) with no cycle, left out (no date to place them)" in result.message
+    assert [(t["question"], ts) for t, _f, ts in influx.stored("journal")] == \
+        [("Have any alcoholic drinks?", 1790848800)]
+    # Tomorrow's export: WHOOP has given that answer the cycle it belongs to.
+    files["journal_entries.csv"] = WHOOP_JOURNAL_HEADER + "\n" + (
+        "2026-10-01 23:10:00,2026-10-02 23:30:00,UTC+02:00,Have any alcoholic drinks?,true,\n"
+        "2026-10-19 23:00:00,2026-10-20 07:00:00,UTC+02:00,Did you do spaced repetition practice?,false,\n")
+    path = write_whoop_export(tmp_path / "export2.zip", files)
+    result = runner.run(db, whoop_connector, file=str(path), filename=path.name, trigger="upload")
+    assert result.status == "ok" and "no cycle" not in result.message
+    assert [(t["question"], ts) for t, _f, ts in influx.stored("journal")] == \
+        [("Have any alcoholic drinks?", 1790848800),
+         ("Did you do spaced repetition practice?", int(datetime(2026, 10, 19, 10, tzinfo=timezone.utc).timestamp()))]
+
+
 def test_a_new_export_replaces_the_journal_only(whoop_connected, whoop_connector, influx, db, alice, tmp_path):
     runner.run(db, whoop_connector)
     path = write_whoop_export(tmp_path / "export.zip")

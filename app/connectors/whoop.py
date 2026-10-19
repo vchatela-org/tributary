@@ -67,7 +67,9 @@ Export (whoop_export.py: the zip, or one of its CSV files):
     count (1), and the cycle's recovery, sleep and strain (recovery_score,
     hrv_rmssd_ms, asleep_s, strain — so a panel can compare them on yes-days
     against no-days without a join).
-    Notes are never read. Every export holds the whole
+    Notes are never read. An answer the export gives no cycle at all (some
+    custom questions are answered outside a journal) has no date: it is
+    counted and left out. Every export holds the whole
     history, so an import replaces this source's journal over the days it
     covers (FileImport.spans); nothing else is ever dropped.
 
@@ -836,7 +838,7 @@ class WhoopConnector(Connector):
 
     def import_file(self, path: Path) -> FileImport:
         try:
-            tables = whoop_export.read_export(path)
+            tables, no_cycle = whoop_export.read_export(path)
         except whoop_export.ExportFormatError as exc:
             raise ConnectorError(str(exc)) from None
         pins = self._pins()
@@ -846,6 +848,8 @@ class WhoopConnector(Connector):
             raise ConnectorError("Whoop's API is connected but has not run yet: run it first (Run now), then "
                                  "import the export, so that it lands on the API's points.")
         points, span, summary = export_points(tables, pins, ZoneInfo(app_settings.tz))
+        if no_cycle:
+            summary.append(f"{no_cycle} journal answer(s) with no cycle, left out (no date to place them)")
         if not points:
             raise ConnectorError("This export holds nothing to import: nothing is written, nothing dropped.")
         return FileImport(points, {JOURNAL.name: span} if span else {}, summary)
