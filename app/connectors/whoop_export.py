@@ -196,7 +196,16 @@ def from_csv_row(table: Table, row: Dict[str, Optional[str]]) -> Dict:
     return values
 
 
-def _parse_csv(table: Table, filename: str, data: bytes) -> Iterator[Dict]:
+def _no_cycle(table: Table, row: Dict[str, Optional[str]]) -> bool:
+    """A journal answer WHOOP gave no cycle at all: no start and no time zone
+    (some custom questions are answered outside a journal). There is no day to
+    put it on, so it is counted and left out rather than failing the import."""
+    return (table.name == "journal" and bool((row.get("Question text") or "").strip())
+            and not (row.get("Cycle start time") or "").strip()
+            and not (row.get("Cycle timezone") or "").strip())
+
+
+def _parse_csv(table: Table, filename: str, data: bytes, unplaced: List[int]) -> Iterator[Dict]:
     try:
         text = data.decode("utf-8-sig")
     except UnicodeDecodeError:
@@ -210,6 +219,9 @@ def _parse_csv(table: Table, filename: str, data: bytes) -> Iterator[Dict]:
             message += " The file looks re-saved by a spreadsheet app: upload the original from the WHOOP zip."
         raise ExportFormatError(message)
     for row in reader:
+        if _no_cycle(table, row):
+            unplaced[0] += 1  # a one-element counter: a generator cannot return one
+            continue
         try:
             yield from_csv_row(table, row)
         except ValueError as exc:
@@ -253,14 +265,17 @@ def _files(path: Path) -> Iterator[Tuple[Table, str, bytes]]:
         raise ExportFormatError(f"unreadable zip ({exc}).") from None
 
 
-def read_export(path: Path) -> Dict[str, List[Dict]]:
-    """{table name: rows} for each export CSV the upload holds. Rows sharing
-    a key are collapsed, the last one winning (Whoops' `read_export`)."""
+def read_export(path: Path) -> Tuple[Dict[str, List[Dict]], int]:
+    """({table name: rows}, the journal answers with no cycle) for each export
+    CSV the upload holds. Rows sharing a key collapsed, the last one winning
+    (Whoops' `read_export`). A journal answer with no cycle has no date to be
+    placed on: it is not returned as a row, only counted."""
     records: Dict[str, Dict[tuple, Dict]] = {}
+    unplaced = [0]
     for table, filename, content in _files(path):
         rows = records.setdefault(table.name, {})
-        for row in _parse_csv(table, filename, content):
+        for row in _parse_csv(table, filename, content, unplaced):
             rows[tuple(row[attr] for attr in table.key)] = row
     if not records:
         raise ExportFormatError("no WHOOP export file in the zip: it should hold " + ", ".join(BY_FILENAME) + ".")
-    return {name: list(rows.values()) for name, rows in records.items()}
+    return {name: list(rows.values()) for name, rows in records.items()}, unplaced[0]
