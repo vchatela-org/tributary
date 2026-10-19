@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.23.0](https://github.com/vchatela-org/tributary/compare/v0.22.0...v0.23.0) (2026-10-19)
+
+
+### Features
+
+* **github:** tell the runs that used GitHub's hosted runners ([#72](https://github.com/vchatela-org/tributary/issues/72)) ([4246ac4](https://github.com/vchatela-org/tributary/commit/4246ac401ad7dbd2a92daf25398d78c1e23b0fdb))
+
+
+### Bug Fixes
+
+* **whoop:** leave out an export answer that names no cycle, and say so ([#74](https://github.com/vchatela-org/tributary/issues/74)) ([a404e29](https://github.com/vchatela-org/tributary/commit/a404e29beb93439d01e93c7ae0cdd39f9767f474))
+
 ## [0.22.0](https://github.com/vchatela-org/tributary/compare/v0.21.0...v0.22.0) (2026-10-19)
 
 
