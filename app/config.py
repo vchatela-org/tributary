@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     garmin_grafana_database: str = "GarminStats"
     garmin_grafana_stale_hours: float = 24.0
 
+    # fitbit-grafana's freshness line: the same rules as garmin-grafana's above.
+    fitbit_grafana_database: str = "FitbitHealthStats"
+    fitbit_grafana_stale_hours: float = 24.0
+
     # The Grafana a browser reaches, e.g. https://grafana.example.com (a subpath
     # works too). Set, the UI links to its dashboard browser, filtered to the
     # dashboards shipped in grafana/dashboards. Empty: no link (Tributary never

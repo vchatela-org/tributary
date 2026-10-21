@@ -9,6 +9,7 @@ weight and activity...).
 | Tool | Category it feeds | Source | Writes | Notes |
 |---|---|---|---|---|
 | [garmin-grafana](https://github.com/arpanghosh8453/garmin-grafana) | Body & health, Sleep | Garmin Connect | InfluxDB `GarminStats` | Activity, sleep, heart rate, body battery... from the Garmin API, with its own dashboards. Point it at the same InfluxDB: Tributary's Healthspan, Sleep, Activity & fitness and Correlations dashboards draw it next to the other sources ([what they read](dashboards-design.md#series-written-by-other-tools)). |
+| [fitbit-grafana](https://github.com/arpanghosh8453/fitbit-grafana) | Body & health, Sleep | Fitbit (Google Health) API | InfluxDB `FitbitHealthStats` | Heart rate, steps, sleep, SpO₂... from the Fitbit API, with its own dashboards. Its freshness line is read the same way as garmin-grafana's, below ("Fitbit data up to"). |
 | [Takeback](https://github.com/vchatela-org/takeback) | Reading & media, Productivity | GDPR "download your data" archives (Amazon, Google, Meta...) | InfluxDB `MediaStats`, `ShoppingStats`, `DigitalStats` | Browses an archive, and pushes the numbers no dedicated tool provides: Kindle reading sessions (`source=kindle`), Audible, purchases, activity counts. Follows [the schema](schema.md). |
 
 [Whoops](https://github.com/kryoseu/whoops), by kryoseu, used to be listed here
@@ -60,6 +61,8 @@ tool.
 |---|---|---|
 | `TRIBUTARY_GARMIN_GRAFANA_DATABASE` | `GarminStats` | The database garmin-grafana writes (its `INFLUXDB_DATABASE`). Empty: no line. |
 | `TRIBUTARY_GARMIN_GRAFANA_STALE_HOURS` | `24` | Older than this, the line is marked stale. |
+| `TRIBUTARY_FITBIT_GRAFANA_DATABASE` | `FitbitHealthStats` | The database fitbit-grafana writes (its `INFLUXDB_DATABASE`). Empty: no line. |
+| `TRIBUTARY_FITBIT_GRAFANA_STALE_HOURS` | `24` | Older than this, fitbit-grafana's line is marked stale. |
 
 It reads InfluxDB 1.x, as the rest of Tributary does: a garmin-grafana writing
 to InfluxDB 3 is not seen. With several Garmin accounts in one database, the

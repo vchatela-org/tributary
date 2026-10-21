@@ -40,6 +40,13 @@ GARMIN_GRAFANA = ExternalTool(
     note="Activity, sleep, heart rate, body battery... from the Garmin API, with its own dashboards.",
     freshness="garmin-grafana",
 )
+FITBIT_GRAFANA = ExternalTool(
+    label="fitbit-grafana",
+    url="https://github.com/arpanghosh8453/fitbit-grafana",
+    writes="InfluxDB `FitbitHealthStats`",
+    note="Heart rate, steps, sleep, SpO₂... from the Fitbit (Google Health) API, with its own dashboards.",
+    freshness="fitbit-grafana",
+)
 # Whoops (kryoseu/whoops) was listed under Sleep until Tributary's own Whoop
 # connector, built on it, replaced it: one writer per source, and it wrote
 # PostgreSQL, which no shipped dashboard reads. It is credited in the README and
@@ -55,10 +62,10 @@ TAKEBACK = ExternalTool(
 # Which tools enrich which category. One tool may appear in several (Garmin
 # covers activity *and* sleep); the UI shows them under each.
 EXTERNAL_TOOLS: Dict[str, Tuple[ExternalTool, ...]] = {
-    "Body & health": (GARMIN_GRAFANA,),
+    "Body & health": (GARMIN_GRAFANA, FITBIT_GRAFANA),
     "Medication": (),
     "Nutrition & fitness": (),
-    "Sleep": (GARMIN_GRAFANA,),
+    "Sleep": (GARMIN_GRAFANA, FITBIT_GRAFANA),
     "Reading & media": (TAKEBACK,),
     "Productivity": (TAKEBACK,),
 }
