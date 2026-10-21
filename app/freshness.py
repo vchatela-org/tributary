@@ -72,6 +72,18 @@ PROBES: Dict[str, Probe] = {
         limit="garmin-grafana writes nothing when it polls and finds no new upload, so a stopped "
               "fetcher and a watch that has not synced look the same from InfluxDB.",
     ),
+    "fitbit-grafana": Probe(
+        database=lambda: settings.fitbit_grafana_database,
+        stale_hours=lambda: settings.fitbit_grafana_stale_hours,
+        marks=(
+            # Its heart-rate samples: the newest one is where its next fetch starts.
+            # (Its battery and last-sync points are not written under Google's API.)
+            Mark("Fitbit data up to", 'SELECT last("value") FROM "HeartRate_Intraday"'),
+        ),
+        nothing="No Fitbit data seen",
+        limit="fitbit-grafana writes nothing when it polls and finds no new data, so a stopped "
+              "fetcher and a bracelet that has not synced look the same from InfluxDB.",
+    ),
 }
 
 

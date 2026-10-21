@@ -62,11 +62,12 @@ variables it reads and what it deliberately leaves out.
 The **compatible tools** are maintained projects that write into the same
 databases. Tributary does not run them: a connector is written only for a
 source no maintained tool covers ([compatible tools](docs/compatible-tools.md)).
-It only shows, read-only, when garmin-grafana's data last arrived.
+It only shows, read-only, when garmin-grafana's and fitbit-grafana's data last arrived.
 
 | Compatible tool | Category | Writes |
 |---|---|---|
 | [**garmin-grafana**](https://github.com/arpanghosh8453/garmin-grafana) | Body & health, Sleep | InfluxDB `GarminStats` (activity, sleep, heart rate, body battery...), with its own dashboards |
+| [**fitbit-grafana**](https://github.com/arpanghosh8453/fitbit-grafana) | Body & health, Sleep | InfluxDB `FitbitHealthStats` (heart rate, steps, sleep...), with its own dashboards |
 | [**Takeback**](https://github.com/vchatela-org/takeback) | Reading & media, Productivity | InfluxDB `MediaStats`, `ShoppingStats`, `DigitalStats`, from GDPR archives (Kindle sessions, Audible, purchases...) |
 
 ## Graphs: in Grafana

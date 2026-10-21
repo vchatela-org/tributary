@@ -43,6 +43,8 @@ Every setting is an environment variable (or a line in `.env`).
 | `TRIBUTARY_DEBUG` | `false` | Debug logging. |
 | `TRIBUTARY_GARMIN_GRAFANA_DATABASE` | `GarminStats` | Where [garmin-grafana](compatible-tools.md#when-garmin-grafanas-data-last-arrived) writes: two timestamps are read from it for the line on its card, never a value. Empty: no line. |
 | `TRIBUTARY_GARMIN_GRAFANA_STALE_HOURS` | `24` | garmin-grafana's line is marked stale (a warning) when its newest data is older than this. |
+| `TRIBUTARY_FITBIT_GRAFANA_DATABASE` | `FitbitHealthStats` | Where [fitbit-grafana](compatible-tools.md#when-garmin-grafanas-data-last-arrived) writes: one timestamp is read from it for the line on its card, never a value. Empty: no line. |
+| `TRIBUTARY_FITBIT_GRAFANA_STALE_HOURS` | `24` | fitbit-grafana's line is marked stale (a warning) when its newest data is older than this. |
 | `TRIBUTARY_SECRET_KEY` | – | Encrypts the tokens of a source you connect in the browser (Whoop): the base64 of 32 random bytes, `openssl rand -base64 32`. Without it (or `_FILE`), such a source can't be connected: tokens are never stored in plain text. |
 | `TRIBUTARY_SECRET_KEY_FILE` | – | A file holding that key instead (a Docker or Kubernetes secret mounted read-only). Set one of the two. |
 | `TRIBUTARY_SECRET_KEY_PREVIOUS` | – | While rotating the key: the old one, still read, never written ([how](connectors/whoop.md#rotating-the-secret-key)). |

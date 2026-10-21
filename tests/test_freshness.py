@@ -50,6 +50,12 @@ def clock(monkeypatch):
     return tick
 
 
+@pytest.fixture(autouse=True)
+def fitbit_off(monkeypatch):
+    """These tests are about garmin-grafana's line: fitbit-grafana's is off, unless a test turns it on."""
+    monkeypatch.setattr(settings, "fitbit_grafana_database", "")
+
+
 def _heart_rate(at, value=HEART_RATE):
     return f"HeartRateIntraday,Device={DEVICE_TAG},Database_Name=GarminStats HeartRate={value}i {int(at.timestamp())}"
 
@@ -288,3 +294,51 @@ def test_no_value_reaches_a_page_the_api_the_logs_or_the_cache(client, garmin, c
             assert value not in body
         assert value not in caplog.text
         assert value not in cached
+
+
+# -- fitbit-grafana: the same line, from its own database ---------------------------------
+
+FITBIT_UP_TO = datetime(2026, 10, 19, 13, 15, tzinfo=timezone.utc)  # 15:15 in Paris
+FITBIT_DEVICE = "zz-fake-bracelet-4d0"
+
+
+def _fitbit_lines(page):
+    return [line for line in _lines(page) if "Fitbit" in line]
+
+
+def test_fitbit_line_shows_its_newest_heart_rate(client, influx, now, monkeypatch):
+    monkeypatch.setattr(settings, "fitbit_grafana_database", "FitbitHealthStats")
+    influxdb.write("FitbitHealthStats", [
+        f"HeartRate_Intraday,Device={FITBIT_DEVICE} value=81i {int((FITBIT_UP_TO - timedelta(hours=1)).timestamp())}",
+        f"HeartRate_Intraday,Device={FITBIT_DEVICE} value=84i {int(FITBIT_UP_TO.timestamp())}",
+    ])
+    now["at"] = FITBIT_UP_TO + timedelta(hours=2)
+    lines = _fitbit_lines(client.get("/").text)
+    assert len(lines) == 2  # Body & health and Sleep
+    assert all("Fitbit data up to <b>2026-10-19 15:15</b>" in line for line in lines)
+    assert all("tb-tone-warning" not in line for line in lines)
+    fitbit_reads = [query for query in influx.queries if query[0] == "FitbitHealthStats"]
+    assert set(fitbit_reads) == {("FitbitHealthStats", 'SELECT last("value") FROM "HeartRate_Intraday"')}
+
+
+def test_fitbit_line_is_stale_past_its_threshold(client, influx, now, monkeypatch):
+    monkeypatch.setattr(settings, "fitbit_grafana_database", "FitbitHealthStats")
+    influxdb.write("FitbitHealthStats", [
+        f"HeartRate_Intraday,Device={FITBIT_DEVICE} value=84i {int(FITBIT_UP_TO.timestamp())}",
+    ])
+    now["at"] = FITBIT_UP_TO + timedelta(hours=25)
+    assert all("Over 24 h old" in line for line in _fitbit_lines(client.get("/").text))
+
+
+def test_fitbit_without_points_reads_as_nothing_seen(client, influx, monkeypatch):
+    monkeypatch.setattr(settings, "fitbit_grafana_database", "FitbitHealthStats")
+    influx.databases.add("FitbitHealthStats")  # the database exists, the bracelet has not synced yet
+    lines = _fitbit_lines(client.get("/").text)
+    assert lines and all("No Fitbit data seen" in line and "tb-fresh-none" in line for line in lines)
+    assert all("no point in FitbitHealthStats yet" in line for line in lines)
+
+
+def test_fitbit_empty_database_setting_turns_its_line_off(client, influx, monkeypatch):
+    monkeypatch.setattr(settings, "fitbit_grafana_database", "")
+    assert _fitbit_lines(client.get("/").text) == []
+    assert not [query for query in influx.queries if query[0] == "FitbitHealthStats"]
