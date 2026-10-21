@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.24.0](https://github.com/vchatela-org/tributary/compare/v0.23.0...v0.24.0) (2026-10-21)
+
+
+### Features
+
+* **ui:** show how fresh fitbit-grafana's data is ([#75](https://github.com/vchatela-org/tributary/issues/75)) ([628d8d1](https://github.com/vchatela-org/tributary/commit/628d8d16e25ca2c260c60ecf1f20dff691351044))
+
+
+### Bug Fixes
+
+* **renpho:** log in with the app identity Renpho accepts ([#77](https://github.com/vchatela-org/tributary/issues/77)) ([74985e1](https://github.com/vchatela-org/tributary/commit/74985e1f819fadebeb03bbbeeb7cd0c6bc64b26a))
+
 ## [0.23.0](https://github.com/vchatela-org/tributary/compare/v0.22.0...v0.23.0) (2026-10-19)
 
 
