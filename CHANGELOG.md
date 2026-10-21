@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.1](https://github.com/vchatela-org/tributary/compare/v0.24.0...v0.24.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* **docker:** take the Chainguard base with the patched CA bundle ([#78](https://github.com/vchatela-org/tributary/issues/78)) ([e85477c](https://github.com/vchatela-org/tributary/commit/e85477cc6b27124545e73c2668ceba6f4940409c))
+
 ## [0.24.0](https://github.com/vchatela-org/tributary/compare/v0.23.0...v0.24.0) (2026-10-21)
 
 
