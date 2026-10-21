@@ -6,11 +6,13 @@ import pytest
 from app import schedule
 from app import runner
 from app.connectors.base import ConnectorError
+from app.connectors import renpho as renpho_module
 from app.connectors.renpho import (
     BODY_FIELDS,
     BODY_LEVELS,
     BODY_THRESHOLDS,
     LEVELS,
+    LOGIN_APP_VERSION,
     RenphoSettings,
     numbered_env,
     parse_thresholds,
@@ -108,6 +110,24 @@ def test_zero_nan_booleans_and_text_are_not_measurements():
 def test_the_user_id_comes_from_buserid_else_userid():
     record = weigh_in(1_758_000_000, weight=70.0, bUserId=None, userId=42)
     assert weigh_ins([record])[0].tags == {"scale": "ES-CS20M", "user_id": "42"}
+
+
+def test_login_sends_the_app_identity_renpho_accepts(renpho_cloud, renpho_connector, monkeypatch):
+    """Renpho refuses renpho-api's old login (code -114): ours sends the new values."""
+    sent = []
+    real = renpho_module.encrypt_request
+
+    def record(payload, *args, **kwargs):
+        sent.append(payload)
+        return real(payload, *args, **kwargs)
+
+    monkeypatch.setattr(renpho_module, "encrypt_request", record)
+    account = renpho_connector.accounts()[0]
+    renpho_connector._client(account).login()
+    (payload,) = sent
+    assert payload["login"]["appRevision"] == LOGIN_APP_VERSION
+    assert payload["login"]["cellphoneType"] == "MCP-Server"
+    assert payload["bindingList"] == {"deviceTypes": ["2"]}
 
 
 def test_every_renpho_metric_is_mapped():

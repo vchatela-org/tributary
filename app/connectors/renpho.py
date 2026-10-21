@@ -65,6 +65,9 @@ from dotenv import dotenv_values
 from pydantic import PrivateAttr, SecretStr
 from pydantic_settings import SettingsConfigDict
 from renpho import RenphoAPIError, RenphoClient
+from renpho.client import _check_response
+from renpho.constants import ENDPOINTS, PLATFORM
+from renpho.crypto import decrypt_response, encrypt_request
 
 from app.config import settings as app_settings
 from app.connectors.base import Connector, ConnectorError, ConnectorSettings, SyncResult
@@ -337,6 +340,46 @@ class _Session(requests.Session):
         return super().request(method, url, *args, **kwargs)
 
 
+# Renpho now refuses renpho-api 0.2.0's login (code -114) even with a correct
+# password: its login sends an app revision Renpho no longer accepts, and no
+# app identity header. renpho-api has no fix yet; the login below sends the
+# values a current client sends (as renpho-api issue #12 found), and the rest
+# of the client is renpho-api's. Revisit when renpho-api releases a fix.
+LOGIN_APP_VERSION = "7.0.0"
+LOGIN_CELLPHONE_TYPE = "MCP-Server"
+LOGIN_DEVICE_TYPES = ["2"]
+
+
+class _Client(RenphoClient):
+    """renpho-api's client, with a login that Renpho accepts."""
+
+    def login(self) -> dict:
+        payload = {
+            "questionnaire": {},
+            "login": {
+                "password": self.password,
+                "areaCode": "US",
+                "appRevision": LOGIN_APP_VERSION,
+                "cellphoneType": LOGIN_CELLPHONE_TYPE,
+                "systemType": "11",
+                "email": self.email,
+                "platform": PLATFORM,
+            },
+            "bindingList": {"deviceTypes": LOGIN_DEVICE_TYPES},
+        }
+        headers = {"appVersion": LOGIN_APP_VERSION, "platform": PLATFORM}
+        result = self._post(ENDPOINTS["login"], encrypt_request(payload), auth=False, extra_headers=headers)
+        _check_response(result, "Login")
+        user_data = decrypt_response(result["data"])
+        login_info = user_data.get("login", {})
+        self.token = login_info.get("token")
+        self.user_id = login_info.get("id")
+        self.user_info = login_info
+        if not self.token:
+            raise RenphoAPIError("Login", None, "No token in login response")
+        return user_data
+
+
 def _scrub(text: Any, account: Account) -> str:
     """An answer from Renpho, without the account's email or password (an
     error message might quote them), cut short."""
@@ -397,7 +440,7 @@ class RenphoConnector(Connector):
         return accounts
 
     def _client(self, account: Account) -> RenphoClient:
-        client = RenphoClient(account.email, account.password)
+        client = _Client(account.email, account.password)
         client._session.close()
         client._session = _Session()
         return client
