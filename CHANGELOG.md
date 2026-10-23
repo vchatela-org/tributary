@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.24.2](https://github.com/vchatela-org/tributary/compare/v0.24.1...v0.24.2) (2026-10-23)
+
+
+### Dependencies
+
+* bump chainguard/python from `6611f09` to `396cfa5` ([f5a3693](https://github.com/vchatela-org/tributary/commit/f5a36938eef9fc9558a2ce22059d8ab377fef3fa))
+* bump chainguard/python from `6611f09` to `396cfa5` ([#81](https://github.com/vchatela-org/tributary/issues/81)) ([d4d738d](https://github.com/vchatela-org/tributary/commit/d4d738ddb22c38633fb172a21f0e5d631642533b))
+* bump fastapi from 0.143.2 to 0.156.8 ([d1984a4](https://github.com/vchatela-org/tributary/commit/d1984a48eda6c87c4905fd54f96f6bd9ce790cc8))
+* bump fastapi from 0.143.2 to 0.156.8 ([#82](https://github.com/vchatela-org/tributary/issues/82)) ([d02a3f2](https://github.com/vchatela-org/tributary/commit/d02a3f2d66a60ad135a4a428ed5a7afae82d19b2))
+* bump pydantic-settings from 2.16.0 to 2.16.1 ([e974fcb](https://github.com/vchatela-org/tributary/commit/e974fcb431fd44cb48400af229610848cbdda5bb))
+* bump pydantic-settings from 2.16.0 to 2.16.1 ([#85](https://github.com/vchatela-org/tributary/issues/85)) ([3500e5c](https://github.com/vchatela-org/tributary/commit/3500e5c3bc6422a295879b6ed19cea96826f749c))
+* bump sqlalchemy from 2.1.4 to 2.1.5 ([113c6b8](https://github.com/vchatela-org/tributary/commit/113c6b846a731909ee592266cc2400c911821972))
+* bump sqlalchemy from 2.1.4 to 2.1.5 ([#83](https://github.com/vchatela-org/tributary/issues/83)) ([8419f70](https://github.com/vchatela-org/tributary/commit/8419f709aac9af50216b366a7ef4acedc73b1fef))
+
 ## [0.24.1](https://github.com/vchatela-org/tributary/compare/v0.24.0...v0.24.1) (2026-10-21)
 
 
