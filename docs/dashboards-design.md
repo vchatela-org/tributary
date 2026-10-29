@@ -14,10 +14,10 @@ variability; a watch, a strap and a food diary all log a run.
 | Value | Sources | Where |
 |---|---|---|
 | Weight, body fat, BMI, water, bone | a scale (`renpho`), a food diary (`myfitnesspal`, weight only), `garmin` | `BodyStats..body_composition`; `GarminStats..BodyComposition` |
-| Resting heart rate, HRV | `garmin`, a strap (`whoop`) | `GarminStats..SleepSummary`; `SleepStats..sleep_session` |
-| Sleep: time asleep, stages, score, SpO₂, breathing rate | `garmin`, `whoop` | `GarminStats..SleepSummary`; `SleepStats..sleep_session` |
-| Steps, calories burned | `garmin`, `whoop` | `GarminStats..DailyStats`; `BodyStats..daily_activity` |
-| Workouts: count, time, calories, heart-rate zones | `garmin`, `myfitnesspal` (which also receives the watch's workouts), `whoop` | `GarminStats..ActivitySummary`; `BodyStats..exercise` |
+| Resting heart rate, HRV | `garmin`, a strap (`whoop`), `fitbit` | `GarminStats..SleepSummary`; `SleepStats..sleep_session`; `FitbitHealthStats..RestingHR`, `..HRV` |
+| Sleep: time asleep, stages, score, SpO₂, breathing rate | `garmin`, `whoop`, `fitbit` | `GarminStats..SleepSummary`; `SleepStats..sleep_session`; `FitbitHealthStats..Sleep Summary` |
+| Steps, calories burned | `garmin`, `whoop`, `fitbit` | `GarminStats..DailyStats`; `BodyStats..daily_activity`; `FitbitHealthStats..Total Steps`, `..calories` |
+| Workouts: count, time, calories, heart-rate zones | `garmin`, `myfitnesspal` (which also receives the watch's workouts), `whoop`, `fitbit` | `GarminStats..ActivitySummary`; `BodyStats..exercise`; `FitbitHealthStats..Activity Records` |
 | Recovery, skin temperature, strain | `whoop` today, any source writing the same fields | `SleepStats..sleep_session`; `BodyStats..daily_activity` |
 | Intensity minutes, VO₂ max | `garmin` only | `GarminStats..DailyStats`, `..VO2_Max` |
 
@@ -39,14 +39,18 @@ Rules every panel follows:
    | `renpho` | blue `#3987e5` | | `kindle` | blue `#3987e5` |
    | `garmin` | orange `#d95926` | | `audiobookshelf` | orange `#d95926` |
    | `myfitnesspal` | aqua `#199e70` | | `audible` | aqua `#199e70` |
-   | `whoop` | violet `#9085e9` | | | |
+   | `whoop` | violet `#9085e9` | | `fitbit` | magenta `#d55181` |
    | `sleep_as_android` | aqua `#199e70` | | | |
 
    Some sources share a graph: a scale, a diary and a watch; a watch, a diary
-   and a strap; a watch, a strap and a phone (sleep); three reading apps. Each of those sets passes the palette
-   validator, in light and dark, for every pair. A colour is reused only
-   across domains that never share a graph, and a legend always names the
-   series.
+   and a strap; a watch, a strap, a phone and a Fitbit (sleep); three reading
+   apps. A set of up to three passes the palette validator, in light and dark,
+   for every pair. A fourth source goes beyond the reference palette's
+   all-pairs guarantee: the four-source sleep and activity graphs are
+   validated on the palette's adjacent pairlist (the one it defines for lines
+   and bars), ordered garmin, the `source`-tagged devices, then `fitbit`, and
+   the legend always names every series. A colour is reused only across
+   domains that never share a graph.
 3. **A single number reads one source, chosen by the reader, per value.**
    Otherwise a tile, a stage breakdown or a correlation would average two
    devices that disagree. Each value has its own picker, under the same name
@@ -66,17 +70,20 @@ Rules every panel follows:
    One picker per value, not per family, because a device can be the better
    source of one value and not of another: a strap's HRV, a watch's sleep
    stages. A picker lists the sources found in the tagged measurements plus
-   `garmin`. The shipped dashboards preselect nothing, so the first one is
-   used. The order puts the richest first: a scale that rates its readings
-   (`body_levels`), a device writing daily totals (steps), then `garmin`, then
-   a diary. A deployment that has a preferred source pins it as the picker's
+   `garmin` and `fitbit`, which write their own databases and have no `source`
+   tag to list them by. The shipped dashboards preselect nothing, so the first
+   one is used. The order puts the richest first: a scale that rates its
+   readings (`body_levels`), a device writing daily totals (steps), then
+   `garmin`, then a diary, then `fitbit` (a strap and a watch cover more than
+   it). A deployment that has a preferred source pins it as the picker's
    default in its own copy of the dashboard (Grafana's *Save dashboard* with
    *Update default variable values*, or the `current` value of the variable
    in the JSON it provisions). A dashboard provisioned from a file is
    overwritten by the next provisioning, so the copy is where that default
    stays. A test checks that every single-source query reads the picker of
    its own value. A `GarminStats` query honours the picker with
-   `'garmin' = '${hrv_from}'`, a constant InfluxQL folds to true or false.
+   `'garmin' = '${hrv_from}'`, a constant InfluxQL folds to true or false;
+   a `FitbitHealthStats` query does the same with `'fitbit'`.
 
    **Sources are never stitched into one series.** Someone who wore a watch
    for years and then a strap could want one long series, the watch's
@@ -129,6 +136,19 @@ dashboards read the following.
   here for the fields the dashboards read: any other writer of the same names
   (the Sleep as Android connector in `sleep_session`, its `#hashtags` in
   `tags`) is drawn the same way.
+- `FitbitHealthStats` as fitbit-fetch (the fetcher of
+  [fitbit-grafana](https://github.com/arpanghosh8453/fitbit-grafana)) writes
+  it, in Google Health mode. It has no `source` tag and no `user` tag: one
+  device, one person. **A night is stamped at its start (bedtime)**, where
+  Garmin and WHOOP stamp it at its end; the night series are therefore cut
+  noon to noon (`time(1d, -12h)`), so both ends of the same night land on one
+  point. The daily values (steps, calories, resting heart rate, HRV, blood
+  oxygen, breathing rate) are stamped at local midnight of the day they
+  describe; read in a noon-to-noon bucket they land on the night that ended
+  that morning. A `Sleep Summary` night counts when `isMainSleep` is true
+  (the Google-mode fetch marks every processed session so). The fields are
+  minutes and seconds as fitbit-fetch writes them; `Activity Records`
+  `duration` is seconds.
 
 | Database | Measurement | Fields the dashboards read | Written by |
 |---|---|---|---|
@@ -143,6 +163,15 @@ dashboards read the following.
 | `SleepStats` | `sleep_session` | tag `kind` (`night`, `nap`: naps are left out); `asleep_s`, `deep_s`, `light_s`, `rem_s`, `awake_s`, `awakenings`, `bedtime_min`, `wake_min` (int); `score`, `resting_hr`, `hrv_rmssd_ms`, `avg_spo2_pct`, `respiration_rate`, `recovery_score`, `skin_temp_c`, `consistency_pct`, and Sleep as Android's `min_hr`, `max_hr` (float). One point per sleep, at its end | Tributary: `whoop`, `sleep_as_android` |
 | `BodyStats` | `daily_activity` | `steps` (int); `strain`, `energy_kcal` (float). One point per physiological day, at its start | Tributary: `whoop` |
 | `BodyStats` | `exercise` | beyond MyFitnessPal's fields: `zone1_s`...`zone5_s` (int, seconds per heart-rate zone) | Tributary: `whoop`, next to `myfitnesspal` |
+| `FitbitHealthStats` | `Sleep Summary` | `minutesAsleep`, `minutesInBed`, `minutesDeep`, `minutesLight`, `minutesREM`, `minutesAwake`, `efficiency`, tag `isMainSleep`. One point per sleep, **at its start** | fitbit-fetch (Google Health mode) |
+| `FitbitHealthStats` | `Sleep Levels` | `level` (0 deep, 1 light, 2 REM, 3 awake, 4 unknown), `duration_seconds`: the stage timeline | fitbit-fetch (Google Health mode) |
+| `FitbitHealthStats` | `RestingHR` | `value`, one point per day at local midnight | fitbit-fetch (Google Health mode) |
+| `FitbitHealthStats` | `HRV` | `dailyRmssd` (and `deepRmssd`, `entropy`), one point per day at local midnight | fitbit-fetch (Google Health mode) |
+| `FitbitHealthStats` | `SPO2` | `avg`, `max`, `min`, one point per day at local midnight | fitbit-fetch (Google Health mode) |
+| `FitbitHealthStats` | `BreathingRate` | `value`, one point per day at local midnight | fitbit-fetch (Google Health mode) |
+| `FitbitHealthStats` | `Total Steps` | `value`, one point per day at local midnight | fitbit-fetch (Google Health mode) |
+| `FitbitHealthStats` | `calories` | `value` (the day's total burned), one point per day at local midnight | fitbit-fetch (Google Health mode) |
+| `FitbitHealthStats` | `Activity Records` | `duration` (seconds), `calories`, `AverageHeartRate`, tag `ActivityName`, one point per workout | fitbit-fetch (Google Health mode) |
 
 If a dashboard's datasource does not exist, those series are left out. If the
 database does not exist yet, the panels that read it show a warning and draw
@@ -174,6 +203,26 @@ no dashboard change; without it, they show the other sources.
 - **Habits & recovery:** the Whoop journal (`SleepStats..journal`), with the
   recovery, HRV, sleep and strain the connector writes on each answer.
 
+### Fitbit, from fitbit-fetch
+
+fitbit-fetch writes `FitbitHealthStats` beside the others; its series are
+drawn and its name listed in the pickers it can feed, with no other change.
+What it covers:
+- **Sleep:** time asleep and in bed, deep, light, REM and awake time, the
+  efficiency, the stage timeline (hypnogram); the night's resting heart rate,
+  HRV (RMSSD), blood oxygen and breathing rate.
+- **Activity & fitness:** steps and calories burned per day; workouts from
+  `Activity Records` (time, calories, average heart rate) and their sport
+  names, per week and per sport; its heart-rate zones are daily totals, not
+  per workout, so the workout-zone panel leaves it out.
+- **Healthspan:** hours of sleep, steps, resting heart rate; and the resting
+  heart rate, HRV, time asleep and steps trends below.
+- **Not there:** a sleep score (`efficiency` is a different value and is not
+  drawn as one), sleep consistency, clock bedtimes, strain, VO₂ max, body
+  composition, strength. **Correlations** leaves it out: its night series
+  pair a night with the day it ends, and a bedtime-stamped point cannot be
+  moved to the wake-up day in InfluxQL.
+
 ## Audit of the dashboards that existed
 
 | Dashboard | Finding | Fix |
@@ -191,10 +240,10 @@ described in [dashboards.md](dashboards.md).
 
 | Rank | Dashboard | Question | Reads | Status |
 |---|---|---|---|---|
-| 1 | **Healthspan** | Are the long-run markers moving the right way? WHOOP's nine indicators (sleep consistency and hours, heart-rate zones, strength time, steps, VO₂ max, resting heart rate, lean body mass) on its scales, their age impacts and an estimated WHOOP Age; HRV, weight and body fat, medication taken. | `GarminStats`: `SleepSummary`, `DailyStats`, `VO2_Max`, `ActivitySummary`, `BodyComposition`; `SleepStats..sleep_session`; `BodyStats`: `body_composition`, `body_levels`, `exercise`, `daily_activity`, `medication` | Built |
-| 2 | **Sleep** | How long, how deep and how regular each night is, and what the night's heart said, per device. | `GarminStats..SleepSummary`; `SleepStats..sleep_session` | Built |
+| 1 | **Healthspan** | Are the long-run markers moving the right way? WHOOP's nine indicators (sleep consistency and hours, heart-rate zones, strength time, steps, VO₂ max, resting heart rate, lean body mass) on its scales, their age impacts and an estimated WHOOP Age; HRV, weight and body fat, medication taken. | `GarminStats`: `SleepSummary`, `DailyStats`, `VO2_Max`, `ActivitySummary`, `BodyComposition`; `SleepStats..sleep_session`; `BodyStats`: `body_composition`, `body_levels`, `exercise`, `daily_activity`, `medication`; `FitbitHealthStats`: `Sleep Summary`, `Total Steps`, `RestingHR`, `HRV` | Built |
+| 2 | **Sleep** | How long, how deep and how regular each night is, and what the night's heart said, per device. | `GarminStats..SleepSummary`; `SleepStats..sleep_session`; `FitbitHealthStats`: `Sleep Summary`, `Sleep Levels`, `RestingHR`, `HRV`, `SPO2`, `BreathingRate` | Built |
 | 3 | **Correlations** | Does a short night cost the next day's tasks? Does evening reading change the night? Does training load show in HRV? | `SleepStats`, `GarminStats`, `TodoistStats..todoist_completion`, `MediaStats..reading_session`, `BodyStats`: `exercise`, `daily_activity` | Built |
-| 4 | **Activity & fitness** | How much you move and train, per device: steps, strain, calories burned, intensity minutes, workouts, heart-rate zones, VO₂ max. | `GarminStats`: `DailyStats`, `ActivitySummary`, `VO2_Max`; `BodyStats`: `daily_activity`, `exercise` | Built |
+| 4 | **Activity & fitness** | How much you move and train, per device: steps, strain, calories burned, intensity minutes, workouts, heart-rate zones, VO₂ max. | `GarminStats`: `DailyStats`, `ActivitySummary`, `VO2_Max`; `BodyStats`: `daily_activity`, `exercise`; `FitbitHealthStats`: `Total Steps`, `calories`, `Activity Records` | Built |
 | 5 | Weekly review | This week against the four before: sleep, workouts, reading, tasks, doses, weight. | all of the above, `time(1w)` | Proposed |
 | 6 | Energy balance | Intake against the calories burned, and the weight trend that follows. | `BodyStats`: `nutrition`, `daily_activity`, weights; `GarminStats..DailyStats` | Proposed |
 | 7 | **Habits & recovery** | Which journal answers (an evening habit, a late meal) go with a higher or lower recovery? What goes with a yes to one question? | `SleepStats`: `journal` (Whoop export) | Built |
@@ -215,10 +264,17 @@ Every new dashboard has these variables, with nothing saved in them:
 - **No clock time from a timestamp.** InfluxQL cannot read one, so bedtime
   and wake-up regularity come from the sources that write `bedtime_min` and
   `wake_min`. Garmin's summary has neither, so its regularity falls back to
-  the spread of time asleep.
+  the spread of time asleep. Fitbit's has neither either: its *Sleep Summary*
+  records minutes asleep and in bed, not the clock times, so the bedtime and
+  wake-up tiles stay empty when Fitbit is picked.
+- **A night is cut noon to noon.** A source stamps a night at one of its ends
+  (Garmin and WHOOP at the wake-up, Fitbit at the bedtime); the noon-to-noon
+  bucket is the only 24-hour window that holds both. A source's night therefore
+  plots at the noon before it, not at the calendar date of either end.
 - **A correlation pairs per window.** It pairs per local day ("a night and
   the day it ends"), per noon-to-noon window ("an evening and the night
-  after") or per week. InfluxQL cannot shift one series by a day.
+  after") or per week. InfluxQL cannot shift one series by a day, which is
+  why Correlations reads no Fitbit night.
 - **A physiological day starts at sleep onset.** `daily_activity` is stamped
   at the start of the day it covers, usually the evening before. The steps,
   strain and calories graphs draw its points as written: one per day,

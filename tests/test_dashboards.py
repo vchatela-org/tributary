@@ -25,7 +25,7 @@ def _written_elsewhere():
     connector writes yet (garmin-grafana's, the sleep contract's): the table of
     dashboards-design.md's "Series written by other tools"."""
     section = DESIGN.split("\n## Series written by other tools\n", 1)[1].split("\n## ", 1)[0]
-    return {m: db for db, m in re.findall(r"^\| `(\w+)` \| `(\w+)` \|", section, re.MULTILINE)}
+    return {m: db for db, m in re.findall(r"^\| `([^`]+)` \| `([^`]+)` \|", section, re.MULTILINE)}
 
 
 # Where each measurement lives, as the connectors declare it, or as the design doc
@@ -34,8 +34,9 @@ DECLARED = {m.name: m.database for c in connectors.all_connectors() for m in c.m
 DATABASE = {**_written_elsewhere(), **DECLARED}
 # The `source` of Tributary's connectors, and of the tools writing next to them
 # that a dashboard colours (docs/schema.md: Takeback's Kindle and Audible sessions;
-# dashboards-design.md: `garmin` names garmin-grafana's series, `whoop` a strap).
-SOURCES = {c.key for c in connectors.all_connectors()} | {"kindle", "audible", "garmin", "whoop"}
+# dashboards-design.md: `garmin` names garmin-grafana's series, `whoop` a strap,
+# `fitbit` fitbit-fetch's).
+SOURCES = {c.key for c in connectors.all_connectors()} | {"kindle", "audible", "garmin", "whoop", "fitbit"}
 # Tag values every user has: the schema's own vocabularies, nobody's data.
 VOCABULARY = {"p1", "p2", "p3", "p4", "taken", "missed", "skipped", "unlogged",
               "breakfast", "lunch", "dinner", "snacks", "audiobook", "ebook", "podcast"}
@@ -101,6 +102,22 @@ def test_every_panel_reads_through_a_datasource_variable(dashboard):
                 assert ds is None, (dashboard["uid"], p.get("title"), ds)
 
 
+def test_a_panel_reading_two_datasources_is_mixed(dashboard):
+    """Grafana honours a target's own datasource only when the panel's is
+    `-- Mixed --`; otherwise every target is sent to the panel's datasource
+    (a Fitbit query sent to BodyStats reads nothing and the panel says "No
+    data")."""
+    for p in _panels(dashboard["panels"]):
+        panel_ds = (p.get("datasource") or {}).get("uid")
+        if panel_ds in (None, "-- Mixed --"):
+            continue
+        for t in p.get("targets", []):
+            target_ds = (t.get("datasource") or {}).get("uid")
+            # __expr__ is Grafana's own expression engine, not a datasource query.
+            assert target_ds in (None, panel_ds, "__expr__"), (
+                dashboard["uid"], p.get("title"), panel_ds, target_ds)
+
+
 def test_a_series_written_elsewhere_is_documented_once():
     """The design doc's table of other tools' series may not contradict a
     connector: once a connector writes one, the database must agree."""
@@ -150,27 +167,29 @@ def test_nothing_is_saved_in_the_variables(dashboard):
 
 # docs/dashboards-design.md, rule 3: a number read from one source reads it through
 # the picker of its value, under the same name on every dashboard, so a deployment
-# pins one default per value. {picker: the fields it may select}, Tributary's names
-# and garmin-grafana's.
+# pins one default per value. {picker: the fields it may select}, Tributary's names,
+# garmin-grafana's and fitbit-fetch's.
 BODY = set(schema.BODY_COMPOSITION.fields)
 PICKERS = {
     "sleep_from": {"asleep_s", "deep_s", "light_s", "rem_s", "awake_s", "awakenings", "bedtime_min", "wake_min",
                    "consistency_pct",
                    "sleepTimeSeconds", "deepSleepSeconds", "lightSleepSeconds", "remSleepSeconds",
-                   "awakeSleepSeconds", "awakeCount"},
+                   "awakeSleepSeconds", "awakeCount",
+                   "minutesAsleep", "minutesDeep", "minutesLight", "minutesREM", "minutesAwake"},
     "score_from": {"score", "sleepScore"},
-    "hrv_from": {"hrv_rmssd_ms", "avgOvernightHrv"},
+    "hrv_from": {"hrv_rmssd_ms", "avgOvernightHrv", "dailyRmssd"},
     "recovery_from": {"recovery_score"},
-    "rhr_from": {"resting_hr", "restingHeartRate"},
+    "rhr_from": {"resting_hr", "restingHeartRate", "value"},
     "activity_from": {"steps", "totalSteps", "energy_kcal", "activeKilocalories", "bmrKilocalories",
-                      "activeSeconds", "highlyActiveSeconds", "sedentarySeconds", "sleepingSeconds"},
-    "workouts_from": {"duration_s", "elapsedDuration", "strain", "energy_kcal", "avg_hr", "max_hr"}
+                      "activeSeconds", "highlyActiveSeconds", "sedentarySeconds", "sleepingSeconds", "value"},
+    "workouts_from": {"duration_s", "elapsedDuration", "strain", "energy_kcal", "avg_hr", "max_hr",
+                      "duration", "calories", "AverageHeartRate"}
                      | {f"zone{n}_s" for n in range(6)} | {f"zone{n}_pct" for n in range(6)}
                      | {f"hrTimeInZone_{n}" for n in range(6)},
     "weight_from": BODY | {"weight", "bodyFat"},
 }
 # The tags a single-source query may filter on besides its picker's.
-FILTERS = {"source", "user", "kind", "category", "sport", "activityType"}
+FILTERS = {"source", "user", "kind", "category", "sport", "activityType", "isMainSleep", "ActivityName"}
 
 
 def test_a_single_source_reads_the_picker_of_its_value(dashboard):
@@ -188,6 +207,28 @@ def test_a_single_source_reads_the_picker_of_its_value(dashboard):
 # docs/dashboards-design.md, "Series written by other tools": a garmin-grafana
 # night counts when it has time asleep and REM.
 GARMIN_NIGHT = '"sleepTimeSeconds" > 0 AND "remSleepSeconds" > 0'
+
+
+# Grafana's own macros: resolved by the datasource or the panel, never variables.
+MACROS = {"timeFilter", "from", "to", "fromms", "toms", "__from", "__to", "__from_ms", "__to_ms",
+          "__interval", "__interval_ms", "interval", "interval_ms", "__timeFilter", "__timeFrom",
+          "__timeTo", "__range", "__range_s", "__rate_interval", "__rate_interval_ms",
+          "__dashboard", "__name", "__org", "__user"}
+
+
+def test_every_placeholder_is_a_variable(dashboard):
+    """An unresolved `${source:regex}` (a variable the dashboard does not have, a
+    Fitbit target copied from another dashboard) goes to InfluxDB literally and
+    the panel reads nothing, with no error anywhere: it is a test."""
+    names = {v["name"] for v in _variables(dashboard)}
+    for panel, target in _queries(dashboard):
+        q = target["query"]
+        for found in re.findall(r"\$\{([^}:]+)", q):
+            assert found in names or found in MACROS, (
+                dashboard["uid"], panel and panel.get("title"), found, sorted(names))
+        for found in re.findall(r"\$(\w+)", q):
+            assert found in names or found in MACROS or found == "col" or found.startswith("tag_"), (
+                dashboard["uid"], panel and panel.get("title"), found, sorted(names))
 
 
 def test_a_garmin_night_has_time_asleep_and_rem(dashboard):

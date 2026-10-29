@@ -43,7 +43,7 @@ from app.config import settings  # noqa: E402
 from app.main import app  # noqa: E402,F401 -- creates the tables; scheduler off (nothing configured)
 from tests.fakes import MYTHERAPY_NAMES, THRESHOLDS, TODOIST_TOKEN  # noqa: E402
 from tests.fakes import WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, WHOOP_REDIRECT  # noqa: E402
-from tests.fakes import GITHUB_TOKEN, GITHUB_TOKEN_2  # noqa: E402
+from tests.fakes import GITHUB_TOKEN, GITHUB_TOKEN_2, patch_numbered  # noqa: E402
 from tests.fakes import FakeAbs, FakeGitHub, FakeInflux, FakeRenpho, FakeTodoist, FakeWhoop  # noqa: E402
 
 
@@ -124,7 +124,7 @@ def renpho_cloud(monkeypatch, renpho_connector):
     monkeypatch.setattr(settings_, "password", SecretStr("alice-password"))
     monkeypatch.setattr(settings_, "user", "alice")
     monkeypatch.setattr(settings_, "thresholds", json.dumps(THRESHOLDS))
-    monkeypatch.setattr(settings_, "_numbered", {})
+    patch_numbered(monkeypatch, settings_, {})
     yield fake
     fake.close()
 
@@ -132,7 +132,7 @@ def renpho_cloud(monkeypatch, renpho_connector):
 @pytest.fixture()
 def bob(monkeypatch, renpho_cloud, renpho_connector):
     """A second Renpho account, bob's (no level boundaries)."""
-    monkeypatch.setattr(renpho_connector.settings, "_numbered", {
+    patch_numbered(monkeypatch, renpho_connector.settings, {
         "TRIBUTARY_RENPHO_EMAIL_2": "bob@example.com", "TRIBUTARY_RENPHO_PASSWORD_2": "bob-password",
         "TRIBUTARY_RENPHO_USER_2": "bob"})
     return renpho_cloud
@@ -176,8 +176,8 @@ def github_api(monkeypatch, github_connector):
                         ("agents", "noreply@anthropic.com,Copilot,openhands-agent"), ("lookback_days", 3),
                         ("history_months", 12)):
         monkeypatch.setattr(github_connector.settings, name, value)
-    monkeypatch.setattr(github_connector.settings, "_numbered",
-                        {"TRIBUTARY_GITHUB_OWNER_2": "dana", "TRIBUTARY_GITHUB_TOKEN_2": GITHUB_TOKEN_2})
+    patch_numbered(monkeypatch, github_connector.settings,
+                   {"TRIBUTARY_GITHUB_OWNER_2": "dana", "TRIBUTARY_GITHUB_TOKEN_2": GITHUB_TOKEN_2})
     yield fake
     fake.close()
 

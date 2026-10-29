@@ -80,17 +80,22 @@ powerlifting, functional fitness; MyFitnessPal's), or Garmin's
   `ActivitySummary`, `BodyComposition`;
 - `SleepStats`: `sleep_session`;
 - `BodyStats`: `body_composition`, `exercise`, `daily_activity`,
-  `medication`.
+  `medication`;
+- `FitbitHealthStats` (fitbit-fetch): `Sleep Summary`, `Total Steps`,
+  `RestingHR`, and below `HRV`.
 
 ![The Healthspan dashboard with demo data: WHOOP Age and the years younger, then each indicator's bars on WHOOP's scale, its age impact and its trend](screenshots/grafana-healthspan-light.png)
 
 ## Sleep
 
-Every night from every sleep tracker: `GarminStats..SleepSummary` and
-`SleepStats..sleep_session`, naps left out.
+Every night from every sleep tracker: `GarminStats..SleepSummary`,
+`SleepStats..sleep_session` and `FitbitHealthStats..Sleep Summary`, naps left
+out. Nights are cut noon to noon, so a source that stamps a night at its
+start (Fitbit) and one that stamps it at its end (Garmin, WHOOP) land on the
+same point.
 - **Tiles**, from the source picked in *Sleep from*: time asleep, nights
   tracked, deep and REM share, time awake; the sleep score from *Sleep score
-  from*.
+  from* (Fitbit has no score: it records an efficiency, not drawn as one).
 - **Every night:** time asleep per night, one colour per source, against a
   7-hour line; the picked source's stages per night (deep, light, REM,
   awake); sleep score; deep and REM averages; time awake per source; the
@@ -105,7 +110,11 @@ Every night from every sleep tracker: `GarminStats..SleepSummary` and
   per source (which device covers which years), and naps per week.
 - **One night in detail** (folded): the hypnogram and the heart rate through
   the night, from the sources that store them (`SleepStats`: `sleep_stage`,
-  `sleep_vitals`; `GarminStats..SleepIntraday`). Zoom the range to a night.
+  `sleep_vitals`; `GarminStats..SleepIntraday`; `FitbitHealthStats..Sleep
+  Levels`). Zoom the range to a night.
+
+Fitbit has no clock times: its bedtime and wake-up tiles stay empty when it is
+picked.
 
 Variables: user, sources, *Sleep from*, *Sleep score from*.
 
@@ -114,8 +123,9 @@ Variables: user, sources, *Sleep from*, *Sleep score from*.
 ## Activity & fitness
 
 How much you move and train, every source side by side. Reads `GarminStats`
-(`DailyStats`, `ActivitySummary`, `VO2_Max`) and `BodyStats` (`daily_activity`,
-`exercise`).
+(`DailyStats`, `ActivitySummary`, `VO2_Max`), `BodyStats` (`daily_activity`,
+`exercise`) and `FitbitHealthStats` (`Total Steps`, `calories`,
+`Activity Records`).
 - **Tiles**, devices listed first: steps per day from *Activity from*;
   intensity minutes per week and VO₂ max (`garmin`); workouts, training hours
   per week and days with a workout from *Workouts from*.
@@ -131,6 +141,11 @@ How much you move and train, every source side by side. Reads `GarminStats`
   sport it names: workouts per week, a table per sport (duration, strain,
   calories, heart rate), the share of time in each heart-rate zone, the
   strain of each workout.
+
+Fitbit feeds steps, calories and workouts (time, calories, average heart
+rate, sport names). Its heart-rate zones are daily totals rather than per
+workout and it has no strain, so the workout-zone and strain panels leave it
+out.
 
 Variables: user, sources, *Activity from*, *Workouts from*.
 

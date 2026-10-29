@@ -6,7 +6,7 @@ import pytest
 from app.connectors import github
 from app.connectors.base import ConnectorError
 from app.points import encode
-from tests.fakes import GITHUB_SECRETS, GITHUB_TOKEN_2, parse
+from tests.fakes import GITHUB_SECRETS, GITHUB_TOKEN_2, parse, patch_numbered
 
 NOW = datetime(2026, 10, 14, 12, tzinfo=timezone.utc)
 BILLING = "/organizations/acme/settings/billing/usage"
@@ -252,7 +252,7 @@ def test_a_run_fails_when_every_account_does(github_api, github_connector):
     ({"TRIBUTARY_GITHUB_OWNER_2": "ACME", "TRIBUTARY_GITHUB_TOKEN_2": "t"}, "name each owner once"),
 ])
 def test_misconfigured_accounts_are_explained(github_api, github_connector, monkeypatch, numbered, message):
-    monkeypatch.setattr(github_connector.settings, "_numbered", numbered)
+    patch_numbered(monkeypatch, github_connector.settings, numbered)
     with pytest.raises(ConnectorError, match=message):
         github_connector.sync(None)
 

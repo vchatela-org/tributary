@@ -36,7 +36,8 @@ BLOCK, BAR = 6, 4
 YEAR_DAYS = 365.25
 
 DS = {db: {"type": "influxdb", "uid": "${" + var + "}"}
-      for db, var in (("SleepStats", "sleep"), ("BodyStats", "body"), ("GarminStats", "garmin"))}
+      for db, var in (("SleepStats", "sleep"), ("BodyStats", "body"), ("GarminStats", "garmin"),
+                      ("FitbitHealthStats", "fitbit"))}
 MIXED = {"type": "datasource", "uid": "-- Mixed --"}
 
 # The diverging scale: two steps per arm around a grey midpoint. The dataviz
@@ -59,6 +60,20 @@ def night(picker):
 
 def garmin_night(picker):
     return f'FROM "SleepSummary" WHERE {GARMIN_NIGHT} AND \'garmin\' = \'${{{picker}}}\''
+
+
+# fitbit-fetch stamps a night at its start (bedtime), where the other sources
+# stamp it at its end: the noon-to-noon bucket ("1d, -12h") puts both ends of
+# the same night on one point.
+FITBIT_NIGHT = '"isMainSleep" =~ /^(True|true)$/'
+
+
+def fitbit_night(picker):
+    return f'FROM "Sleep Summary" WHERE {FITBIT_NIGHT} AND \'fitbit\' = \'${{{picker}}}\''
+
+
+def fitbit_day(measurement, picker):
+    return f'FROM "{measurement}" WHERE \'fitbit\' = \'${{{picker}}}\''
 
 
 def workouts(where=""):
@@ -100,7 +115,8 @@ def per_week(expr):
 # Each indicator: section, title, unit, decimals, the app's scale and bands
 # (low end first: the value where a band starts, its colour), K (years per
 # unit) and TARGET (0 years), and per source the database, the value over one
-# window ("single") and its daily rolling average ("rolling", over {n} days).
+# window ("single") and its daily rolling average ("rolling", over {n} days),
+# the fill, and the bucket (a night series is cut noon to noon: "1d, -12h").
 INDICATORS = [
     dict(key="consistency", section="Sleep", title="Sleep consistency", unit="percent", decimals=0,
          scale=(40, 100), bands=[(None, O2), (64, O1), (70, G1), (82, G2)], k=-0.172, target=70,
@@ -112,10 +128,14 @@ INDICATORS = [
     dict(key="sleep", section="Sleep", title="Hours of sleep", unit="suffix: h", decimals=2,
          scale=(5, 8), bands=[(None, O2), (5.6, O1), (6.8, N), (7.1, G1), (7.4, G2)], k=-0.283, target=7,
          sources=[("SleepStats", 'mean("asleep_s") / 3600 ' + night("sleep_from"),
-                   'moving_average(mean("asleep_s"), {n}) / 3600 ' + night("sleep_from"), "previous"),
+                   'moving_average(mean("asleep_s"), {n}) / 3600 ' + night("sleep_from"), "previous",
+                   "1d, -12h"),
                   ("GarminStats", 'mean("sleepTimeSeconds") / 3600 ' + garmin_night("sleep_from"),
                    'moving_average(mean("sleepTimeSeconds"), {n}) / 3600 ' + garmin_night("sleep_from"),
-                   "previous")],
+                   "previous", "1d, -12h"),
+                  ("FitbitHealthStats", 'mean("minutesAsleep") / 60 ' + fitbit_night("sleep_from"),
+                   'moving_average(mean("minutesAsleep"), {n}) / 60 ' + fitbit_night("sleep_from"),
+                   "previous", "1d, -12h")],
          note="Time asleep per night, naps left out. 0 years at 7 h, the least the American Academy "
               "of Sleep Medicine recommends for an adult; -0.28 year per hour above."),
     dict(key="zones13", section="Strain", title="Time in HR zones 1-3, per week", unit="suffix: min",
@@ -154,7 +174,10 @@ INDICATORS = [
                    'WHERE "source" = \'${activity_from}\' AND "user" = \'$user\'', "previous"),
                   ("GarminStats", 'mean("s") ' + garmin_days(),
                    'moving_average(max("totalSteps"), {n}) FROM "DailyStats" '
-                   'WHERE \'garmin\' = \'${activity_from}\'', "previous")],
+                   'WHERE \'garmin\' = \'${activity_from}\'', "previous"),
+                  ("FitbitHealthStats", 'mean("value") ' + fitbit_day("Total Steps", "activity_from"),
+                   'moving_average(mean("value"), {n}) ' + fitbit_day("Total Steps", "activity_from"),
+                   "previous")],
          note="Steps per day. 0 years at 8,000, by which studies of mortality see most of the "
               "benefit; -0.6 year per 5,000 above."),
     dict(key="vo2", section="Fitness", title="VO₂ max", unit="none", decimals=1,
@@ -167,9 +190,14 @@ INDICATORS = [
     dict(key="rhr", section="Fitness", title="Resting heart rate", unit="suffix: bpm", decimals=0,
          scale=(40, 80), bands=[(None, G2), (52, G1), (60, O1), (72, O2)], k=0.114, target=60,
          sources=[("SleepStats", 'mean("resting_hr") ' + night("rhr_from"),
-                   'moving_average(mean("resting_hr"), {n}) ' + night("rhr_from"), "previous"),
+                   'moving_average(mean("resting_hr"), {n}) ' + night("rhr_from"), "previous",
+                   "1d, -12h"),
                   ("GarminStats", 'mean("restingHeartRate") ' + garmin_night("rhr_from"),
-                   'moving_average(mean("restingHeartRate"), {n}) ' + garmin_night("rhr_from"), "previous")],
+                   'moving_average(mean("restingHeartRate"), {n}) ' + garmin_night("rhr_from"), "previous",
+                   "1d, -12h"),
+                  ("FitbitHealthStats", 'mean("value") ' + fitbit_day("RestingHR", "rhr_from"),
+                   'moving_average(mean("value"), {n}) ' + fitbit_day("RestingHR", "rhr_from"),
+                   "previous", "1d, -12h")],
          note="The night's resting heart rate. 0 years at 60 bpm, +0.11 year per bpm: lower is "
               "younger."),
     dict(key="lbm", section="Fitness", title="Lean body mass", unit="percent", decimals=1,
@@ -229,8 +257,9 @@ def rolling_sql(ind, source, days, years=False):
     agg = agg.replace("{n}", str(days))
     if years:
         agg = impact(agg, ind)
+    bucket = source[4] if len(source) > 4 else "1d"
     return (f"SELECT {agg} FROM {rest.replace('{time}', lookback(days))} AND {lookback(days)} "
-            f"GROUP BY time(1d) fill({source[3]}) tz('$tz')")
+            f"GROUP BY time({bucket}) fill({source[3]}) tz('$tz')")
 
 
 def age_sql():
@@ -483,6 +512,12 @@ def build(existing):
         p["id"] = next(ids)
 
     variables = existing["templating"]["list"]
+    if not any(v["name"] == "fitbit" for v in variables):
+        at = next(i for i, v in enumerate(variables) if v["name"] == "garmin") + 1
+        variables.insert(at, {"type": "datasource", "name": "fitbit",
+                              "label": "InfluxDB FitbitHealthStats", "query": "influxdb",
+                              "regex": "/FitbitHealthStats/i", "hide": 0, "refresh": 1,
+                              "current": {}, "options": [], "includeAll": False, "multi": False})
     if not any(v["name"] == "birth" for v in variables):
         at = next(i for i, v in enumerate(variables) if v["name"] == "tz") + 1
         variables.insert(at, {"name": "birth", "label": "Birth date", "type": "textbox", "query": "",

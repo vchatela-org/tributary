@@ -1,8 +1,9 @@
 # One InfluxQL datasource per database Tributary's dashboards read, named
 # "InfluxDB <database>": each dashboard finds its own by that name. GarminStats
-# is garmin-grafana's database and SleepStats the one a sleep source writes:
-# until one exists, the panels reading it warn "database not found" and draw
-# the other sources. Remove a datasource you will never fill.
+# is garmin-grafana's database, FitbitHealthStats fitbit-fetch's, and SleepStats
+# the one a sleep source writes: until one exists, the panels reading it warn
+# "database not found" and draw the other sources. Remove a datasource you will
+# never fill.
 apiVersion: 1
 
 datasources:
@@ -43,6 +44,16 @@ datasources:
     url: http://influxdb:8086
     jsonData:
       dbName: GarminStats
+      httpMode: POST
+    editable: true
+
+  - name: InfluxDB FitbitHealthStats
+    uid: tributary-influxdb-fitbithealthstats
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    jsonData:
+      dbName: FitbitHealthStats
       httpMode: POST
     editable: true
 

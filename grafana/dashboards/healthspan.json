@@ -112,6 +112,19 @@
       },
       {
         "type": "datasource",
+        "name": "fitbit",
+        "label": "InfluxDB FitbitHealthStats",
+        "query": "influxdb",
+        "regex": "/FitbitHealthStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "datasource",
         "name": "sleep",
         "label": "InfluxDB SleepStats",
         "query": "influxdb",
@@ -287,7 +300,7 @@
         "name": "rhr_from",
         "label": "Resting HR from",
         "description": "The source of the resting heart rate.",
-        "query": "${nights:csv},garmin",
+        "query": "${nights:csv},garmin,fitbit",
         "hide": 0,
         "current": {},
         "options": [],
@@ -299,7 +312,7 @@
         "name": "hrv_from",
         "label": "HRV from",
         "description": "The source of the overnight HRV. Devices measure it differently.",
-        "query": "${nights:csv},garmin",
+        "query": "${nights:csv},garmin,fitbit",
         "hide": 0,
         "current": {},
         "options": [],
@@ -311,7 +324,7 @@
         "name": "sleep_from",
         "label": "Sleep from",
         "description": "The source of the time asleep, the stages and the bedtimes.",
-        "query": "${nights:csv},garmin",
+        "query": "${nights:csv},garmin,fitbit",
         "hide": 0,
         "current": {},
         "options": [],
@@ -323,7 +336,7 @@
         "name": "activity_from",
         "label": "Activity from",
         "description": "The source of the daily totals (steps).",
-        "query": "${days:csv},garmin",
+        "query": "${days:csv},garmin,fitbit",
         "hide": 0,
         "current": {},
         "options": [],
@@ -416,6 +429,17 @@
           "refId": "D",
           "datasource": {
             "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"minutesAsleep\") / 60 - 7) * -0.283 AS \"y\" FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND time > ${__to}ms - 182d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "sleep"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
             "uid": "${body}"
           },
           "query": "SELECT sum(\"y\") FROM (SELECT (sum(\"z\") / 60 / (182 / 7) - 100) * -0.0068 AS \"y\" FROM (SELECT \"zone1_s\" + \"zone2_s\" + \"zone3_s\" AS \"z\" FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND time > ${__to}ms - 182d AND time <= ${__to}ms) WHERE true AND time > ${__to}ms - 182d AND time <= ${__to}ms)",
@@ -424,7 +448,7 @@
           "alias": "zones13"
         },
         {
-          "refId": "E",
+          "refId": "F",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -435,7 +459,7 @@
           "alias": "zones13"
         },
         {
-          "refId": "F",
+          "refId": "G",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -446,7 +470,7 @@
           "alias": "zones45"
         },
         {
-          "refId": "G",
+          "refId": "H",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -457,7 +481,7 @@
           "alias": "zones45"
         },
         {
-          "refId": "H",
+          "refId": "I",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -468,7 +492,7 @@
           "alias": "strength"
         },
         {
-          "refId": "I",
+          "refId": "J",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -479,7 +503,7 @@
           "alias": "strength"
         },
         {
-          "refId": "J",
+          "refId": "K",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -490,7 +514,7 @@
           "alias": "steps"
         },
         {
-          "refId": "K",
+          "refId": "L",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -501,7 +525,18 @@
           "alias": "steps"
         },
         {
-          "refId": "L",
+          "refId": "M",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"value\") - 8000) * -0.000123 AS \"y\" FROM \"Total Steps\" WHERE 'fitbit' = '${activity_from}' AND time > ${__to}ms - 182d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "steps"
+        },
+        {
+          "refId": "N",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -512,7 +547,7 @@
           "alias": "vo2"
         },
         {
-          "refId": "M",
+          "refId": "O",
           "datasource": {
             "type": "influxdb",
             "uid": "${sleep}"
@@ -523,7 +558,7 @@
           "alias": "rhr"
         },
         {
-          "refId": "N",
+          "refId": "P",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -534,7 +569,18 @@
           "alias": "rhr"
         },
         {
-          "refId": "O",
+          "refId": "Q",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"value\") - 60) * 0.114 AS \"y\" FROM \"RestingHR\" WHERE 'fitbit' = '${rhr_from}' AND time > ${__to}ms - 182d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "rhr"
+        },
+        {
+          "refId": "R",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -545,7 +591,7 @@
           "alias": "lbm"
         },
         {
-          "refId": "P",
+          "refId": "S",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -556,7 +602,7 @@
           "alias": "lbm"
         },
         {
-          "refId": "Q",
+          "refId": "T",
           "datasource": {
             "type": "influxdb",
             "uid": "${sleep}"
@@ -720,6 +766,17 @@
           "refId": "D",
           "datasource": {
             "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"minutesAsleep\") / 60 - 7) * -0.283 AS \"y\" FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND time > ${__to}ms - 182d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "sleep"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
             "uid": "${body}"
           },
           "query": "SELECT sum(\"y\") FROM (SELECT (sum(\"z\") / 60 / (182 / 7) - 100) * -0.0068 AS \"y\" FROM (SELECT \"zone1_s\" + \"zone2_s\" + \"zone3_s\" AS \"z\" FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND time > ${__to}ms - 182d AND time <= ${__to}ms) WHERE true AND time > ${__to}ms - 182d AND time <= ${__to}ms)",
@@ -728,7 +785,7 @@
           "alias": "zones13"
         },
         {
-          "refId": "E",
+          "refId": "F",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -739,7 +796,7 @@
           "alias": "zones13"
         },
         {
-          "refId": "F",
+          "refId": "G",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -750,7 +807,7 @@
           "alias": "zones45"
         },
         {
-          "refId": "G",
+          "refId": "H",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -761,7 +818,7 @@
           "alias": "zones45"
         },
         {
-          "refId": "H",
+          "refId": "I",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -772,7 +829,7 @@
           "alias": "strength"
         },
         {
-          "refId": "I",
+          "refId": "J",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -783,7 +840,7 @@
           "alias": "strength"
         },
         {
-          "refId": "J",
+          "refId": "K",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -794,7 +851,7 @@
           "alias": "steps"
         },
         {
-          "refId": "K",
+          "refId": "L",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -805,7 +862,18 @@
           "alias": "steps"
         },
         {
-          "refId": "L",
+          "refId": "M",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"value\") - 8000) * -0.000123 AS \"y\" FROM \"Total Steps\" WHERE 'fitbit' = '${activity_from}' AND time > ${__to}ms - 182d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "steps"
+        },
+        {
+          "refId": "N",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -816,7 +884,7 @@
           "alias": "vo2"
         },
         {
-          "refId": "M",
+          "refId": "O",
           "datasource": {
             "type": "influxdb",
             "uid": "${sleep}"
@@ -827,7 +895,7 @@
           "alias": "rhr"
         },
         {
-          "refId": "N",
+          "refId": "P",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -838,7 +906,18 @@
           "alias": "rhr"
         },
         {
-          "refId": "O",
+          "refId": "Q",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"value\") - 60) * 0.114 AS \"y\" FROM \"RestingHR\" WHERE 'fitbit' = '${rhr_from}' AND time > ${__to}ms - 182d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "rhr"
+        },
+        {
+          "refId": "R",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -849,7 +928,7 @@
           "alias": "lbm"
         },
         {
-          "refId": "P",
+          "refId": "S",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1095,6 +1174,17 @@
           "refId": "D",
           "datasource": {
             "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"minutesAsleep\") / 60 - 7) * -0.283 AS \"y\" FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "sleep"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
             "uid": "${body}"
           },
           "query": "SELECT sum(\"y\") FROM (SELECT (sum(\"z\") / 60 / (30 / 7) - 100) * -0.0068 AS \"y\" FROM (SELECT \"zone1_s\" + \"zone2_s\" + \"zone3_s\" AS \"z\" FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND time > ${__to}ms - 30d AND time <= ${__to}ms) WHERE true AND time > ${__to}ms - 30d AND time <= ${__to}ms)",
@@ -1103,7 +1193,7 @@
           "alias": "zones13"
         },
         {
-          "refId": "E",
+          "refId": "F",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1114,7 +1204,7 @@
           "alias": "zones13"
         },
         {
-          "refId": "F",
+          "refId": "G",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1125,7 +1215,7 @@
           "alias": "zones45"
         },
         {
-          "refId": "G",
+          "refId": "H",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1136,7 +1226,7 @@
           "alias": "zones45"
         },
         {
-          "refId": "H",
+          "refId": "I",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1147,7 +1237,7 @@
           "alias": "strength"
         },
         {
-          "refId": "I",
+          "refId": "J",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1158,7 +1248,7 @@
           "alias": "strength"
         },
         {
-          "refId": "J",
+          "refId": "K",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1169,7 +1259,7 @@
           "alias": "steps"
         },
         {
-          "refId": "K",
+          "refId": "L",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1180,7 +1270,18 @@
           "alias": "steps"
         },
         {
-          "refId": "L",
+          "refId": "M",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"value\") - 8000) * -0.000123 AS \"y\" FROM \"Total Steps\" WHERE 'fitbit' = '${activity_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "steps"
+        },
+        {
+          "refId": "N",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1191,7 +1292,7 @@
           "alias": "vo2"
         },
         {
-          "refId": "M",
+          "refId": "O",
           "datasource": {
             "type": "influxdb",
             "uid": "${sleep}"
@@ -1202,7 +1303,7 @@
           "alias": "rhr"
         },
         {
-          "refId": "N",
+          "refId": "P",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1213,7 +1314,18 @@
           "alias": "rhr"
         },
         {
-          "refId": "O",
+          "refId": "Q",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"value\") - 60) * 0.114 AS \"y\" FROM \"RestingHR\" WHERE 'fitbit' = '${rhr_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "rhr"
+        },
+        {
+          "refId": "R",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1224,7 +1336,7 @@
           "alias": "lbm"
         },
         {
-          "refId": "P",
+          "refId": "S",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1235,7 +1347,7 @@
           "alias": "lbm"
         },
         {
-          "refId": "Q",
+          "refId": "T",
           "datasource": {
             "type": "influxdb",
             "uid": "${sleep}"
@@ -1379,7 +1491,7 @@
             "type": "influxdb",
             "uid": "${sleep}"
           },
-          "query": "SELECT (moving_average(mean(\"asleep_s\"), 182) / 3600 - 7) * -0.283 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT (moving_average(mean(\"asleep_s\"), 182) / 3600 - 7) * -0.283 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "6 months sleep"
@@ -1390,13 +1502,24 @@
             "type": "influxdb",
             "uid": "${garmin}"
           },
-          "query": "SELECT (moving_average(mean(\"sleepTimeSeconds\"), 182) / 3600 - 7) * -0.283 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT (moving_average(mean(\"sleepTimeSeconds\"), 182) / 3600 - 7) * -0.283 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "6 months sleep"
         },
         {
           "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT (moving_average(mean(\"minutesAsleep\"), 182) / 60 - 7) * -0.283 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "6 months sleep"
+        },
+        {
+          "refId": "E",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1407,7 +1530,7 @@
           "alias": "6 months zones13"
         },
         {
-          "refId": "E",
+          "refId": "F",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1418,7 +1541,7 @@
           "alias": "6 months zones13"
         },
         {
-          "refId": "F",
+          "refId": "G",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1429,7 +1552,7 @@
           "alias": "6 months zones45"
         },
         {
-          "refId": "G",
+          "refId": "H",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1440,7 +1563,7 @@
           "alias": "6 months zones45"
         },
         {
-          "refId": "H",
+          "refId": "I",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1451,7 +1574,7 @@
           "alias": "6 months strength"
         },
         {
-          "refId": "I",
+          "refId": "J",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1462,7 +1585,7 @@
           "alias": "6 months strength"
         },
         {
-          "refId": "J",
+          "refId": "K",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1473,7 +1596,7 @@
           "alias": "6 months steps"
         },
         {
-          "refId": "K",
+          "refId": "L",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1484,7 +1607,18 @@
           "alias": "6 months steps"
         },
         {
-          "refId": "L",
+          "refId": "M",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT (moving_average(mean(\"value\"), 182) - 8000) * -0.000123 FROM \"Total Steps\" WHERE 'fitbit' = '${activity_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "6 months steps"
+        },
+        {
+          "refId": "N",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1495,29 +1629,40 @@
           "alias": "6 months vo2"
         },
         {
-          "refId": "M",
+          "refId": "O",
           "datasource": {
             "type": "influxdb",
             "uid": "${sleep}"
           },
-          "query": "SELECT (moving_average(mean(\"resting_hr\"), 182) - 60) * 0.114 FROM \"sleep_session\" WHERE \"source\" = '${rhr_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT (moving_average(mean(\"resting_hr\"), 182) - 60) * 0.114 FROM \"sleep_session\" WHERE \"source\" = '${rhr_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "6 months rhr"
         },
         {
-          "refId": "N",
+          "refId": "P",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
           },
-          "query": "SELECT (moving_average(mean(\"restingHeartRate\"), 182) - 60) * 0.114 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${rhr_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT (moving_average(mean(\"restingHeartRate\"), 182) - 60) * 0.114 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${rhr_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "6 months rhr"
         },
         {
-          "refId": "O",
+          "refId": "Q",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT (moving_average(mean(\"value\"), 182) - 60) * 0.114 FROM \"RestingHR\" WHERE 'fitbit' = '${rhr_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "6 months rhr"
+        },
+        {
+          "refId": "R",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1528,7 +1673,7 @@
           "alias": "6 months lbm"
         },
         {
-          "refId": "P",
+          "refId": "S",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1539,7 +1684,7 @@
           "alias": "6 months lbm"
         },
         {
-          "refId": "Q",
+          "refId": "T",
           "datasource": {
             "type": "influxdb",
             "uid": "${sleep}"
@@ -1550,29 +1695,40 @@
           "alias": "30 days consistency"
         },
         {
-          "refId": "R",
+          "refId": "U",
           "datasource": {
             "type": "influxdb",
             "uid": "${sleep}"
           },
-          "query": "SELECT (moving_average(mean(\"asleep_s\"), 30) / 3600 - 7) * -0.283 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT (moving_average(mean(\"asleep_s\"), 30) / 3600 - 7) * -0.283 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "30 days sleep"
         },
         {
-          "refId": "S",
+          "refId": "V",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
           },
-          "query": "SELECT (moving_average(mean(\"sleepTimeSeconds\"), 30) / 3600 - 7) * -0.283 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT (moving_average(mean(\"sleepTimeSeconds\"), 30) / 3600 - 7) * -0.283 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "30 days sleep"
         },
         {
-          "refId": "T",
+          "refId": "W",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT (moving_average(mean(\"minutesAsleep\"), 30) / 60 - 7) * -0.283 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days sleep"
+        },
+        {
+          "refId": "X",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1583,7 +1739,7 @@
           "alias": "30 days zones13"
         },
         {
-          "refId": "U",
+          "refId": "Y",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1594,7 +1750,7 @@
           "alias": "30 days zones13"
         },
         {
-          "refId": "V",
+          "refId": "Z",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1605,7 +1761,7 @@
           "alias": "30 days zones45"
         },
         {
-          "refId": "W",
+          "refId": "AA",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1616,7 +1772,7 @@
           "alias": "30 days zones45"
         },
         {
-          "refId": "X",
+          "refId": "AB",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1627,7 +1783,7 @@
           "alias": "30 days strength"
         },
         {
-          "refId": "Y",
+          "refId": "AC",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1638,7 +1794,7 @@
           "alias": "30 days strength"
         },
         {
-          "refId": "Z",
+          "refId": "AD",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1649,7 +1805,7 @@
           "alias": "30 days steps"
         },
         {
-          "refId": "AA",
+          "refId": "AE",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1660,7 +1816,18 @@
           "alias": "30 days steps"
         },
         {
-          "refId": "AB",
+          "refId": "AF",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT (moving_average(mean(\"value\"), 30) - 8000) * -0.000123 FROM \"Total Steps\" WHERE 'fitbit' = '${activity_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days steps"
+        },
+        {
+          "refId": "AG",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -1671,29 +1838,40 @@
           "alias": "30 days vo2"
         },
         {
-          "refId": "AC",
+          "refId": "AH",
           "datasource": {
             "type": "influxdb",
             "uid": "${sleep}"
           },
-          "query": "SELECT (moving_average(mean(\"resting_hr\"), 30) - 60) * 0.114 FROM \"sleep_session\" WHERE \"source\" = '${rhr_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT (moving_average(mean(\"resting_hr\"), 30) - 60) * 0.114 FROM \"sleep_session\" WHERE \"source\" = '${rhr_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "30 days rhr"
         },
         {
-          "refId": "AD",
+          "refId": "AI",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
           },
-          "query": "SELECT (moving_average(mean(\"restingHeartRate\"), 30) - 60) * 0.114 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${rhr_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT (moving_average(mean(\"restingHeartRate\"), 30) - 60) * 0.114 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${rhr_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "30 days rhr"
         },
         {
-          "refId": "AE",
+          "refId": "AJ",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT (moving_average(mean(\"value\"), 30) - 60) * 0.114 FROM \"RestingHR\" WHERE 'fitbit' = '${rhr_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days rhr"
+        },
+        {
+          "refId": "AK",
           "datasource": {
             "type": "influxdb",
             "uid": "${body}"
@@ -1704,7 +1882,7 @@
           "alias": "30 days lbm"
         },
         {
-          "refId": "AF",
+          "refId": "AL",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
@@ -2282,6 +2460,17 @@
           "refId": "C",
           "datasource": {
             "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT mean(\"minutesAsleep\") / 60 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND time > ${__to}ms - 182d AND time <= ${__to}ms",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "6 months"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
             "uid": "${sleep}"
           },
           "query": "SELECT mean(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time > ${__to}ms - 30d AND time <= ${__to}ms",
@@ -2290,12 +2479,23 @@
           "alias": "30 days"
         },
         {
-          "refId": "D",
+          "refId": "E",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
           },
           "query": "SELECT mean(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT mean(\"minutesAsleep\") / 60 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "30 days"
@@ -2424,6 +2624,17 @@
           "refId": "C",
           "datasource": {
             "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"minutesAsleep\") / 60 - 7) * -0.283 AS \"y\" FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND time > ${__to}ms - 182d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "6 months"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
             "uid": "${sleep}"
           },
           "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"asleep_s\") / 3600 - 7) * -0.283 AS \"y\" FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time > ${__to}ms - 30d AND time <= ${__to}ms)",
@@ -2432,12 +2643,23 @@
           "alias": "30 days"
         },
         {
-          "refId": "D",
+          "refId": "E",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
           },
           "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"sleepTimeSeconds\") / 3600 - 7) * -0.283 AS \"y\" FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"minutesAsleep\") / 60 - 7) * -0.283 AS \"y\" FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "30 days"
@@ -2522,7 +2744,7 @@
             "type": "influxdb",
             "uid": "${sleep}"
           },
-          "query": "SELECT moving_average(mean(\"asleep_s\"), 182) / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"asleep_s\"), 182) / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "6 months"
@@ -2533,7 +2755,7 @@
             "type": "influxdb",
             "uid": "${garmin}"
           },
-          "query": "SELECT moving_average(mean(\"sleepTimeSeconds\"), 182) / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"sleepTimeSeconds\"), 182) / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "6 months"
@@ -2542,20 +2764,42 @@
           "refId": "C",
           "datasource": {
             "type": "influxdb",
-            "uid": "${sleep}"
+            "uid": "${fitbit}"
           },
-          "query": "SELECT moving_average(mean(\"asleep_s\"), 30) / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"minutesAsleep\"), 182) / 60 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
-          "alias": "30 days"
+          "alias": "6 months"
         },
         {
           "refId": "D",
           "datasource": {
             "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "query": "SELECT moving_average(mean(\"asleep_s\"), 30) / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
             "uid": "${garmin}"
           },
-          "query": "SELECT moving_average(mean(\"sleepTimeSeconds\"), 30) / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"sleepTimeSeconds\"), 30) / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT moving_average(mean(\"minutesAsleep\"), 30) / 60 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "30 days"
@@ -3895,6 +4139,17 @@
           "refId": "C",
           "datasource": {
             "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT mean(\"value\") FROM \"Total Steps\" WHERE 'fitbit' = '${activity_from}' AND time > ${__to}ms - 182d AND time <= ${__to}ms",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "6 months"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
             "uid": "${body}"
           },
           "query": "SELECT mean(\"steps\") FROM \"daily_activity\" WHERE \"source\" = '${activity_from}' AND \"user\" = '$user' AND time > ${__to}ms - 30d AND time <= ${__to}ms",
@@ -3903,12 +4158,23 @@
           "alias": "30 days"
         },
         {
-          "refId": "D",
+          "refId": "E",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
           },
           "query": "SELECT mean(\"s\") FROM (SELECT max(\"totalSteps\") AS \"s\" FROM \"DailyStats\" WHERE 'garmin' = '${activity_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')) WHERE true AND time > ${__to}ms - 30d AND time <= ${__to}ms",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT mean(\"value\") FROM \"Total Steps\" WHERE 'fitbit' = '${activity_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "30 days"
@@ -4033,6 +4299,17 @@
           "refId": "C",
           "datasource": {
             "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"value\") - 8000) * -0.000123 AS \"y\" FROM \"Total Steps\" WHERE 'fitbit' = '${activity_from}' AND time > ${__to}ms - 182d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "6 months"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
             "uid": "${body}"
           },
           "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"steps\") - 8000) * -0.000123 AS \"y\" FROM \"daily_activity\" WHERE \"source\" = '${activity_from}' AND \"user\" = '$user' AND time > ${__to}ms - 30d AND time <= ${__to}ms)",
@@ -4041,12 +4318,23 @@
           "alias": "30 days"
         },
         {
-          "refId": "D",
+          "refId": "E",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
           },
           "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"s\") - 8000) * -0.000123 AS \"y\" FROM (SELECT max(\"totalSteps\") AS \"s\" FROM \"DailyStats\" WHERE 'garmin' = '${activity_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')) WHERE true AND time > ${__to}ms - 30d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"value\") - 8000) * -0.000123 AS \"y\" FROM \"Total Steps\" WHERE 'fitbit' = '${activity_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "30 days"
@@ -4151,6 +4439,17 @@
           "refId": "C",
           "datasource": {
             "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT moving_average(mean(\"value\"), 182) FROM \"Total Steps\" WHERE 'fitbit' = '${activity_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "6 months"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
             "uid": "${body}"
           },
           "query": "SELECT moving_average(mean(\"steps\"), 30) FROM \"daily_activity\" WHERE \"source\" = '${activity_from}' AND \"user\" = '$user' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
@@ -4159,12 +4458,23 @@
           "alias": "30 days"
         },
         {
-          "refId": "D",
+          "refId": "E",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
           },
           "query": "SELECT moving_average(max(\"totalSteps\"), 30) FROM \"DailyStats\" WHERE 'garmin' = '${activity_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT moving_average(mean(\"value\"), 30) FROM \"Total Steps\" WHERE 'fitbit' = '${activity_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "30 days"
@@ -4634,6 +4944,17 @@
           "refId": "C",
           "datasource": {
             "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT mean(\"value\") FROM \"RestingHR\" WHERE 'fitbit' = '${rhr_from}' AND time > ${__to}ms - 182d AND time <= ${__to}ms",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "6 months"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
             "uid": "${sleep}"
           },
           "query": "SELECT mean(\"resting_hr\") FROM \"sleep_session\" WHERE \"source\" = '${rhr_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time > ${__to}ms - 30d AND time <= ${__to}ms",
@@ -4642,12 +4963,23 @@
           "alias": "30 days"
         },
         {
-          "refId": "D",
+          "refId": "E",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
           },
           "query": "SELECT mean(\"restingHeartRate\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${rhr_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT mean(\"value\") FROM \"RestingHR\" WHERE 'fitbit' = '${rhr_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "30 days"
@@ -4772,6 +5104,17 @@
           "refId": "C",
           "datasource": {
             "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"value\") - 60) * 0.114 AS \"y\" FROM \"RestingHR\" WHERE 'fitbit' = '${rhr_from}' AND time > ${__to}ms - 182d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "6 months"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
             "uid": "${sleep}"
           },
           "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"resting_hr\") - 60) * 0.114 AS \"y\" FROM \"sleep_session\" WHERE \"source\" = '${rhr_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time > ${__to}ms - 30d AND time <= ${__to}ms)",
@@ -4780,12 +5123,23 @@
           "alias": "30 days"
         },
         {
-          "refId": "D",
+          "refId": "E",
           "datasource": {
             "type": "influxdb",
             "uid": "${garmin}"
           },
           "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"restingHeartRate\") - 60) * 0.114 AS \"y\" FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${rhr_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT sum(\"y\") FROM (SELECT (mean(\"value\") - 60) * 0.114 AS \"y\" FROM \"RestingHR\" WHERE 'fitbit' = '${rhr_from}' AND time > ${__to}ms - 30d AND time <= ${__to}ms)",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "30 days"
@@ -4870,7 +5224,7 @@
             "type": "influxdb",
             "uid": "${sleep}"
           },
-          "query": "SELECT moving_average(mean(\"resting_hr\"), 182) FROM \"sleep_session\" WHERE \"source\" = '${rhr_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"resting_hr\"), 182) FROM \"sleep_session\" WHERE \"source\" = '${rhr_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "6 months"
@@ -4881,7 +5235,7 @@
             "type": "influxdb",
             "uid": "${garmin}"
           },
-          "query": "SELECT moving_average(mean(\"restingHeartRate\"), 182) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${rhr_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"restingHeartRate\"), 182) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${rhr_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "6 months"
@@ -4890,20 +5244,42 @@
           "refId": "C",
           "datasource": {
             "type": "influxdb",
-            "uid": "${sleep}"
+            "uid": "${fitbit}"
           },
-          "query": "SELECT moving_average(mean(\"resting_hr\"), 30) FROM \"sleep_session\" WHERE \"source\" = '${rhr_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"value\"), 182) FROM \"RestingHR\" WHERE 'fitbit' = '${rhr_from}' AND time >= ${__from}ms - 364d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
-          "alias": "30 days"
+          "alias": "6 months"
         },
         {
           "refId": "D",
           "datasource": {
             "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "query": "SELECT moving_average(mean(\"resting_hr\"), 30) FROM \"sleep_session\" WHERE \"source\" = '${rhr_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
             "uid": "${garmin}"
           },
-          "query": "SELECT moving_average(mean(\"restingHeartRate\"), 30) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${rhr_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d) fill(previous) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"restingHeartRate\"), 30) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${rhr_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "30 days"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "query": "SELECT moving_average(mean(\"value\"), 30) FROM \"RestingHR\" WHERE 'fitbit' = '${rhr_from}' AND time >= ${__from}ms - 60d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(previous) tz('$tz')",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "30 days"
@@ -5460,6 +5836,17 @@
               "resultFormat": "time_series",
               "query": "SELECT median(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${hrv_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY \"source\"",
               "alias": "$tag_source"
+            },
+            {
+              "refId": "F",
+              "datasource": {
+                "type": "datasource",
+                "uid": "${fitbit}"
+              },
+              "rawQuery": true,
+              "resultFormat": "time_series",
+              "query": "SELECT median(\"dailyRmssd\") FROM \"HRV\" WHERE 'fitbit' = '${hrv_from}' AND $timeFilter",
+              "alias": "fitbit"
             }
           ]
         },
@@ -5535,6 +5922,17 @@
               "resultFormat": "time_series",
               "query": "SELECT stddev(\"asleep_s\") / 60 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
               "alias": "$tag_source"
+            },
+            {
+              "refId": "F",
+              "datasource": {
+                "type": "datasource",
+                "uid": "${fitbit}"
+              },
+              "rawQuery": true,
+              "resultFormat": "time_series",
+              "query": "SELECT stddev(\"minutesAsleep\") / 60 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND $timeFilter",
+              "alias": "fitbit"
             }
           ]
         },
@@ -6075,6 +6473,21 @@
                     }
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/.*fitbit$/"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#d55181"
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -6098,7 +6511,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT mean(\"restingHeartRate\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+              "query": "SELECT mean(\"restingHeartRate\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
               "alias": "night · garmin"
             },
             {
@@ -6109,7 +6522,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT moving_average(mean(\"restingHeartRate\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+              "query": "SELECT moving_average(mean(\"restingHeartRate\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
               "alias": "garmin"
             },
             {
@@ -6120,7 +6533,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT mean(\"resting_hr\") FROM \"sleep_session\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+              "query": "SELECT mean(\"resting_hr\") FROM \"sleep_session\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
               "alias": "night · $tag_source"
             },
             {
@@ -6131,8 +6544,30 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT moving_average(mean(\"resting_hr\"), 7) FROM \"sleep_session\" WHERE \"user\" = '$user' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+              "query": "SELECT moving_average(mean(\"resting_hr\"), 7) FROM \"sleep_session\" WHERE \"user\" = '$user' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
               "alias": "$tag_source"
+            },
+            {
+              "refId": "F",
+              "datasource": {
+                "type": "datasource",
+                "uid": "${fitbit}"
+              },
+              "rawQuery": true,
+              "resultFormat": "time_series",
+              "query": "SELECT mean(\"value\") FROM \"RestingHR\" WHERE $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+              "alias": "night · fitbit"
+            },
+            {
+              "refId": "G",
+              "datasource": {
+                "type": "datasource",
+                "uid": "${fitbit}"
+              },
+              "rawQuery": true,
+              "resultFormat": "time_series",
+              "query": "SELECT moving_average(mean(\"value\"), 7) FROM \"RestingHR\" WHERE time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+              "alias": "fitbit"
             }
           ]
         },
@@ -6245,6 +6680,21 @@
                     }
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/.*fitbit$/"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#d55181"
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -6268,7 +6718,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+              "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
               "alias": "night · garmin"
             },
             {
@@ -6279,7 +6729,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT moving_average(mean(\"avgOvernightHrv\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+              "query": "SELECT moving_average(mean(\"avgOvernightHrv\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
               "alias": "garmin"
             },
             {
@@ -6290,7 +6740,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+              "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
               "alias": "night · $tag_source"
             },
             {
@@ -6301,8 +6751,30 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT moving_average(mean(\"hrv_rmssd_ms\"), 7) FROM \"sleep_session\" WHERE \"user\" = '$user' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+              "query": "SELECT moving_average(mean(\"hrv_rmssd_ms\"), 7) FROM \"sleep_session\" WHERE \"user\" = '$user' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
               "alias": "$tag_source"
+            },
+            {
+              "refId": "F",
+              "datasource": {
+                "type": "datasource",
+                "uid": "${fitbit}"
+              },
+              "rawQuery": true,
+              "resultFormat": "time_series",
+              "query": "SELECT mean(\"dailyRmssd\") FROM \"HRV\" WHERE $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+              "alias": "night · fitbit"
+            },
+            {
+              "refId": "G",
+              "datasource": {
+                "type": "datasource",
+                "uid": "${fitbit}"
+              },
+              "rawQuery": true,
+              "resultFormat": "time_series",
+              "query": "SELECT moving_average(mean(\"dailyRmssd\"), 7) FROM \"HRV\" WHERE time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+              "alias": "fitbit"
             }
           ]
         },
@@ -6428,6 +6900,21 @@
                     }
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/.*fitbit$/"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#d55181"
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -6451,7 +6938,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+              "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
               "alias": "night · garmin"
             },
             {
@@ -6462,7 +6949,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT moving_average(sum(\"sleepTimeSeconds\"), 7) / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+              "query": "SELECT moving_average(sum(\"sleepTimeSeconds\"), 7) / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
               "alias": "garmin"
             },
             {
@@ -6473,7 +6960,7 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+              "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
               "alias": "night · $tag_source"
             },
             {
@@ -6484,8 +6971,30 @@
               },
               "rawQuery": true,
               "resultFormat": "time_series",
-              "query": "SELECT moving_average(sum(\"asleep_s\"), 7) / 3600 FROM \"sleep_session\" WHERE \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+              "query": "SELECT moving_average(sum(\"asleep_s\"), 7) / 3600 FROM \"sleep_session\" WHERE \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
               "alias": "$tag_source"
+            },
+            {
+              "refId": "F",
+              "datasource": {
+                "type": "datasource",
+                "uid": "${fitbit}"
+              },
+              "rawQuery": true,
+              "resultFormat": "time_series",
+              "query": "SELECT sum(\"minutesAsleep\") / 60 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+              "alias": "night · fitbit"
+            },
+            {
+              "refId": "G",
+              "datasource": {
+                "type": "datasource",
+                "uid": "${fitbit}"
+              },
+              "rawQuery": true,
+              "resultFormat": "time_series",
+              "query": "SELECT moving_average(sum(\"minutesAsleep\"), 7) / 60 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+              "alias": "fitbit"
             }
           ]
         },
@@ -7177,6 +7686,21 @@
                     }
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/.*fitbit$/"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#d55181"
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -7235,6 +7759,28 @@
               "resultFormat": "time_series",
               "query": "SELECT moving_average(\"steps\", 7) FROM \"daily_activity\" WHERE \"user\" = '$user' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY \"source\"",
               "alias": "$tag_source"
+            },
+            {
+              "refId": "F",
+              "datasource": {
+                "type": "datasource",
+                "uid": "${fitbit}"
+              },
+              "rawQuery": true,
+              "resultFormat": "time_series",
+              "query": "SELECT max(\"value\") FROM \"Total Steps\" WHERE $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+              "alias": "daily · fitbit"
+            },
+            {
+              "refId": "G",
+              "datasource": {
+                "type": "datasource",
+                "uid": "${fitbit}"
+              },
+              "rawQuery": true,
+              "resultFormat": "time_series",
+              "query": "SELECT moving_average(max(\"value\"), 7) FROM \"Total Steps\" WHERE time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+              "alias": "fitbit"
             }
           ]
         },

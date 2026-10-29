@@ -1468,3 +1468,17 @@ if __name__ == "__main__":
     fake = FakeAbs(sessions=[s for s in SESSIONS if s["id"] not in gone], token=args.token)
     print(f"Fake Audiobookshelf on {fake.serve(args.host, args.port)} (API key: {args.token})", flush=True)
     threading.Event().wait()
+
+
+def patch_numbered(monkeypatch, settings, numbered):
+    """Set a connector settings' further accounts (a pydantic PrivateAttr).
+
+    `monkeypatch.setattr(settings, "_numbered", ...)` no longer works on pytest
+    9.2: its undo now restores from the instance `__dict__`, where a PrivateAttr
+    never lives (pydantic keeps it in `__pydantic_private__`), so it deletes the
+    attribute instead, and the next fixture finds no `_numbered` at all. Patch
+    the private store itself instead: it is a slot, a data descriptor, which
+    pytest restores correctly.
+    """
+    monkeypatch.setattr(settings, "__pydantic_private__",
+                        {**(settings.__pydantic_private__ or {}), "_numbered": numbered})

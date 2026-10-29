@@ -86,6 +86,19 @@
         "multi": false
       },
       {
+        "type": "datasource",
+        "name": "fitbit",
+        "label": "InfluxDB FitbitHealthStats",
+        "query": "influxdb",
+        "regex": "/FitbitHealthStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
         "type": "textbox",
         "name": "tz",
         "label": "Time zone",
@@ -150,7 +163,7 @@
         "name": "source",
         "label": "Sources",
         "description": "The sources the graphs draw, one colour each.",
-        "query": "${nights:csv},garmin",
+        "query": "${nights:csv},garmin,fitbit",
         "hide": 0,
         "current": {
           "text": "All",
@@ -165,7 +178,7 @@
         "name": "sleep_from",
         "label": "Sleep from",
         "description": "The source of the time asleep, the stages and the bedtimes.",
-        "query": "${nights:csv},garmin",
+        "query": "${nights:csv},garmin,fitbit",
         "hide": 0,
         "current": {},
         "options": [],
@@ -259,6 +272,17 @@
           "resultFormat": "time_series",
           "query": "SELECT median(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"minutesAsleep\") / 60 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND $timeFilter",
+          "alias": "fitbit"
         }
       ]
     },
@@ -334,6 +358,17 @@
           "resultFormat": "time_series",
           "query": "SELECT count(\"asleep_s\") FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"minutesAsleep\") FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND $timeFilter",
+          "alias": "fitbit"
         }
       ]
     },
@@ -409,6 +444,17 @@
           "resultFormat": "time_series",
           "query": "SELECT sum(\"deep_s\") / sum(\"asleep_s\") FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"minutesDeep\") / sum(\"minutesAsleep\") FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND $timeFilter",
+          "alias": "fitbit"
         }
       ]
     },
@@ -484,6 +530,17 @@
           "resultFormat": "time_series",
           "query": "SELECT sum(\"rem_s\") / sum(\"asleep_s\") FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"minutesREM\") / sum(\"minutesAsleep\") FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND $timeFilter",
+          "alias": "fitbit"
         }
       ]
     },
@@ -559,6 +616,17 @@
           "resultFormat": "time_series",
           "query": "SELECT median(\"awake_s\") / 60 FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"minutesAwake\") FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND $timeFilter",
+          "alias": "fitbit"
         }
       ]
     },
@@ -654,7 +722,7 @@
       "type": "timeseries",
       "title": "Time asleep per night",
       "id": 11,
-      "description": "Time asleep each night (points) and its 7-night average (line), one colour per source, naps left out. A night belongs to the day it ends. The dashed line is 7 hours.",
+      "description": "Time asleep each night (points) and its 7-night average (line), one colour per source, naps left out. Nights are bucketed noon to noon, so a source that stamps a night at its start (Fitbit) and one that stamps it at its end (Garmin, WHOOP) land on the same point: the window the night ends in. The dashed line is 7 hours.",
       "datasource": {
         "type": "datasource",
         "uid": "-- Mixed --"
@@ -772,6 +840,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -795,7 +878,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "night · garmin"
         },
         {
@@ -806,7 +889,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(sum(\"sleepTimeSeconds\"), 7) / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(sum(\"sleepTimeSeconds\"), 7) / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -817,7 +900,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "night · $tag_source"
         },
         {
@@ -828,8 +911,30 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(sum(\"asleep_s\"), 7) / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT moving_average(sum(\"asleep_s\"), 7) / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"minutesAsleep\") / 60 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "night · fitbit"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"minutesAsleep\"), 7) / 60 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "fitbit"
         }
       ]
     },
@@ -957,7 +1062,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"deepSleepSeconds\") / 3600 AS \"Deep\", sum(\"lightSleepSeconds\") / 3600 AS \"Light\", sum(\"remSleepSeconds\") / 3600 AS \"REM\", sum(\"awakeSleepSeconds\") / 3600 AS \"Awake\" FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"deepSleepSeconds\") / 3600 AS \"Deep\", sum(\"lightSleepSeconds\") / 3600 AS \"Light\", sum(\"remSleepSeconds\") / 3600 AS \"REM\", sum(\"awakeSleepSeconds\") / 3600 AS \"Awake\" FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${sleep_from}' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "$col"
         },
         {
@@ -968,7 +1073,18 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"deep_s\") / 3600 AS \"Deep\", sum(\"light_s\") / 3600 AS \"Light\", sum(\"rem_s\") / 3600 AS \"REM\", sum(\"awake_s\") / 3600 AS \"Awake\" FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"deep_s\") / 3600 AS \"Deep\", sum(\"light_s\") / 3600 AS \"Light\", sum(\"rem_s\") / 3600 AS \"REM\", sum(\"awake_s\") / 3600 AS \"Awake\" FROM \"sleep_session\" WHERE \"source\" = '${sleep_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "$col"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"minutesDeep\") / 60 AS \"Deep\", sum(\"minutesLight\") / 60 AS \"Light\", sum(\"minutesREM\") / 60 AS \"REM\", sum(\"minutesAwake\") / 60 AS \"Awake\" FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' = '${sleep_from}' AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "$col"
         }
       ]
@@ -1082,6 +1198,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1105,7 +1236,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"sleepScore\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"sleepScore\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "night · garmin"
         },
         {
@@ -1116,7 +1247,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"sleepScore\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"sleepScore\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -1127,7 +1258,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"score\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT mean(\"score\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "night · $tag_source"
         },
         {
@@ -1138,7 +1269,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"score\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"score\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "$tag_source"
         }
       ]
@@ -1246,6 +1377,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1269,7 +1415,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(sum(\"deepSleepSeconds\"), 7) / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(sum(\"deepSleepSeconds\"), 7) / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "deep · garmin"
         },
         {
@@ -1280,7 +1426,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(sum(\"deep_s\"), 7) / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT moving_average(sum(\"deep_s\"), 7) / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "deep · $tag_source"
         },
         {
@@ -1291,7 +1437,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(sum(\"remSleepSeconds\"), 7) / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(sum(\"remSleepSeconds\"), 7) / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "REM · garmin"
         },
         {
@@ -1302,8 +1448,30 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(sum(\"rem_s\"), 7) / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT moving_average(sum(\"rem_s\"), 7) / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "REM · $tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"minutesDeep\"), 7) / 60 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "deep · fitbit"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"minutesREM\"), 7) / 60 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "REM · fitbit"
         }
       ]
     },
@@ -1392,6 +1560,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1415,7 +1598,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(sum(\"awakeSleepSeconds\"), 7) / 60 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(sum(\"awakeSleepSeconds\"), 7) / 60 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -1426,8 +1609,19 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(sum(\"awake_s\"), 7) / 60 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT moving_average(sum(\"awake_s\"), 7) / 60 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"minutesAwake\"), 7) FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "fitbit"
         }
       ]
     },
@@ -1507,6 +1701,21 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
                 }
               }
             ]
@@ -1596,6 +1805,39 @@
           "resultFormat": "time_series",
           "query": "SELECT 100 * sum(\"rem_s\") / (sum(\"deep_s\") + sum(\"light_s\") + sum(\"rem_s\")) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND \"rem_s\" > 0 AND $timeFilter GROUP BY \"source\"",
           "alias": "REM · $tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT 100 * sum(\"minutesDeep\") / (sum(\"minutesDeep\") + sum(\"minutesLight\") + sum(\"minutesREM\")) FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' =~ /^${source:regex}$/ AND \"minutesREM\" > 0 AND $timeFilter",
+          "alias": "Deep · fitbit"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT 100 * sum(\"minutesLight\") / (sum(\"minutesDeep\") + sum(\"minutesLight\") + sum(\"minutesREM\")) FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' =~ /^${source:regex}$/ AND \"minutesREM\" > 0 AND $timeFilter",
+          "alias": "Light · fitbit"
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT 100 * sum(\"minutesREM\") / (sum(\"minutesDeep\") + sum(\"minutesLight\") + sum(\"minutesREM\")) FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' =~ /^${source:regex}$/ AND \"minutesREM\" > 0 AND $timeFilter",
+          "alias": "REM · fitbit"
         }
       ]
     },
@@ -1721,6 +1963,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1744,7 +2001,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"restingHeartRate\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"restingHeartRate\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "night · garmin"
         },
         {
@@ -1755,7 +2012,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"restingHeartRate\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"restingHeartRate\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -1766,7 +2023,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"resting_hr\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT mean(\"resting_hr\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "night · $tag_source"
         },
         {
@@ -1777,7 +2034,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"resting_hr\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"resting_hr\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "$tag_source"
         },
         {
@@ -1788,7 +2045,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"min_hr\") FROM \"sleep_session\" WHERE \"source\" = 'sleep_as_android' AND \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND \"max_hr\" > \"min_hr\" AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"min_hr\") FROM \"sleep_session\" WHERE \"source\" = 'sleep_as_android' AND \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND \"max_hr\" > \"min_hr\" AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "night · sleep_as_android"
         },
         {
@@ -1799,8 +2056,30 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"min_hr\"), 7) FROM \"sleep_session\" WHERE \"source\" = 'sleep_as_android' AND \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND \"max_hr\" > \"min_hr\" AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"min_hr\"), 7) FROM \"sleep_session\" WHERE \"source\" = 'sleep_as_android' AND \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND \"max_hr\" > \"min_hr\" AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "sleep_as_android"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"value\") FROM \"RestingHR\" WHERE 'fitbit' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "night · fitbit"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"value\"), 7) FROM \"RestingHR\" WHERE 'fitbit' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "fitbit"
         }
       ]
     },
@@ -1913,6 +2192,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1936,7 +2230,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "night · garmin"
         },
         {
@@ -1947,7 +2241,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"avgOvernightHrv\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"avgOvernightHrv\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -1958,7 +2252,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "night · $tag_source"
         },
         {
@@ -1969,8 +2263,30 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"hrv_rmssd_ms\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"hrv_rmssd_ms\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"dailyRmssd\") FROM \"HRV\" WHERE 'fitbit' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "night · fitbit"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"dailyRmssd\"), 7) FROM \"HRV\" WHERE 'fitbit' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "fitbit"
         }
       ]
     },
@@ -2083,6 +2399,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -2106,7 +2437,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"averageSpO2Value\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"averageSpO2Value\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "night · garmin"
         },
         {
@@ -2117,7 +2448,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"averageSpO2Value\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"averageSpO2Value\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -2128,7 +2459,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"avg_spo2_pct\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT mean(\"avg_spo2_pct\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "night · $tag_source"
         },
         {
@@ -2139,8 +2470,30 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"avg_spo2_pct\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"avg_spo2_pct\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"avg\") FROM \"SPO2\" WHERE 'fitbit' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "night · fitbit"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"avg\"), 7) FROM \"SPO2\" WHERE 'fitbit' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "fitbit"
         }
       ]
     },
@@ -2253,6 +2606,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -2276,7 +2644,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"averageRespirationValue\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT mean(\"averageRespirationValue\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "night · garmin"
         },
         {
@@ -2287,7 +2655,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"averageRespirationValue\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"averageRespirationValue\"), 7) FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -2298,7 +2666,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"respiration_rate\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT mean(\"respiration_rate\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "night · $tag_source"
         },
         {
@@ -2309,8 +2677,30 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"respiration_rate\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"respiration_rate\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"value\") FROM \"BreathingRate\" WHERE 'fitbit' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "night · fitbit"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"value\"), 7) FROM \"BreathingRate\" WHERE 'fitbit' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "fitbit"
         }
       ]
     },
@@ -2433,7 +2823,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"recovery_score\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT mean(\"recovery_score\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "night · $tag_source"
         },
         {
@@ -2444,7 +2834,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"recovery_score\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"recovery_score\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "$tag_source"
         }
       ]
@@ -2566,7 +2956,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"skin_temp_c\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT mean(\"skin_temp_c\") FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "night · $tag_source"
         },
         {
@@ -2577,7 +2967,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"skin_temp_c\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"skin_temp_c\"), 7) FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "$tag_source"
         }
       ]
@@ -2986,7 +3376,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"bedtime_min\") / 60 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT mean(\"bedtime_min\") / 60 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "bedtime · $tag_source"
         },
         {
@@ -2997,7 +3387,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT mean(\"wake_min\") / 60 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT mean(\"wake_min\") / 60 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "wake-up · $tag_source"
         }
       ]
@@ -3087,6 +3477,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -3123,6 +3528,17 @@
           "resultFormat": "time_series",
           "query": "SELECT stddev(\"asleep_s\") / 60 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1w, -3d), \"source\" fill(none) tz('$tz')",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT stddev(\"minutesAsleep\") FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, -3d) fill(none) tz('$tz')",
+          "alias": "fitbit"
         }
       ]
     },
@@ -3198,7 +3614,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "query": "SELECT sum(\"sleepTimeSeconds\") / 3600 FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -3209,8 +3625,19 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')",
+          "query": "SELECT sum(\"asleep_s\") / 3600 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1d, -12h), \"source\" fill(none) tz('$tz')",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"minutesAsleep\") / 60 FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "fitbit"
         }
       ],
       "transformations": [
@@ -3341,6 +3768,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -3364,7 +3806,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"i\"), 30) * 100 FROM (SELECT ceil(count(\"sleepTimeSeconds\") / (count(\"sleepTimeSeconds\") + 1)) AS \"i\" FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 30d AND time <= ${__to}ms GROUP BY time(1d) fill(0) tz('$tz')) WHERE time >= ${__from}ms - 30d AND time <= ${__to}ms GROUP BY time(1d) tz('$tz')",
+          "query": "SELECT moving_average(mean(\"i\"), 30) * 100 FROM (SELECT ceil(count(\"sleepTimeSeconds\") / (count(\"sleepTimeSeconds\") + 1)) AS \"i\" FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' =~ /^${source:regex}$/ AND time >= ${__from}ms - 30d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(0) tz('$tz')) WHERE time >= ${__from}ms - 30d AND time <= ${__to}ms GROUP BY time(1d, -12h) tz('$tz')",
           "alias": "garmin"
         },
         {
@@ -3375,8 +3817,19 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(mean(\"i\"), 30) * 100 FROM (SELECT ceil(count(\"asleep_s\") / (count(\"asleep_s\") + 1)) AS \"i\" FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 30d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(0) tz('$tz')) WHERE time >= ${__from}ms - 30d AND time <= ${__to}ms GROUP BY time(1d), \"source\" tz('$tz')",
+          "query": "SELECT moving_average(mean(\"i\"), 30) * 100 FROM (SELECT ceil(count(\"asleep_s\") / (count(\"asleep_s\") + 1)) AS \"i\" FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" != 'nap' AND time >= ${__from}ms - 30d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(0) tz('$tz')) WHERE time >= ${__from}ms - 30d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" tz('$tz')",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(mean(\"i\"), 30) * 100 FROM (SELECT ceil(count(\"minutesAsleep\") / (count(\"minutesAsleep\") + 1)) AS \"i\" FROM \"Sleep Summary\" WHERE \"isMainSleep\" =~ /^(True|true)$/ AND 'fitbit' =~ /^${source:regex}$/ AND time >= ${__from}ms - 30d AND time <= ${__to}ms GROUP BY time(1d, -12h) fill(0) tz('$tz')) WHERE time >= ${__from}ms - 30d AND time <= ${__to}ms GROUP BY time(1d, -12h) tz('$tz')",
+          "alias": "fitbit"
         }
       ]
     },
@@ -3466,6 +3919,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -3489,7 +3957,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(count(\"asleep_s\"), 28) * 7 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" = 'nap' AND time >= ${__from}ms - 28d AND time <= ${__to}ms GROUP BY time(1d), \"source\" fill(0) tz('$tz')",
+          "query": "SELECT moving_average(count(\"asleep_s\"), 28) * 7 FROM \"sleep_session\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"kind\" = 'nap' AND time >= ${__from}ms - 28d AND time <= ${__to}ms GROUP BY time(1d, -12h), \"source\" fill(0) tz('$tz')",
           "alias": "$tag_source"
         }
       ]
@@ -3617,6 +4085,21 @@
                     }
                   }
                 ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/.*fitbit$/"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#d55181"
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -3653,6 +4136,17 @@
               "resultFormat": "time_series",
               "query": "SELECT last(\"level\") FROM \"sleep_stage\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND $timeFilter GROUP BY time($__interval), \"source\" fill(none)",
               "alias": "$tag_source"
+            },
+            {
+              "refId": "F",
+              "datasource": {
+                "type": "datasource",
+                "uid": "${fitbit}"
+              },
+              "rawQuery": true,
+              "resultFormat": "time_series",
+              "query": "SELECT last(\"level\") FROM \"Sleep Levels\" WHERE 'fitbit' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time($__interval) fill(none)",
+              "alias": "fitbit"
             }
           ],
           "interval": "30s",
@@ -3741,6 +4235,21 @@
                     "value": {
                       "mode": "fixed",
                       "fixedColor": "#199e70"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/.*fitbit$/"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "#d55181"
                     }
                   }
                 ]
