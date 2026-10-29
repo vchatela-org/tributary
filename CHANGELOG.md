@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.25.0](https://github.com/vchatela-org/tributary/compare/v0.24.2...v0.25.0) (2026-10-29)
+
+
+### Features
+
+* **grafana:** read Fitbit's series in the Sleep, Activity and Healthspan dashboards ([325f69d](https://github.com/vchatela-org/tributary/commit/325f69dc831b5b825900c714ccfd5aec213b8dc3))
+* **grafana:** read Fitbit's series in the Sleep, Activity and Healthspan dashboards ([#91](https://github.com/vchatela-org/tributary/issues/91)) ([6b75cdc](https://github.com/vchatela-org/tributary/commit/6b75cdc53412d91a3441bc931c76c9fec14c500d))
+
+
+### Dependencies
+
+* bump chainguard/python from `396cfa5` to `e86043e` ([a5d2b03](https://github.com/vchatela-org/tributary/commit/a5d2b039c42f611c39b8bab135c38225fb03704e))
+* bump chainguard/python from `396cfa5` to `e86043e` ([#87](https://github.com/vchatela-org/tributary/issues/87)) ([950444e](https://github.com/vchatela-org/tributary/commit/950444ee5da45777089b1224d1e1b75ce87fda54))
+* bump fastapi from 0.156.8 to 0.162.0 ([bc6e418](https://github.com/vchatela-org/tributary/commit/bc6e418316adc685f228705cb2efd73fa30be769))
+* bump fastapi from 0.156.8 to 0.162.0 ([#88](https://github.com/vchatela-org/tributary/issues/88)) ([cb36f83](https://github.com/vchatela-org/tributary/commit/cb36f83c3d0677418e00a17b145c04017d253aba))
+* bump sqlalchemy from 2.1.5 to 2.1.6 ([c35214f](https://github.com/vchatela-org/tributary/commit/c35214f0f83d10f094faf87f08a959fdaff7b3c3))
+* bump sqlalchemy from 2.1.5 to 2.1.6 ([#89](https://github.com/vchatela-org/tributary/issues/89)) ([a14c874](https://github.com/vchatela-org/tributary/commit/a14c8744f7d6c67515a10d3eda91bc730e19b41c))
+
 ## [0.24.2](https://github.com/vchatela-org/tributary/compare/v0.24.1...v0.24.2) (2026-10-23)
 
 
