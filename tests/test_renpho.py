@@ -21,7 +21,7 @@ from app.connectors.renpho import (
 )
 from app.models import Cursor
 from app.points import encode
-from tests.fakes import ALICE_RECORDS, BOB_RECORDS, THRESHOLDS, parse, weigh_in
+from tests.fakes import ALICE_RECORDS, BOB_RECORDS, THRESHOLDS, parse, patch_numbered, weigh_in
 
 NEWEST = ("body_composition,source=renpho,user=alice,user_id=100001 "
           "bmi=24.1,bmr_kcal=1617.0,body_fat_pct=18.2,visceral_fat=6.0,weight_kg=78.4 1758000000")
@@ -339,7 +339,7 @@ def test_a_dry_run_shows_a_failed_account(bob, renpho_connector, db):
       "TRIBUTARY_RENPHO_USER_2": "alice"}, "differently"),
 ])
 def test_misconfigured_accounts_are_explained(renpho_cloud, renpho_connector, monkeypatch, numbered, message):
-    monkeypatch.setattr(renpho_connector.settings, "_numbered", numbered)
+    patch_numbered(monkeypatch, renpho_connector.settings, numbered)
     with pytest.raises(ConnectorError, match=message) as error:
         renpho_connector.accounts()
     assert "@example.com" not in str(error.value) and "s3cret" not in str(error.value)
