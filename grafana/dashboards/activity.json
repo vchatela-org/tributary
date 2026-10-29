@@ -86,6 +86,19 @@
         "multi": false
       },
       {
+        "type": "datasource",
+        "name": "fitbit",
+        "label": "InfluxDB FitbitHealthStats",
+        "query": "influxdb",
+        "regex": "/FitbitHealthStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
         "type": "textbox",
         "name": "tz",
         "label": "Time zone",
@@ -173,7 +186,7 @@
         "name": "source",
         "label": "Sources",
         "description": "The sources the graphs draw, one colour each.",
-        "query": "${days:csv},garmin,${workouts:csv}",
+        "query": "${days:csv},garmin,${workouts:csv},fitbit",
         "hide": 0,
         "current": {
           "text": "All",
@@ -188,7 +201,7 @@
         "name": "activity_from",
         "label": "Activity from",
         "description": "The source of the daily totals (steps).",
-        "query": "${days:csv},garmin",
+        "query": "${days:csv},garmin,fitbit",
         "hide": 0,
         "current": {},
         "options": [],
@@ -200,7 +213,7 @@
         "name": "workouts_from",
         "label": "Workouts from",
         "description": "The source of the workouts. A workout two apps received is in both: pick one.",
-        "query": "${days:csv},garmin,${workouts:csv}",
+        "query": "${days:csv},garmin,${workouts:csv},fitbit",
         "hide": 0,
         "current": {},
         "options": [],
@@ -282,6 +295,17 @@
           "resultFormat": "time_series",
           "query": "SELECT median(\"steps\") FROM \"daily_activity\" WHERE \"source\" = '${activity_from}' AND \"user\" = '$user' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"value\") FROM \"Total Steps\" WHERE 'fitbit' = '${activity_from}' AND $timeFilter",
+          "alias": "fitbit"
         }
       ]
     },
@@ -485,6 +509,17 @@
           "resultFormat": "time_series",
           "query": "SELECT count(\"duration_s\") FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"duration\") FROM \"Activity Records\" WHERE 'fitbit' = '${workouts_from}' AND $timeFilter",
+          "alias": "fitbit"
         }
       ]
     },
@@ -560,6 +595,17 @@
           "resultFormat": "time_series",
           "query": "SELECT sum(\"duration_s\") / 3600 / ((${__to} - ${__from}) / 604800000) FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"duration\") / 3600 / ((${__to} - ${__from}) / 604800000) FROM \"Activity Records\" WHERE 'fitbit' = '${workouts_from}' AND $timeFilter",
+          "alias": "fitbit"
         }
       ]
     },
@@ -635,6 +681,17 @@
           "resultFormat": "time_series",
           "query": "SELECT count(\"n\") FROM (SELECT count(\"duration_s\") AS \"n\" FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1d), \"source\" fill(none) tz('$tz')) WHERE $timeFilter GROUP BY \"source\"",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"n\") FROM (SELECT count(\"duration\") AS \"n\" FROM \"Activity Records\" WHERE 'fitbit' = '${workouts_from}' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')) WHERE $timeFilter",
+          "alias": "fitbit"
         }
       ]
     },
@@ -745,6 +802,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -803,6 +875,28 @@
           "resultFormat": "time_series",
           "query": "SELECT moving_average(\"steps\", 7) FROM \"daily_activity\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY \"source\"",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT max(\"value\") FROM \"Total Steps\" WHERE 'fitbit' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "daily · fitbit"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(max(\"value\"), 7) FROM \"Total Steps\" WHERE 'fitbit' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "fitbit"
         }
       ]
     },
@@ -898,6 +992,21 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
                 }
               }
             ]
@@ -1034,6 +1143,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1092,6 +1216,28 @@
           "resultFormat": "time_series",
           "query": "SELECT moving_average(\"energy_kcal\", 7) FROM \"daily_activity\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY \"source\"",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT max(\"value\") FROM \"calories\" WHERE 'fitbit' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "daily · fitbit"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(max(\"value\"), 7) FROM \"calories\" WHERE 'fitbit' =~ /^${source:regex}$/ AND time >= ${__from}ms - 7d AND time <= ${__to}ms GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "fitbit"
         }
       ]
     },
@@ -1161,6 +1307,21 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
                 }
               }
             ]
@@ -1262,6 +1423,21 @@
                     10,
                     10
                   ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
                 }
               }
             ]
@@ -1402,6 +1578,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1438,6 +1629,17 @@
           "resultFormat": "time_series",
           "query": "SELECT sum(\"duration_s\") / 3600 FROM \"exercise\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, -3d), \"source\" fill(0) tz('$tz')",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"duration\") / 3600 FROM \"Activity Records\" WHERE 'fitbit' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "fitbit"
         }
       ]
     },
@@ -1526,6 +1728,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1562,6 +1779,17 @@
           "resultFormat": "time_series",
           "query": "SELECT count(\"duration_s\") FROM \"exercise\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, -3d), \"source\" fill(0) tz('$tz')",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"duration\") FROM \"Activity Records\" WHERE 'fitbit' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "fitbit"
         }
       ]
     },
@@ -1650,6 +1878,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1686,6 +1929,17 @@
           "resultFormat": "time_series",
           "query": "SELECT sum(\"energy_kcal\") FROM \"exercise\" WHERE \"source\" =~ /^${source:regex}$/ AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, -3d), \"source\" fill(0) tz('$tz')",
           "alias": "$tag_source"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"calories\") FROM \"Activity Records\" WHERE 'fitbit' =~ /^${source:regex}$/ AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "fitbit"
         }
       ]
     },
@@ -1862,8 +2116,8 @@
       "title": "Workouts per week, by sport · ${workouts_from}",
       "type": "timeseries",
       "datasource": {
-        "type": "influxdb",
-        "uid": "${body}"
+        "type": "datasource",
+        "uid": "-- Mixed --"
       },
       "gridPos": {
         "x": 0,
@@ -1882,6 +2136,17 @@
           "resultFormat": "time_series",
           "query": "SELECT count(\"duration_s\") FROM \"exercise\" WHERE \"source\" = '${workouts_from}' AND \"user\" = '$user' AND \"category\" != 'adjustment' AND $timeFilter GROUP BY time(1w, -3d), \"sport\" fill(none) tz('$tz')",
           "alias": "$tag_sport"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "datasource",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"duration\") FROM \"Activity Records\" WHERE 'fitbit' = '${workouts_from}' AND $timeFilter GROUP BY time(1w, -3d), \"ActivityName\" fill(none) tz('$tz')",
+          "alias": "$tag_ActivityName"
         }
       ],
       "fieldConfig": {
