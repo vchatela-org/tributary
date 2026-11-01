@@ -89,6 +89,21 @@
 
 * **whoop:** a journal answer lands on the day it is about, whatever the bedtime ([#65](https://github.com/vchatela-org/tributary/issues/65)) ([01dc463](https://github.com/vchatela-org/tributary/commit/01dc463f54d8527741c59b0ed67b937e46824539))
 
+## [0.19.1](https://github.com/vchatela-org/tributary/compare/v0.19.0...v0.19.1) (2026-10-19)
+
+
+### Dependencies
+
+* Bump pydantic from 2.14.0 to 2.14.1
+* Bump pydantic-settings from 2.15.0 to 2.16.0
+* Bump fastapi from 0.143.0 to 0.143.2
+* Bump chainguard/python from `e8e6a6f` to `905b317`
+* Bump grafana/grafana from 13.2.3 to 13.2.4
+
+### CI
+
+* Bump the shared `pr-title` and `release-please` workflows to 1.3.1
+
 ## [0.19.0](https://github.com/vchatela-org/tributary/compare/v0.18.0...v0.19.0) (2026-10-15)
 
 
