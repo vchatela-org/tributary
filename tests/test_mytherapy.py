@@ -112,6 +112,29 @@ def test_a_dose_without_a_value_or_unit_and_an_untaken_dose(connector, influx, d
     assert by_status["missed"] == {"taken": "0i", "app_status": '"auto skipped"', "dose": "1.5", "unit": '"drops"'}
 
 
+def test_an_as_needed_dose_is_written_when_it_was_taken(connector, influx, db, tmp_path):
+    """A dose the app has no scheduled time for (an as-needed dose: an empty
+    scheduled_date) is written at the moment it was answered, which is the
+    only time the export holds. There was no schedule to be late for, so it
+    carries no delay_min."""
+    run = _import(db, connector, tmp_path,
+                  [mytherapy_row(scheduled="", actual="2026-03-01 09:16:00")])
+    assert run.status == "ok" and run.points == 1
+    (tags, fields, ts), = influx.stored("medication")
+    assert tags["status"] == "taken" and ts == epoch(2026, 3, 1, 8, 16)
+    assert fields == {"taken": "1i", "app_status": '"confirmed"', "dose": "2.0", "unit": '"pills"'}
+
+
+def test_a_dose_with_neither_a_scheduled_nor_an_actual_date_fails(connector, influx, db, tmp_path):
+    """The export holds no time for the dose: guessing one would put it
+    somewhere the app never said, so the import fails instead."""
+    run = _import(db, connector, tmp_path, [mytherapy_row(scheduled="", actual="")])
+    assert run.status == "error"
+    assert "a dose with neither a scheduled nor an actual date" in run.message
+    assert influx.stored("medication") == []
+    assert not [query for _db, query in influx.queries if query.startswith("DROP")]
+
+
 def test_weight_reminders_and_doses_before_the_start_date_are_not_imported(connector, influx, db, tmp_path):
     """The job skipped the app's weight reminders (a scale records weight) and
     every dose before its overlap with the other import."""

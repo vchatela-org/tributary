@@ -117,10 +117,12 @@ time*.
   between the levels, `<metric>_min` / `_max` the scale of a gauge. Tagged
   `user` only, stamped when written (when they change, and at least
   weekly): read the latest.
-- `medication`: one point per scheduled dose, at the time it was scheduled
+- `medication`: one point per dose, at the time it was scheduled
   -- local for `mytherapy`, so a 12:00 dose stays 12:00 across the DST
   changes; UTC for `medisafe`, whose export gives UTC times (its schedules
-  move by an hour on the DST dates). `med` is the medication's name (from
+  move by an hour on the DST dates). A `mytherapy` as-needed dose has no
+  scheduled time: it is written at the moment it was answered, without
+  `delay_min`. `med` is the medication's name (from
   the connector's settings for `mytherapy`, whose app holds only a vague
   alias; the app's own name for `medisafe`, renamed or left out per
   `TRIBUTARY_MEDISAFE_NAMES`), `status` the contract word for what happened

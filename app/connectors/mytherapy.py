@@ -17,14 +17,18 @@ the series empty, as the job refused to as well.
 
 A dose:
   medication  at the dose's scheduled time, local (TRIBUTARY_TZ: a 12:00
-              dose stays 12:00 across the DST changes), tags med = the name
-              TRIBUTARY_MYTHERAPY_NAMES gives its alias, status = taken /
-              missed / skipped (the app's confirmed / auto skipped /
+              dose stays 12:00 across the DST changes) -- or, for an
+              as-needed dose the app has no scheduled time for
+              (scheduled_date empty), at the moment it was answered (the
+              export's actual_date, the only time it holds), tags med = the
+              name TRIBUTARY_MYTHERAPY_NAMES gives its alias, status = taken
+              / missed / skipped (the app's confirmed / auto skipped /
               rejected). Fields: taken (1 when the dose was taken),
               app_status (the app's own word), dose and unit when the export
               carries them ("pill(s)" -> "pills"), and delay_min for a taken
-              dose (scheduled time to the moment it was answered, in minutes;
-              negative: answered early).
+              dose it scheduled (scheduled time to the moment it was
+              answered, in minutes; negative: answered early). An as-needed
+              dose has no scheduled time, so it carries no delay_min.
 
 Of the export's columns, `note` is not written: the job wrote it, but no
 import of these series ever carried one (docs/schema.md; free-form text stays
@@ -158,12 +162,22 @@ def dose_points(rows: List[Dict[str, str]], names: Dict[str, str], start: Option
     unmapped: collections.Counter = collections.Counter()
     start_epoch = int(datetime.combine(start, time(), tzinfo=tz).timestamp()) if start else None
     for row in rows:
-        where = f"for the dose of {row['scheduled_date']!r}"
+        scheduled_raw = row["scheduled_date"].strip()
+        actual_raw = row["actual_date"].strip()
+        where = f"for the dose of {scheduled_raw or actual_raw!r}"
         if row["type"] == "measurement":
             continue  # a weight reminder: a scale records weight
         if row["type"] != "drug":
             raise ConnectorError(f"unknown type {row['type']!r} {where}.")
-        scheduled = ts = local_epoch(row["scheduled_date"], tz)
+        if scheduled_raw:
+            scheduled = ts = local_epoch(scheduled_raw, tz)
+        else:
+            # An as-needed dose, which the app holds no scheduled time for:
+            # the moment it was answered is the only time the export has.
+            if not actual_raw:
+                raise ConnectorError(f"a dose with neither a scheduled nor an actual date {where}.")
+            scheduled = None
+            ts = local_epoch(actual_raw, tz)
         if start_epoch is not None and ts < start_epoch:
             continue
         alias = row["name"].strip()
@@ -188,10 +202,14 @@ def dose_points(rows: List[Dict[str, str]], names: Dict[str, str], start: Option
                 raise ConnectorError(f"unreadable dose {row['value']!r} {where}.") from None
         if row["unit"].strip():
             fields["unit"] = row["unit"].strip().replace("(s)", "s")
-        if status == "taken":
+        if status == "taken" and scheduled is not None:
+            if not actual_raw:
+                raise ConnectorError(f"a taken dose with no actual date {where}.")
             # From the dose's own scheduled time, not the bumped one: the job
             # computed the delay before deciding where to write the point.
-            fields["delay_min"] = (local_epoch(row["actual_date"], tz) - scheduled) // 60
+            fields["delay_min"] = (local_epoch(actual_raw, tz) - scheduled) // 60
+        # An as-needed dose has no scheduled time, so there is no delay to
+        # record: `delay_min` stays out rather than reading 0.
         points.append(Point(MEDICATION, datetime.fromtimestamp(ts, tz), {"med": med, "status": status}, fields))
 
     if unmapped:
@@ -204,8 +222,8 @@ def dose_points(rows: List[Dict[str, str]], names: Dict[str, str], start: Option
 class MyTherapyConnector(Connector):
     key = SOURCE
     label = "MyTherapy"
-    description = ("The scheduled doses (taken, missed, skipped) of a MyTherapy export, imported in the UI: "
-                   "its whole history, per the mapping of TRIBUTARY_MYTHERAPY_NAMES.")
+    description = ("The doses (taken, missed, skipped; scheduled or as needed) of a MyTherapy export, "
+                   "imported in the UI: its whole history, per the mapping of TRIBUTARY_MYTHERAPY_NAMES.")
     icon = "bi-capsule"
     category = "Medication"
     settings_class = MyTherapySettings
