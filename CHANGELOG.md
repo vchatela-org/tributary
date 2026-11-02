@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.1](https://github.com/vchatela-org/tributary/compare/v0.26.0...v0.26.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **mytherapy:** import as-needed doses with no scheduled time ([#102](https://github.com/vchatela-org/tributary/issues/102)) ([7b0e668](https://github.com/vchatela-org/tributary/commit/7b0e6689b633b55bfcaf6c7fd9823da7b3e67a56))
+
 ## [0.26.0](https://github.com/vchatela-org/tributary/compare/v0.25.1...v0.26.0) (2026-11-02)
 
 
