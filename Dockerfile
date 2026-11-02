@@ -1,7 +1,7 @@
 # Build: the same Python as the runtime image, plus pip and a shell. Both stages
 # are Chainguard's (Wolfi): its free tier publishes `latest` only, so the
 # digests are the pins, and Dependabot moves them.
-FROM cgr.dev/chainguard/python:latest-dev@sha256:e86043ec2354c6d2f25a5af9e835e943dda2b35ca77c89121da9fc2aa4c16e27 AS build
+FROM cgr.dev/chainguard/python:latest-dev@sha256:8a5780972067cfba4592b10e786a889807ed876c1100f89410fd0ed4e398992c AS build
 
 WORKDIR /app
 COPY requirements.txt .
@@ -12,7 +12,7 @@ RUN python -m venv --without-pip /app/venv \
     && mkdir /app/data
 
 # Run: no shell, no package manager, nothing but Python and the app.
-FROM cgr.dev/chainguard/python:latest@sha256:e503cdb7dab5885f4ee20bb5451745c39262773074f1a85aa3e86979396fed23
+FROM cgr.dev/chainguard/python:latest@sha256:60e3c0d33ab77e50ace0850ccdf6eaec825ce89dad9b1ec2b0300a2070892b05
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
