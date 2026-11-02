@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.0](https://github.com/vchatela-org/tributary/compare/v0.25.1...v0.26.0) (2026-11-02)
+
+
+### Features
+
+* **grafana:** a Running dashboard, every 10 km compared on its best 10 km ([1d8a7db](https://github.com/vchatela-org/tributary/commit/1d8a7db1303177a4afa5c303e3541ce7758f43aa))
+* **grafana:** a Running dashboard, every 10 km compared on its best 10 km ([#100](https://github.com/vchatela-org/tributary/issues/100)) ([efa7865](https://github.com/vchatela-org/tributary/commit/efa7865ca3f32de3d89d89097492dcb6eda8fc7d))
+
 ## [0.25.1](https://github.com/vchatela-org/tributary/compare/v0.25.0...v0.25.1) (2026-11-02)
 
 
