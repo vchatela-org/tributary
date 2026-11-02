@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.25.1](https://github.com/vchatela-org/tributary/compare/v0.25.0...v0.25.1) (2026-11-02)
+
+
+### Dependencies
+
+* bump chainguard/python from `e86043e` to `8a57809` ([05f5854](https://github.com/vchatela-org/tributary/commit/05f5854768391667a6e8440f5ece82c8d9d11b30))
+* bump chainguard/python from `e86043e` to `8a57809` ([#94](https://github.com/vchatela-org/tributary/issues/94)) ([53fff9d](https://github.com/vchatela-org/tributary/commit/53fff9dee63de4bf8f597c4a176ada2c013fa7b3))
+* bump pydantic from 2.14.1 to 2.14.2 ([88be160](https://github.com/vchatela-org/tributary/commit/88be1604e353dab7ffc390cf3b3cedeb42741e02))
+* bump pydantic from 2.14.1 to 2.14.2 ([#98](https://github.com/vchatela-org/tributary/issues/98)) ([6e6bb82](https://github.com/vchatela-org/tributary/commit/6e6bb82f521b530bbbf3d6dbb857a77f9d619c73))
+* bump pydantic-settings from 2.16.1 to 2.16.2 ([cb3d6b8](https://github.com/vchatela-org/tributary/commit/cb3d6b825ae2325b4448d03670f7d0cef29992a5))
+* bump pydantic-settings from 2.16.1 to 2.16.2 ([#97](https://github.com/vchatela-org/tributary/issues/97)) ([326dcce](https://github.com/vchatela-org/tributary/commit/326dccee338dac9203df82aee3b6e79c951ff1ec))
+* bump tzdata from 2026.5 to 2026.6 ([437f2b8](https://github.com/vchatela-org/tributary/commit/437f2b8476c6ec423efc2d3d412dedd8f92f1478))
+* bump tzdata from 2026.5 to 2026.6 ([#96](https://github.com/vchatela-org/tributary/issues/96)) ([f794137](https://github.com/vchatela-org/tributary/commit/f794137d2cfb18015126dab9be276e226ec30492))
+
 ## [0.25.0](https://github.com/vchatela-org/tributary/compare/v0.24.2...v0.25.0) (2026-10-29)
 
 
