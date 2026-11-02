@@ -33,14 +33,19 @@ or answered after the export, follows the export you import. Nothing else in
 
 | Measurement | One point per | Time | Tags | Fields |
 |---|---|---|---|---|
-| `medication` | scheduled dose | the time it was scheduled, local | `med`, `status` | `taken` (1 or 0), `app_status`, `dose`, `unit`, `delay_min` |
+| `medication` | dose | the time it was scheduled, local; for an as-needed dose, the moment it was answered | `med`, `status` | `taken` (1 or 0), `app_status`, `dose`, `unit`, `delay_min` |
 
 - `status` is `taken`, `missed` or `skipped`; `app_status` keeps the app's own
   word (`confirmed`, `auto skipped`, `rejected`). `taken` is 1 for `taken` and
   0 otherwise, so a dashboard can `sum()` doses taken and `mean()` the share.
 - `dose` and `unit` are there when the export carries them ("pill(s)" becomes
-  "pills"); `delay_min` is there for a taken dose only: the scheduled time to
-  the moment it was answered, negative when it was answered early.
+  "pills"); `delay_min` is there for a taken dose the app scheduled: the
+  scheduled time to the moment it was answered, negative when it was answered
+  early.
+- A dose logged as it was taken (an as-needed dose) has no scheduled time: the
+  export's `scheduled_date` is empty and its `actual_date` is the moment it was
+  answered. The point is written at that moment, and carries no `delay_min`:
+  there was no schedule to be late for.
 - Times are **local** (`TRIBUTARY_TZ`): a dose scheduled at 12:00 stays 12:00
   across the DST changes, as the app shows it. Do not compare them with a
   source that stores UTC (Medisafe's doses, for instance).
