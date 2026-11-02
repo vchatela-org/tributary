@@ -88,6 +88,7 @@ Tributary only writes; dashboards read InfluxDB. [grafana/](grafana/) ships:
 | [GitHub](grafana/dashboards/github.json) | `DevStats`: `github_commit`, `github_workflow_run`, `github_actions_month`, `github_actions_usage` | commits by author (you, you with an agent, a bot, someone else), per week and per repository; the latest and longest workflow runs; hosted runner minutes against the included ones |
 | [Habits & recovery](grafana/dashboards/habits-recovery.json) | `SleepStats`: `journal`, `sleep_session`, `GarminStats`: `SleepSummary` | a daily journal's answers from any source, and the night after a yes against the night after a no: recovery, HRV, time asleep, each from its picker |
 | [Strength training](grafana/dashboards/strength-training.json) | `GarminStats`: `StrengthExerciseSet`, `StrengthHRZones` | volume, sets and reps, estimated one-rep max and records per exercise, time under tension, heart-rate zones |
+| [Running](grafana/dashboards/running.json) | `GarminStats`: `ActivitySummary`, `ActivityLap`, `ActivityGPS`, `VO2_Max`, `SleepSummary`, `SleepStats`: `sleep_session`, `FitbitHealthStats`: `RestingHR`, `HRV` | distance and regularity, easy against hard running, every 10 km compared on its best 10 km with the running dynamics, pace, heart rate and heartbeats per km run by run, VO₂ max, running form, the resting heart rate and HRV of the same weeks |
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/grafana-reading-dark.png">
