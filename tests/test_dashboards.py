@@ -360,6 +360,17 @@ def test_healthspan_is_what_its_builder_writes():
     assert builder.build(_load(HEALTHSPAN)) == _load(HEALTHSPAN), "run python3 scripts/build-healthspan-dashboard.py"
 
 
+RUNNING = ROOT / "grafana" / "dashboards" / "running.json"
+
+
+def test_running_is_what_its_builder_writes():
+    """scripts/build-running-dashboard.py writes every query; the JSON is its output."""
+    spec = importlib.util.spec_from_file_location("running", ROOT / "scripts" / "build-running-dashboard.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.build() == _load(RUNNING), "run python3 scripts/build-running-dashboard.py"
+
+
 def test_a_healthspan_colour_says_years_never_a_source():
     """docs/dashboards-design.md, rule 5: Healthspan colours an indicator by the
     years it adds or takes off, on one diverging scale, and writes no value in a

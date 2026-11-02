@@ -149,13 +149,21 @@ dashboards read the following.
   (the Google-mode fetch marks every processed session so). The fields are
   minutes and seconds as fitbit-fetch writes them; `Activity Records`
   `duration` is seconds.
+- An activity whose type is changed in Garmin Connect (running to trail
+  running) keeps its old copy in `GarminStats`, under its old
+  `ActivitySelector` tag: two summaries, two sets of laps and seconds. The
+  Running dashboard reads one summary per `ActivityID` (a `max()` selector)
+  and windows the laps per copy; its per-second intensity counts such a run
+  twice.
 
 | Database | Measurement | Fields the dashboards read | Written by |
 |---|---|---|---|
 | `GarminStats` | `SleepSummary` | `sleepTimeSeconds`, `deepSleepSeconds`, `lightSleepSeconds`, `remSleepSeconds`, `awakeSleepSeconds`, `awakeCount`, `sleepScore`, `restingHeartRate`, `avgOvernightHrv`, `averageSpO2Value`, `averageRespirationValue` (one point per night, at its end) | garmin-grafana |
 | `GarminStats` | `SleepIntraday` | `SleepStageLevel` (0 deep, 1 light, 2 REM, 3 awake), `heartRate`: the samples of a night | garmin-grafana |
 | `GarminStats` | `DailyStats` | `totalSteps`, `activeKilocalories`, `bmrKilocalories`, `moderateIntensityMinutes`, `vigorousIntensityMinutes`, `activeSeconds`, `highlyActiveSeconds`, `sedentarySeconds`, `sleepingSeconds` | garmin-grafana |
-| `GarminStats` | `ActivitySummary` | `elapsedDuration`, `calories`, `hrTimeInZone_1`...`_5`, `activityType` (a string: `strength_training`) | garmin-grafana |
+| `GarminStats` | `ActivitySummary` | `elapsedDuration`, `calories`, `hrTimeInZone_1`...`_5`, `activityType` (a string: `strength_training`); for runs also `distance` (m), `movingDuration` (s), `averageHR`, `maxHR`, `aerobicTrainingEffect`, `anaerobicTrainingEffect`, `activityTrainingLoad`, `elevationGain`, `activityName`, `hrZoneLowBoundary_3`, `_4` (the watch's zones); tag `ActivityID` | garmin-grafana |
+| `GarminStats` | `ActivityLap` | tag `ActivityID`; `Sport`, `Distance` (m), `Elapsed_Time` (s), `Avg_HR`, `Avg_Step_Length` (mm), `Avg_Stance_Time` (ms), `Avg_Vertical_Oscillation` (mm), `Avg_Vertical_Ratio` (%), `Ascent` (m), `Avg_Temperature`: one point per lap | garmin-grafana |
+| `GarminStats` | `ActivityGPS` | tag `ActivityID`; `ActivityName` (the activity's type), `HeartRate`, `Cadence` and `Fractional_Cadence` (strides per minute: steps are twice that), `Speed` (m/s), `Stance_Time` (ms), `Vertical_Oscillation` (mm), `Vertical_Ratio` (%): one point per recorded second | garmin-grafana |
 | `GarminStats` | `StrengthExerciseSet` | tags `ExerciseCategory`, `ExerciseLabel`; `Reps`, `Weight_kg`, `Duration_s`, `SetOrder`: one point per set of a strength workout | garmin-grafana (newer than v0.5.0: older versions strand a set's old rows when it is edited in Garmin Connect) |
 | `GarminStats` | `StrengthHRZones` | `ZoneNumber`, `SecsInZone`: a strength workout's time per heart-rate zone | garmin-grafana |
 | `GarminStats` | `VO2_Max` | `VO2_max_value`, `VO2_max_value_cycling` | garmin-grafana |
@@ -251,6 +259,7 @@ described in [dashboards.md](dashboards.md).
 | 9 | Stress and body battery | The watch's daytime stress and recovery. | `GarminStats`: `StressIntraday`, `BodyBatteryIntraday` (garmin-grafana's own dashboard covers it) | Proposed |
 | 10 | Shopping and digital life | Takeback's purchases and activity counts. | `ShoppingStats`, `DigitalStats` (not yet in the schema) | Proposed |
 | 11 | **Strength training** | Is the lifting progressing? Volume, estimated one-rep max and records per exercise, time under tension. | `GarminStats`: `StrengthExerciseSet`, `StrengthHRZones` | Built |
+| 12 | **Running** | Is the running getting faster for the same effort, and is it kept easy and regular enough to last? Every 10 km on its best 10 km, heartbeats per km, intensity, running dynamics, recovery. | `GarminStats`: `ActivitySummary`, `ActivityLap`, `ActivityGPS`, `VO2_Max` | Built |
 
 Every new dashboard has these variables, with nothing saved in them:
 - a datasource per database (`/BodyStats/i`, `/GarminStats/i`,

@@ -1,0 +1,5029 @@
+{
+  "uid": "tributary-running",
+  "title": "Running",
+  "description": "A Garmin watch's runs, as garmin-grafana writes them (ActivitySummary, ActivityLap, ActivityGPS, VO2_Max): volume and regularity, intensity, every 10 km compared on its best 10 km with the running dynamics, pace, heart rate and fitness run by run, running form, and the resting heart rate and HRV of the same weeks.",
+  "tags": [
+    "tributary",
+    "running"
+  ],
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-2y",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "refresh": "",
+  "links": [
+    {
+      "type": "link",
+      "title": "Activity & fitness",
+      "url": "/d/tributary-activity",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    },
+    {
+      "type": "link",
+      "title": "Healthspan",
+      "url": "/d/tributary-healthspan",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "garmin",
+        "label": "InfluxDB GarminStats",
+        "query": "influxdb",
+        "regex": "/GarminStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "datasource",
+        "name": "sleep",
+        "label": "InfluxDB SleepStats",
+        "query": "influxdb",
+        "regex": "/SleepStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "datasource",
+        "name": "fitbit",
+        "label": "InfluxDB FitbitHealthStats",
+        "query": "influxdb",
+        "regex": "/FitbitHealthStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "textbox",
+        "name": "tz",
+        "label": "Time zone",
+        "description": "IANA time zone the days and weeks are cut in (TRIBUTARY_TZ).",
+        "query": "Europe/Paris",
+        "current": {
+          "text": "Europe/Paris",
+          "value": "Europe/Paris"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "Europe/Paris",
+            "value": "Europe/Paris"
+          }
+        ],
+        "hide": 0
+      },
+      {
+        "type": "query",
+        "name": "user",
+        "label": "User",
+        "description": "The person, in SleepStats (GarminStats holds one person and has no user tag).",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${sleep}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"user\"",
+        "query": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"user\"",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "nights",
+        "label": "Night sources",
+        "description": "Every source of nights in SleepStats, for the heart pickers.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${sleep}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"sleep_session\" WITH KEY = \"source\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      },
+      {
+        "type": "custom",
+        "name": "rhr_from",
+        "label": "Resting HR from",
+        "description": "The source of the resting heart rate.",
+        "query": "${nights:csv},garmin,fitbit",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "custom",
+        "name": "hrv_from",
+        "label": "HRV from",
+        "description": "The source of the overnight HRV. Devices measure it differently.",
+        "query": "${nights:csv},garmin,fitbit",
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "z3",
+        "label": "Zone 3 from",
+        "description": "The watch's lower bound of heart-rate zone 3: below it, a second of running is easy.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${garmin}"
+        },
+        "definition": "SELECT last(\"hrZoneLowBoundary_3\") FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"hrZoneLowBoundary_3\" > 0",
+        "query": "SELECT last(\"hrZoneLowBoundary_3\") FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"hrZoneLowBoundary_3\" > 0",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "z4",
+        "label": "Zone 4 from",
+        "description": "The watch's lower bound of heart-rate zone 4: from it, a second of running is hard.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${garmin}"
+        },
+        "definition": "SELECT last(\"hrZoneLowBoundary_4\") FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"hrZoneLowBoundary_4\" > 0",
+        "query": "SELECT last(\"hrZoneLowBoundary_4\") FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"hrZoneLowBoundary_4\" > 0",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 2,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Overview",
+      "id": 1,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Runs",
+      "id": 2,
+      "description": "Runs in the time range: activities whose type contains \"run\", 1 km or longer.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"distance\") FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Distance",
+      "id": 3,
+      "description": "Total distance run.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 3,
+        "y": 1,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "lengthkm",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"distance\") / 1000 FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Time running",
+      "id": 4,
+      "description": "Total time, pauses included (the activities' elapsed time).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"elapsedDuration\") / 3600 FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Average run",
+      "id": 5,
+      "description": "Mean distance of a run.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 1,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "lengthkm",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"distance\") / 1000 FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Average pace",
+      "id": 6,
+      "description": "Total moving time over total distance (stops left out), per km.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "clocks",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"movingDuration\") / sum(\"distance\") * 1000 FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Runs of 10 km+",
+      "id": 7,
+      "description": "Runs of 10 km or more (to within the 50 m a watch loses).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 1,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"distance\") FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND \"distance\" >= 9950 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Best 10 km",
+      "id": 8,
+      "description": "The fastest 10 consecutive 1 km laps of any run in the range (the 10 km row lists them).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dthms",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT min(\"best\") FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "VO₂ max",
+      "id": 9,
+      "description": "The watch's latest running VO₂ max in the range.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 21,
+        "y": 1,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT last(\"VO2_max_value\") FROM \"VO2_Max\" WHERE \"VO2_max_value\" > 0 AND $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Longest run",
+      "id": 10,
+      "description": "The longest run's distance.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "lengthkm",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT max(\"distance\") / 1000 FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Longest run, time",
+      "id": 11,
+      "description": "The longest run's elapsed time.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 3,
+        "y": 5,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dthms",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT max(\"elapsedDuration\") FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Shortest run",
+      "id": 12,
+      "description": "The shortest run's distance (runs under 1 km are not counted).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 5,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "lengthkm",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT min(\"distance\") / 1000 FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Shortest run, time",
+      "id": 13,
+      "description": "The shortest run's elapsed time.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 5,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dthms",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT min(\"elapsedDuration\") FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Runs / week",
+      "id": 14,
+      "description": "Runs per week, averaged over the time range.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"distance\") * 604800000 / (${__to} - ${__from}) FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Last run",
+      "id": 15,
+      "description": "When the latest run in the range started.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 5,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeFromNow",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^Time$/",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT last(\"distance\") FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Climbing",
+      "id": 16,
+      "description": "Total elevation gain of the runs that recorded one (the watch's own figure; the older imports have none).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 5,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: m",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"elevationGain\") FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Average heart rate",
+      "id": 17,
+      "description": "Mean of the runs' average heart rates.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 21,
+        "y": 5,
+        "w": 3,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: bpm",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"averageHR\") FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND \"averageHR\" > 0 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Volume and regularity",
+      "id": 18,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Distance per week",
+      "id": 19,
+      "description": "Kilometres run each week (bars, weeks start on Monday) and the average of the last 4 weeks (line). A week far above its line is a jump in load: the usual advice is to add no more than about 10% a week.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 10,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "lengthkm",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 80,
+            "showPoints": "never",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": -1,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 1,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4-week average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "4-week average"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"distance\") / 1000 FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "km"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"distance\"), 4) / 1000 FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND time >= ${__from}ms - 28d AND time <= ${__to}ms GROUP BY \"ActivityID\") WHERE time >= ${__from}ms - 28d AND time <= ${__to}ms GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "4-week average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Runs per week",
+      "id": 20,
+      "description": "Number of runs each week.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 10,
+        "w": 6,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 80,
+            "showPoints": "never",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": -1,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"distance\") FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "runs"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Days since the previous run",
+      "id": 21,
+      "description": "For each run, the days since the one before. Long gaps followed by a hard run are when an injury is most likely.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 10,
+        "w": 6,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT elapsed(\"distance\", 1d) FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter",
+          "alias": "days"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Distance of each run",
+      "id": 22,
+      "description": "One point per run; the dashed line is 10 km.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 18,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "lengthkm",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 1,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "text",
+                "value": 10
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"distance\" / 1000 AS \"km\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter",
+          "alias": "km"
+        }
+      ]
+    },
+    {
+      "type": "histogram",
+      "title": "How long the runs are",
+      "id": 23,
+      "description": "Number of runs per 1 km of distance.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 18,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "lengthkm",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "bucketSize": 1,
+        "bucketOffset": 0,
+        "combine": false,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"distance\" / 1000 AS \"km\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter",
+          "alias": "km"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Intensity and training effect",
+      "id": 24,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 26
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Easy running",
+      "id": 25,
+      "description": "Each second of running with a heart rate, by intensity, from the watch's own heart-rate zones (the latest ones it reported, so every year is cut the same way): easy below zone 3, moderate in zone 3, hard in zones 4 and 5. Most training plans keep about 80% of the running easy. This tile: its share of the time range's running seconds.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 27,
+        "w": 4,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"HeartRate\") AS \"part\" FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"HeartRate\" > 0 AND \"HeartRate\" < $z3 AND $timeFilter",
+          "alias": "part"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"HeartRate\") AS \"all\" FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"HeartRate\" > 0 AND $timeFilter",
+          "alias": "all"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "alias": "share",
+            "replaceFields": true,
+            "binary": {
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "part"
+                }
+              },
+              "operator": "/",
+              "right": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "all"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Hard running",
+      "id": 26,
+      "description": "Each second of running with a heart rate, by intensity, from the watch's own heart-rate zones (the latest ones it reported, so every year is cut the same way): easy below zone 3, moderate in zone 3, hard in zones 4 and 5. Most training plans keep about 80% of the running easy. This tile: its share of the time range's running seconds.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 27,
+        "w": 4,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"HeartRate\") AS \"part\" FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"HeartRate\" >= $z4 AND $timeFilter",
+          "alias": "part"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"HeartRate\") AS \"all\" FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"HeartRate\" > 0 AND $timeFilter",
+          "alias": "all"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "Time",
+            "mode": "outer"
+          }
+        },
+        {
+          "id": "calculateField",
+          "options": {
+            "mode": "binary",
+            "alias": "share",
+            "replaceFields": true,
+            "binary": {
+              "left": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "part"
+                }
+              },
+              "operator": "/",
+              "right": {
+                "matcher": {
+                  "id": "byName",
+                  "options": "all"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Easy, moderate and hard, share of each week",
+      "id": 27,
+      "description": "Each second of running with a heart rate, by intensity, from the watch's own heart-rate zones (the latest ones it reported, so every year is cut the same way): easy below zone 3, moderate in zone 3, hard in zones 4 and 5. Most training plans keep about 80% of the running easy.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 27,
+        "w": 16,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 80,
+            "showPoints": "never",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": -1,
+            "stacking": {
+              "mode": "percent",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "easy"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#86b6ef"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "moderate"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#2a78d6"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hard"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#184f95"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"HeartRate\") FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"HeartRate\" > 0 AND \"HeartRate\" < $z3 AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "easy"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"HeartRate\") FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"HeartRate\" >= $z3 AND \"HeartRate\" < $z4 AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "moderate"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"HeartRate\") FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"HeartRate\" >= $z4 AND $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "hard"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Training effect of each run",
+      "id": 28,
+      "description": "Garmin's aerobic and anaerobic training effect, 0 to 5, per run (watches from about 2016; older imports have none). 3 to 4 improves, above 4 is highly improving or overreaching: many runs above 4 in a row is a lot of hard running.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 1,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "aerobic"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "anaerobic"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"aerobicTrainingEffect\" AS \"aerobic\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter",
+          "alias": "aerobic"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"anaerobicTrainingEffect\" AS \"anaerobic\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter",
+          "alias": "anaerobic"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Training load of each run",
+      "id": 29,
+      "description": "Garmin's training load (EPOC) per run, and the average of the last 5 runs.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 35,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0,
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"activityTrainingLoad\" AS \"load\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND \"activityTrainingLoad\" > 0 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter",
+          "alias": "load"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"activityTrainingLoad\", 5) AS \"trend\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND \"activityTrainingLoad\" > 0 AND time >= ${__from}ms - 365d AND time <= ${__to}ms GROUP BY \"ActivityID\") WHERE time >= ${__from}ms - 365d AND time <= ${__to}ms",
+          "alias": "5-run average"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "10 km",
+      "id": 30,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "Every 10 km, on its best 10 km",
+      "id": 31,
+      "description": "Every run of 10 km or more, compared on its best 10 km: its fastest 10 consecutive 1 km laps (the watch's auto-lap), and what the laps measured over the same 10 km. A run without 1 km laps (manual laps, an import without its laps) shows its totals only. Columns from Best 10 km to Temperature are the best 10 km's; Distance, Time, Cadence, training effect and load are the whole run's. Click a header to sort.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 44,
+        "w": 24,
+        "h": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Distance"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "lengthkm"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dthms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Best 10 km"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dthms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pace"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "clocks"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Heart rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: bpm"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Beats / km"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Step length"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: m"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ground contact"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Vertical oscillation"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "lengthcm"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Vertical ratio"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ascent"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "lengthm"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Temperature"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "celsius"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cadence"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: spm"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Aerobic TE"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Load"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Date"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:YYYY-MM-DD"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Date",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"distance\" / 1000 AS \"Distance\", \"elapsedDuration\" AS \"Duration\", \"activityName\" AS \"Name\", \"aerobicTrainingEffect\" AS \"Aerobic TE\", \"activityTrainingLoad\" AS \"Load\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND \"distance\" >= 9950 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter GROUP BY \"ActivityID\""
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT min(\"t\") AS \"Best 10 km\", \"t\" / 10 AS \"Pace\", \"hr\" AS \"Heart rate\", \"hr\" * \"t\" / 600 AS \"Beats / km\", \"step\" AS \"Step length\", \"gct\" AS \"Ground contact\", \"vo\" AS \"Vertical oscillation\", \"vr\" AS \"Vertical ratio\", \"ascent\" AS \"Ascent\", \"temp\" AS \"Temperature\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\""
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT mean(\"Cadence\") * 2 + mean(\"Fractional_Cadence\") * 2 AS \"Cadence\" FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"Cadence\" > 0 AND $timeFilter GROUP BY \"ActivityID\""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "ActivityID",
+            "mode": "outerTabular"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "exclude",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "Distance",
+                "config": {
+                  "id": "isNull",
+                  "options": {}
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "ActivityID": true,
+              "Time ActivityLap": true,
+              "Time ActivityGPS": true
+            },
+            "indexByName": {
+              "Time ActivitySummary": 0,
+              "Name": 1,
+              "Distance": 2,
+              "Duration": 3,
+              "Best 10 km": 4,
+              "Pace": 5,
+              "Heart rate": 6,
+              "Beats / km": 7,
+              "Cadence": 8,
+              "Step length": 9,
+              "Ground contact": 10,
+              "Vertical oscillation": 11,
+              "Vertical ratio": 12,
+              "Ascent": 13,
+              "Temperature": 14,
+              "Aerobic TE": 15,
+              "Load": 16
+            },
+            "renameByName": {
+              "Time ActivitySummary": "Date"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Best 10 km time",
+      "id": 32,
+      "description": "Each run's best 10 km, and the average of the last 5. Lower is faster.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dthms",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"best\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "alias": "best 10 km"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"best\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "alias": "5-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Heart rate on the best 10 km",
+      "id": 33,
+      "description": "Mean of the 10 laps' average heart rates.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 56,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: bpm",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"hr\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "alias": "best 10 km"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"hr\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "alias": "5-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Heartbeats per km on the best 10 km",
+      "id": 34,
+      "description": "Average heart rate times pace: the beats one km costs. Lower is more economical: running as fast for fewer beats, or faster for the same.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 56,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"hr\" * \"best\" / 600 AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "alias": "best 10 km"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"hr\" * \"best\" / 600 AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "alias": "5-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Step length on the best 10 km",
+      "id": 35,
+      "description": "Mean step length over the 10 laps. Needs a running dynamics sensor (a chest strap or pod); older runs have none.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 64,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: m",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"step\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "alias": "best 10 km"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"step\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "alias": "5-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Cadence on the best 10 km",
+      "id": 36,
+      "description": "Steps per minute over the 10 laps: their speed over their step length. Needs a running dynamics sensor (a chest strap or pod); older runs have none.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 64,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: spm",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT 600000 / (\"best\" * \"step\") AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "alias": "best 10 km"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT 600000 / (\"best\" * \"step\") AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "alias": "5-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Ground contact on the best 10 km",
+      "id": 37,
+      "description": "Mean ground contact time over the 10 laps. Shorter is usually more efficient. Needs a running dynamics sensor (a chest strap or pod); older runs have none.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 64,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"gct\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "alias": "best 10 km"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"gct\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "alias": "5-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Vertical oscillation on the best 10 km",
+      "id": 38,
+      "description": "How far the body bounces at each step. Needs a running dynamics sensor (a chest strap or pod); older runs have none.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 72,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "lengthcm",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"vo\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "alias": "best 10 km"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"vo\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "alias": "5-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Vertical ratio on the best 10 km",
+      "id": 39,
+      "description": "Vertical oscillation over step length: lower means less of each step goes up rather than forward. Needs a running dynamics sensor (a chest strap or pod); older runs have none.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 72,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"vr\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "alias": "best 10 km"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"vr\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "alias": "5-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Temperature on the best 10 km",
+      "id": 40,
+      "description": "The watch's temperature over the 10 laps (warmed by the wrist): heat alone slows a run and raises its heart rate.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 72,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "5-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"temp\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "alias": "best 10 km"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"temp\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"Sport\" = 'running' AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "alias": "5-run average"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Every run: pace, heart and fitness",
+      "id": 41,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 80
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Pace of each run",
+      "id": 42,
+      "description": "Moving pace (stops left out) of each run, and the average of the last 10 runs. Lower is faster.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 81,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "clocks",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "10-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"movingDuration\" / \"distance\" * 1000 AS \"v\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter",
+          "alias": "pace"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 10) AS \"trend\" FROM (SELECT \"movingDuration\" / \"distance\" * 1000 AS \"v\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND time >= ${__from}ms - 365d AND time <= ${__to}ms) GROUP BY \"ActivityID\") WHERE time >= ${__from}ms - 365d AND time <= ${__to}ms",
+          "alias": "10-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Heart rate of each run",
+      "id": 43,
+      "description": "Average heart rate of each run, and of the last 10 runs.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 81,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: bpm",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "10-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"averageHR\" AS \"v\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND \"averageHR\" > 0 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter",
+          "alias": "bpm"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 10) AS \"trend\" FROM (SELECT \"averageHR\" AS \"v\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND \"averageHR\" > 0 AND time >= ${__from}ms - 365d AND time <= ${__to}ms) GROUP BY \"ActivityID\") WHERE time >= ${__from}ms - 365d AND time <= ${__to}ms",
+          "alias": "10-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Heartbeats per km",
+      "id": 44,
+      "description": "Average heart rate times moving pace: the beats a km costs, run by run. Falling over months at the same kind of run is aerobic fitness improving; rising for a few runs can be fatigue, heat or illness.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 89,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "10-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"averageHR\" * \"movingDuration\" / \"distance\" * 1000 / 60 AS \"v\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND \"averageHR\" > 0 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter",
+          "alias": "beats"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 10) AS \"trend\" FROM (SELECT \"averageHR\" * \"movingDuration\" / \"distance\" * 1000 / 60 AS \"v\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND \"averageHR\" > 0 AND time >= ${__from}ms - 365d AND time <= ${__to}ms) GROUP BY \"ActivityID\") WHERE time >= ${__from}ms - 365d AND time <= ${__to}ms",
+          "alias": "10-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "VO₂ max",
+      "id": 45,
+      "description": "The watch's running VO₂ max estimate, each time it changes. Higher is fitter.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 89,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT max(\"VO2_max_value\") FROM \"VO2_Max\" WHERE \"VO2_max_value\" > 0 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "VO₂ max"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Running form, every run",
+      "id": 46,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 97
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Cadence",
+      "id": 47,
+      "description": "Steps per minute, each run's mean over the seconds it was moving (the watch's own cadence, every run that has its per-second data).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 98,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: spm",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"Cadence\") * 2 + mean(\"Fractional_Cadence\") * 2 AS \"cadence\" FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"Cadence\" > 0 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "cadence"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Step length",
+      "id": 48,
+      "description": "Each run's mean speed over its mean cadence: the distance of one step, available for every run with per-second data (a running dynamics sensor measures it directly; this needs none).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 98,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: m",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"Speed\") * 30 / (mean(\"Cadence\") + mean(\"Fractional_Cadence\")) AS \"step\" FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"Cadence\" > 0 AND \"Speed\" > 0 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "step"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Ground contact time",
+      "id": 49,
+      "description": "How long each foot stays on the ground. Each run's mean. Needs a running dynamics sensor (a chest strap or pod); older runs have none.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 106,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"Stance_Time\") AS \"v\" FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"Stance_Time\" > 0 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "ground contact time"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Vertical oscillation",
+      "id": 50,
+      "description": "How far the body bounces at each step. Each run's mean. Needs a running dynamics sensor (a chest strap or pod); older runs have none.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 106,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "lengthcm",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"Vertical_Oscillation\") / 10 AS \"v\" FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"Vertical_Oscillation\" > 0 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "vertical oscillation"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Vertical ratio",
+      "id": 51,
+      "description": "Vertical oscillation over step length. Each run's mean. Needs a running dynamics sensor (a chest strap or pod); older runs have none.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 106,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"Vertical_Ratio\") AS \"v\" FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"Vertical_Ratio\" > 0 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "vertical ratio"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Recovery around the running",
+      "id": 52,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 114
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Distance per week",
+      "id": 53,
+      "description": "Kilometres run each week, to read the two graphs below against.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 115,
+        "w": 24,
+        "h": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "lengthkm",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 2,
+            "fillOpacity": 80,
+            "showPoints": "never",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": -1,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 1,
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"distance\") / 1000 FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter GROUP BY time(1w, -3d) fill(0) tz('$tz')",
+          "alias": "km"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Resting heart rate per week",
+      "id": 54,
+      "description": "Weekly averages, under the running of the same weeks: a resting heart rate climbing, or an HRV falling, for more than a few days after a heavy week is the body asking for rest. Read from the source picked in *Resting HR from*.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 121,
+        "w": 24,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: bpm",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*sleep_as_android$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"restingHeartRate\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${rhr_from}' AND $timeFilter GROUP BY time(1w, -3d) fill(none) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"resting_hr\") FROM \"sleep_session\" WHERE \"source\" = '${rhr_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1w, -3d), \"source\" fill(none) tz('$tz')",
+          "alias": "$tag_source"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"value\") FROM \"RestingHR\" WHERE 'fitbit' = '${rhr_from}' AND $timeFilter GROUP BY time(1w, -3d) fill(none) tz('$tz')",
+          "alias": "fitbit"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "HRV per week",
+      "id": 55,
+      "description": "Weekly averages, under the running of the same weeks: a resting heart rate climbing, or an HRV falling, for more than a few days after a heavy week is the body asking for rest. Read from the source picked in *HRV from*.",
+      "datasource": {
+        "type": "datasource",
+        "uid": "-- Mixed --"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 128,
+        "w": 24,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic-by-name"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*garmin$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*whoop$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*sleep_as_android$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*fitbit$/"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"avgOvernightHrv\") FROM \"SleepSummary\" WHERE \"sleepTimeSeconds\" > 0 AND \"remSleepSeconds\" > 0 AND 'garmin' = '${hrv_from}' AND $timeFilter GROUP BY time(1w, -3d) fill(none) tz('$tz')",
+          "alias": "garmin"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${sleep}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"hrv_rmssd_ms\") FROM \"sleep_session\" WHERE \"source\" = '${hrv_from}' AND \"user\" = '$user' AND \"kind\" != 'nap' AND $timeFilter GROUP BY time(1w, -3d), \"source\" fill(none) tz('$tz')",
+          "alias": "$tag_source"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${fitbit}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"dailyRmssd\") FROM \"HRV\" WHERE 'fitbit' = '${hrv_from}' AND $timeFilter GROUP BY time(1w, -3d) fill(none) tz('$tz')",
+          "alias": "fitbit"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Every run",
+      "id": 56,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 135
+      },
+      "panels": []
+    },
+    {
+      "type": "table",
+      "title": "Runs",
+      "id": 57,
+      "description": "Every run in the time range, latest first. Pace is the moving pace; Ascent is the watch's elevation gain (the older imports have none); Cadence is the mean over the seconds moving. Click a header to sort.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 136,
+        "w": 24,
+        "h": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Distance"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "lengthkm"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dthms"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pace"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "clocks"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Heart rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: bpm"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Max heart rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: bpm"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Beats / km"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cadence"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: spm"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Ascent"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "lengthm"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Aerobic TE"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Anaerobic TE"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Load"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Calories"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: kcal"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Date"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "time:YYYY-MM-DD HH:mm"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Date",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"activityName\" AS \"Name\", \"activityType\" AS \"Type\", \"distance\" / 1000 AS \"Distance\", \"elapsedDuration\" AS \"Duration\", \"movingDuration\" / \"distance\" * 1000 AS \"Pace\", \"averageHR\" AS \"Heart rate\", \"maxHR\" AS \"Max heart rate\", \"averageHR\" * \"movingDuration\" / \"distance\" * 1000 / 60 AS \"Beats / km\", \"aerobicTrainingEffect\" AS \"Aerobic TE\", \"anaerobicTrainingEffect\" AS \"Anaerobic TE\", \"activityTrainingLoad\" AS \"Load\", \"calories\" AS \"Calories\", \"elevationGain\" AS \"Ascent\" FROM (SELECT max(\"distance\") AS \"distance\", \"elapsedDuration\", \"movingDuration\", \"averageHR\", \"maxHR\", \"aerobicTrainingEffect\", \"anaerobicTrainingEffect\", \"activityTrainingLoad\", \"calories\", \"elevationGain\", \"activityName\", \"activityType\" FROM \"ActivitySummary\" WHERE \"activityType\" =~ /run/ AND \"distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE $timeFilter GROUP BY \"ActivityID\""
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT mean(\"Cadence\") * 2 + mean(\"Fractional_Cadence\") * 2 AS \"Cadence\" FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"Cadence\" > 0 AND $timeFilter GROUP BY \"ActivityID\""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "joinByField",
+          "options": {
+            "byField": "ActivityID",
+            "mode": "outerTabular"
+          }
+        },
+        {
+          "id": "filterByValue",
+          "options": {
+            "type": "exclude",
+            "match": "any",
+            "filters": [
+              {
+                "fieldName": "Distance",
+                "config": {
+                  "id": "isNull",
+                  "options": {}
+                }
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "ActivityID": true,
+              "Time ActivityGPS": true
+            },
+            "indexByName": {
+              "Time ActivitySummary": 0,
+              "Name": 1,
+              "Type": 2,
+              "Distance": 3,
+              "Duration": 4,
+              "Pace": 5,
+              "Heart rate": 6,
+              "Max heart rate": 7,
+              "Beats / km": 8,
+              "Cadence": 9,
+              "Ascent": 10,
+              "Aerobic TE": 11,
+              "Anaerobic TE": 12,
+              "Load": 13,
+              "Calories": 14
+            },
+            "renameByName": {
+              "Time ActivitySummary": "Date"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

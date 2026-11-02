@@ -277,6 +277,43 @@ a summary per session; time per heart-rate zone and time under tension per
 exercise; workouts per week, a calendar, and the sets Garmin could not
 classify. Variables: time zone, exercise category, exercise.
 
+## Running
+
+garmin-grafana's `GarminStats`: `ActivitySummary`, `ActivityLap`,
+`ActivityGPS`, `VO2_Max` (a Garmin watch's runs: one summary per run, its laps
+and its seconds). A run is an activity whose type contains `run` (running,
+trail, treadmill...) and that covers at least 1 km. The queries are written by
+[`scripts/build-running-dashboard.py`](../scripts/build-running-dashboard.py).
+
+- **Overview:** runs, distance, time, average run and pace, runs of 10 km or
+  more, the best 10 km, VO₂ max; the longest and shortest run, by distance and
+  by time; runs per week, the last run, climbing, average heart rate.
+- **Volume and regularity:** distance per week against the last 4 weeks'
+  average, runs per week, the days since the previous run, each run's
+  distance and how long the runs are.
+- **Intensity and training effect:** each second of running with a heart rate
+  is easy (below zone 3), moderate (zone 3) or hard (zones 4 and 5), from the
+  watch's own zones, the latest it reported, so every year is cut the same
+  way: the shares over the range and per week. Garmin's aerobic and anaerobic
+  training effect and its training load, run by run.
+- **10 km:** every run of 10 km or more, compared on its best 10 km, its
+  fastest 10 consecutive 1 km laps: time, pace, heart rate, heartbeats per km,
+  step length, cadence, ground contact, vertical oscillation and ratio, ascent
+  and temperature over those 10 km, in a table and as trends. It needs the
+  watch's 1 km auto-lap: a run with manual laps, or imported without its laps,
+  shows its totals only.
+- **Every run:** moving pace, heart rate, heartbeats per km (heart rate times
+  pace: the beats a kilometre costs, which falls as aerobic fitness improves),
+  VO₂ max.
+- **Running form:** cadence and step length (speed over cadence) for every run
+  with its seconds; ground contact time, vertical oscillation and ratio where
+  a running dynamics sensor measured them.
+- **Recovery around the running:** distance per week above the resting heart
+  rate and the HRV of the same weeks, each from its picker.
+- **Every run, as a table**, latest first.
+
+Variables: time zone, user, Resting HR from, HRV from.
+
 ## GitHub: commits and hosted minutes
 
 `DevStats`, from the [GitHub connector](connectors/github.md): `github_commit`,
