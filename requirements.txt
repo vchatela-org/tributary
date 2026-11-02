@@ -10,7 +10,7 @@ python-multipart==0.0.32
 cronsim==2.7
 # The IANA time-zone database, for zoneinfo (TRIBUTARY_TZ): the base image
 # ships none, and a pinned package keeps it updated with the code.
-tzdata==2026.5
+tzdata==2026.6
 # The Renpho connector: the app's encrypted API (pulls requests and pycryptodome).
 renpho-api==0.2.0
 # AES-256-GCM for the tokens of a source connected in the browser (Whoop's
