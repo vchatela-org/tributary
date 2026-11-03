@@ -42,7 +42,11 @@ SOURCE_COLOURS = {"garmin": "#d95926", "whoop": "#9085e9", "sleep_as_android": "
 
 RUN = '"activityType" =~ /run/ AND "distance" >= 1000'
 RUNS = f'FROM "ActivitySummary" WHERE {RUN}'
-LAPS = 'FROM "ActivityLap" WHERE "Sport" = \'running\''
+# A lap is read by its activity's type (ActivityName), never by its own Sport:
+# an activity retyped in Garmin Connect keeps the sport its FIT laps recorded (a
+# ride first saved as a run has running laps), and would bring 1 km "splits" of
+# 2:45 into the best 10 km.
+LAPS = 'FROM "ActivityLap" WHERE "ActivityName" =~ /run/'
 GPS = 'FROM "ActivityGPS" WHERE "ActivityName" =~ /run/'
 WEEK = "GROUP BY time(1w, -3d) fill(0) tz('$tz')"
 DAY = "GROUP BY time(1d) fill(none) tz('$tz')"
