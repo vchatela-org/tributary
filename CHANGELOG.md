@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.2](https://github.com/vchatela-org/tributary/compare/v0.26.1...v0.26.2) (2026-11-03)
+
+
+### Bug Fixes
+
+* **grafana:** Running reads a lap by its activity's type, not the lap's sport ([#104](https://github.com/vchatela-org/tributary/issues/104)) ([0594a24](https://github.com/vchatela-org/tributary/commit/0594a246f039a6256727409d3931c45070077195))
+
 ## [0.26.1](https://github.com/vchatela-org/tributary/compare/v0.26.0...v0.26.1) (2026-11-02)
 
 
