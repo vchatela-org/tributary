@@ -50,10 +50,30 @@ What is written:
                  steps with no gap longer than RUN_GAP_S: the copies of a run
                  belong in the same upload, or its loop is drawn from the part
                  each one holds.
+  footpath_segment  the same loop, km by km: the median, point by point, of
+                 the steps of each SEGMENT_M stretch of the run (all of them,
+                 whatever their pace), per foot, so a dashboard draws the
+                 stride at any stretch of the run (km 3, km 5 to 8) and how it
+                 changes along it. The export holds no distance: it is the
+                 sum of the sampled speeds over time (any step, walking
+                 included, from the run's first running step; a gap longer
+                 than DISTANCE_GAP_S between two samples counts as a stop),
+                 so it drifts from the watch's by a few percent. Tags `run`
+                 and `side` as footpath_loop; LOOP_POINTS points per segment,
+                 a second apart from run start + segment index * LOOP_POINTS
+                 (not the segment's real time: that is `elapsed_s`), with
+                 `phase`, x_cm, y_cm, z_cm, `km` and `km_end` (where the
+                 segment starts and ends), `elapsed_s` (its first step,
+                 seconds after the run's start), the steps and speed it is
+                 the median of; its phase-0 point also carries the median
+                 lift_cm, back_cm, reach_cm, width_cm and touchdown_cm of
+                 those steps. A segment with fewer than SEGMENT_MIN_STEPS of
+                 a foot's steps is left out for that foot.
 """
 import json
 import math
 import statistics
+from bisect import bisect_right
 import zipfile
 from array import array
 from collections import Counter
@@ -82,6 +102,13 @@ FOOTPATH_LOOP = Measurement(
     fields={"phase": int, "x_cm": float, "y_cm": float, "z_cm": float, "steps": int, "speed_mps": float},
     last_wins=True,
 )
+SEGMENT_FORM = ("lift_cm", "back_cm", "reach_cm", "width_cm", "touchdown_cm")
+FOOTPATH_SEGMENT = Measurement(
+    database="BodyStats", name="footpath_segment", tags=("run", "side"),
+    fields={"phase": int, "km": float, "km_end": float, "elapsed_s": int, "x_cm": float, "y_cm": float,
+            "z_cm": float, "steps": int, "speed_mps": float, **{name: float for name in SEGMENT_FORM}},
+    last_wins=True,
+)
 
 SIDES = {1: "left", 2: "right"}
 # Below it a step is walking or a stop (2 m/s is 8:20 per km): not a running stride.
@@ -96,6 +123,12 @@ RUN_GAP_S = 600
 LOOP_POINTS = 64
 LOOP_SPEED_BAND = 0.05
 LOOP_MIN_STEPS = 10
+# The run km by km: segments of SEGMENT_M metres, a foot's loop drawn from at
+# least SEGMENT_MIN_STEPS of its steps. Two speed samples further apart than
+# DISTANCE_GAP_S add no distance (a stop, or the pod lost).
+SEGMENT_M = 500
+SEGMENT_MIN_STEPS = 3
+DISTANCE_GAP_S = 30
 # The foot is on the ground below this height (m).
 GROUND_M = 0.01
 # A path with fewer points, or a coordinate beyond this (m), is not a step.
@@ -179,6 +212,39 @@ def read_step(raw: Dict[str, Any]) -> Optional[Step]:
                 {k: round(v, 2) for k, v in fields.items()}, resample(path))
 
 
+def read_speed(raw: Dict[str, Any]) -> Optional[Tuple[int, float, float]]:
+    """(side, time, speed) of any step of `foot_data_list`, walking and stops
+    included: the samples the run's distance is summed from."""
+    side = raw.get("side")
+    t = _number(raw.get("timestamp"))
+    speed = _number(raw.get("speed"))
+    if side not in SIDES or t is None or speed is None or speed < 0:
+        return None
+    return side, t + (_number(raw.get("timestamp_frac")) or 0.0), speed
+
+
+class Odometer:
+    """The distance covered since the first sample, at any time: the speed
+    samples summed over time (trapezoids), a gap over DISTANCE_GAP_S adding
+    nothing."""
+
+    def __init__(self, samples: List[Tuple[float, float]]):
+        self.times: List[float] = []
+        self.metres: List[float] = []
+        total = 0.0
+        last: Optional[Tuple[float, float]] = None
+        for t, speed in sorted(samples):
+            if last is not None and t - last[0] <= DISTANCE_GAP_S:
+                total += (t - last[0]) * (speed + last[1]) / 2
+            self.times.append(t)
+            self.metres.append(total)
+            last = (t, speed)
+
+    def at(self, t: float) -> float:
+        i = bisect_right(self.times, t) - 1
+        return self.metres[i] if i >= 0 else 0.0
+
+
 def _xyz(obj: Dict[str, Any]) -> Any:
     """json object_hook: a point {"x", "y", "z"} becomes a tuple as soon as it
     is read (a run holds ~100,000 of them: tuples keep the memory down)."""
@@ -237,10 +303,26 @@ def typical_loop(steps: List[Step]) -> Optional[Tuple[List[Tuple[float, float, f
     chosen = [s for s in steps if abs(s.speed - speed) <= speed * LOOP_SPEED_BAND]
     if len(chosen) < LOOP_MIN_STEPS:
         chosen = steps
-    loop = []
-    for i in range(LOOP_POINTS):
-        loop.append(tuple(round(statistics.median(s.loop[i * 3 + k] for s in chosen) * 100, 2) for k in range(3)))
-    return loop, len(chosen), statistics.median(s.speed for s in chosen)
+    return median_loop(chosen), len(chosen), statistics.median(s.speed for s in chosen)
+
+
+def median_loop(steps: List[Step]) -> List[Tuple[float, float, float]]:
+    """The median, point by point, of the steps' loops, in cm."""
+    return [tuple(round(statistics.median(s.loop[i * 3 + k] for s in steps) * 100, 2) for k in range(3))
+            for i in range(LOOP_POINTS)]
+
+
+def segments(run: List[Step], odometer: Odometer) -> Iterator[Tuple[int, float, float, List[Step]]]:
+    """(index, start, end in km, steps) of each SEGMENT_M stretch of a run
+    that has steps, in order; the last one ends where the run does."""
+    start = odometer.at(run[0].time)
+    total = odometer.at(run[-1].time) - start
+    by_index: Dict[int, List[Step]] = {}
+    for s in run:
+        by_index.setdefault(int((odometer.at(s.time) - start) // SEGMENT_M), []).append(s)
+    for index in sorted(by_index):
+        end = min((index + 1) * SEGMENT_M, max(total, index * SEGMENT_M))
+        yield index, round(index * SEGMENT_M / 1000, 3), round(end / 1000, 3), by_index[index]
 
 
 def _at(seconds: float) -> datetime:
@@ -259,7 +341,7 @@ class StrydConnector(Connector):
     icon = "bi-person-walking"
     category = "Nutrition & fitness"
     settings_class = StrydSettings
-    measurements = (FOOTPATH_STEP, FOOTPATH_LOOP)
+    measurements = (FOOTPATH_STEP, FOOTPATH_LOOP, FOOTPATH_SEGMENT)
     file_types = (".zip", ".json")
 
     @property
@@ -273,6 +355,7 @@ class StrydConnector(Connector):
         tz = ZoneInfo(settings.tz)
         files = skipped_files = 0
         unique: Dict[Tuple[int, int], Step] = {}
+        speeds: Dict[Tuple[int, int], Tuple[float, float]] = {}
         seen = 0
         for name, data in _members(path):
             raw_steps = read_footdata(data)
@@ -282,7 +365,10 @@ class StrydConnector(Connector):
                 continue
             files += 1
             for raw in raw_steps:
-                step = read_step(raw) if isinstance(raw, dict) else None
+                sample = read_speed(raw) if isinstance(raw, dict) else None
+                if sample is not None:
+                    speeds.setdefault((sample[0], math.floor(sample[1])), sample[1:])
+                step = read_step(raw) if sample is not None else None
                 if step is None:
                     continue
                 seen += 1
@@ -304,7 +390,9 @@ class StrydConnector(Connector):
                                 {"side": SIDES[step.side], "pace": pace_band(step.speed)}, fields))
 
         runs = split_runs(list(unique.values()))
-        loops = 0
+        odometer = Odometer(list(speeds.values()))
+        del speeds
+        loops = stretches = 0
         for run in runs:
             start = math.floor(run[0].time)
             label = datetime.fromtimestamp(start, tz).strftime("%Y-%m-%d %H:%M")
@@ -318,10 +406,28 @@ class StrydConnector(Connector):
                     points.append(Point(FOOTPATH_LOOP, _at(start + i), {"run": label, "side": name},
                                         {"phase": i, "x_cm": x, "y_cm": y, "z_cm": z, "steps": count,
                                          "speed_mps": round(speed, 3)}))
+            for index, km, km_end, steps in segments(run, odometer):
+                elapsed = math.floor(min(s.time for s in steps)) - start
+                for side, name in SIDES.items():
+                    mine = [s for s in steps if s.side == side]
+                    if len(mine) < SEGMENT_MIN_STEPS:
+                        continue
+                    stretches += 1
+                    common = {"km": km, "km_end": km_end, "elapsed_s": elapsed, "steps": len(mine),
+                              "speed_mps": round(statistics.median(s.speed for s in mine), 3)}
+                    form = {}
+                    for key in SEGMENT_FORM:
+                        values = [s.fields[key] for s in mine if key in s.fields]
+                        if values:
+                            form[key] = round(statistics.median(values), 2)
+                    for i, (x, y, z) in enumerate(median_loop(mine)):
+                        fields = {"phase": i, "x_cm": x, "y_cm": y, "z_cm": z, **common, **(form if i == 0 else {})}
+                        points.append(Point(FOOTPATH_SEGMENT, _at(start + index * LOOP_POINTS + i),
+                                            {"run": label, "side": name}, fields))
 
         sides = Counter(SIDES[s] for s, _ in unique)
         summary = [f"{files} Footpath file(s)" + (f" ({skipped_files} other file(s) skipped)" if skipped_files else ""),
                    f"{len(unique)} running step(s) ({sides['left']} left, {sides['right']} right; "
                    f"{seen - len(unique)} repeated in another copy)",
-                   f"{len(runs)} run(s), {loops} typical loop(s)"]
+                   f"{len(runs)} run(s), {loops} typical loop(s), {stretches} loop(s) km by km"]
         return FileImport(points, summary=summary)

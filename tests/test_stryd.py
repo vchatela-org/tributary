@@ -7,7 +7,7 @@ import pytest
 
 from app import connectors, runner
 from app.config import settings
-from app.connectors.stryd import LOOP_POINTS, pace_band
+from app.connectors.stryd import DISTANCE_GAP_S, LOOP_POINTS, Odometer, pace_band
 from tests.fakes import epoch, parse
 
 USER = "alice"
@@ -95,8 +95,8 @@ def test_an_export_writes_each_step_and_each_run_s_loop_per_foot(connector, infl
     run = _import(db, connector, export)
     assert run.status == "ok", run.message
     assert run.message == ("Imported stryd-export.zip, 1 Footpath file(s), 48 running step(s) (24 left, 24 right; "
-                           f"0 repeated in another copy), 1 run(s), 2 typical loop(s): {48 + 2 * LOOP_POINTS} "
-                           f"point(s) written (BodyStats {48 + 2 * LOOP_POINTS}).")
+                           "0 repeated in another copy), 1 run(s), 2 typical loop(s), 3 loop(s) km by km: "
+                           f"{48 + 5 * LOOP_POINTS} point(s) written (BodyStats {48 + 5 * LOOP_POINTS}).")
 
     steps = _lines(influx, "footpath_step")
     assert len(steps) == 48
@@ -124,6 +124,45 @@ def test_an_export_writes_each_step_and_each_run_s_loop_per_foot(connector, infl
     assert first["steps"] == "24i" and first["speed_mps"] == "3.4"
 
 
+def test_the_distance_is_the_speed_summed_over_time_a_long_gap_adding_none():
+    odometer = Odometer([(0, 3.0), (10, 3.0), (20, 4.0), (20 + DISTANCE_GAP_S + 1, 4.0), (60, 2.0)])
+    assert odometer.at(-5) == 0
+    assert odometer.at(10) == 30
+    assert odometer.at(15) == 30            # the last sample's distance until the next one
+    assert odometer.at(20) == 65            # trapezoid: 10 s at 3.5 m/s
+    assert odometer.at(20 + DISTANCE_GAP_S + 1) == 65  # the pod went quiet: no distance
+    assert odometer.at(60) == pytest.approx(65 + 9 * 3.0)
+
+
+def test_each_500_m_of_a_run_gets_its_own_loop_per_foot(connector, influx, db, tmp_path):
+    """Both feet every 7 s at 3.4 m/s (23.8 m a step), lifting less after the
+    30th step: 1.405 km, three segments; the third one lifts 8 cm, the first 12."""
+    steps = []
+    for i in range(60):
+        lift = 0.12 if i < 30 else 0.08
+        steps += [step(START + i * 7 + 0.25, 1, lift=lift), step(START + i * 7 + 0.6, 2, lift=lift)]
+    run = _import(db, connector, write_export(tmp_path, {"a_footdata_0.json": footdata(steps)}))
+    assert "1 run(s), 2 typical loop(s), 6 loop(s) km by km" in run.message, run.message
+
+    rows = _lines(influx, "footpath_segment")
+    assert len(rows) == 6 * LOOP_POINTS
+    assert {t["run"] for _m, t, _f, _ts in rows} == {"2026-03-01 09:15"}
+    left = sorted((ts, f) for _m, t, f, ts in rows if t["side"] == "left")
+    # Second-apart points from the run's start, segment after segment.
+    assert [ts for ts, _f in left] == [START + i for i in range(3 * LOOP_POINTS)]
+    heads = [f for ts, f in left if f["phase"] == "0i"]
+    assert [(f["km"], f["km_end"]) for f in heads] == [("0.0", "0.5"), ("0.5", "1.0"), ("1.0", "1.405")]
+    assert [f["steps"] for f in heads] == ["22i", "21i", "17i"]
+    assert [f["elapsed_s"] for f in heads] == ["0i", "147i", "294i"]
+    assert float(heads[0]["lift_cm"]) == pytest.approx(12.0, abs=0.1)
+    assert float(heads[2]["lift_cm"]) == pytest.approx(8.0, abs=0.1)
+    assert {"back_cm", "reach_cm", "width_cm", "touchdown_cm", "speed_mps"} <= set(heads[0])
+    # The form figures are on the segment's first point only; the loop on all.
+    assert all("lift_cm" not in f for _ts, f in left if f["phase"] != "0i")
+    last = [f for _ts, f in left[2 * LOOP_POINTS:]]
+    assert max(float(f["z_cm"]) for f in last) == pytest.approx(8.0, abs=0.2)
+
+
 def test_the_copies_of_a_run_merge_and_an_import_again_rewrites_the_same_points(connector, influx, db, tmp_path):
     """The export holds a run up to five times, whole or in part, under other
     names and in both formats: a step is written once, and importing the
@@ -142,7 +181,9 @@ def test_the_copies_of_a_run_merge_and_an_import_again_rewrites_the_same_points(
     part = write_export(tmp_path, {"5000000000000002_footdata_1700000200.json": footdata(older_copy)}, "part.zip")
     _import(db, connector, part)
     again = influx.written_lines()
-    assert set(again) - set(first) <= {line for line in again if line.startswith("footpath_loop,")}
+    # The loops are drawn from the part of the run the upload holds (a run's copies go in the same upload).
+    assert set(again) - set(first) <= {line for line in again if line.startswith(("footpath_loop,",
+                                                                                  "footpath_segment,"))}
     assert {line for line in again if line.startswith("footpath_step,")} <= set(first)
 
 

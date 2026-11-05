@@ -6,7 +6,7 @@ form power, leg spring stiffness and the other running figures already reach
 the watch's FIT file through Stryd's Connect IQ data field (garmin-grafana's
 `stryd` option reads them); the Footpath does not. Stryd sends it as an export,
 on request to its support, and Tributary writes it into `BodyStats..footpath_step`
-and `..footpath_loop` (see [the schema](../schema.md)). The
+`..footpath_loop` and `..footpath_segment` (see [the schema](../schema.md)). The
 [Running footpath](../dashboards.md#running-footpath) dashboard draws it.
 
 Upload only: the export arrives once, on request.
@@ -24,7 +24,7 @@ it (the upload is kept on the data volume until it is imported, so it needs
 the room), or upload the export in parts: a zip of some of its files, or a
 single `.json`. An import only adds and rewrites (below), so the parts may come
 in any order, and again. Keep the files of a run in the same part: each part
-draws a run's typical loop from the copies it holds.
+draws a run's typical loop, and its loops km by km, from the copies it holds.
 
 There is nothing to configure: the `user` tag comes from
 `TRIBUTARY_INFLUXDB_USER`.
@@ -35,6 +35,7 @@ There is nothing to configure: the `user` tag comes from
 |---|---|---|---|---|
 | `footpath_step` | sampled step | the step's second | `side` (`left`, `right`), `pace` (`4:30`...) | `lift_cm`, `back_cm`, `reach_cm`, `width_cm`, `touchdown_cm`, `speed_mps`, `power_w`, `incline` (float) |
 | `footpath_loop` | point of a run's typical loop, per foot | the run's start, plus `phase` seconds | `run` (`2026-03-01 08:15`), `side` | `phase`, `steps` (int), `x_cm`, `y_cm`, `z_cm`, `speed_mps` (float) |
+| `footpath_segment` | point of the loop of each 500 m of a run, per foot | the run's start, plus 64 s per segment before it, plus `phase` seconds | `run`, `side` | `phase`, `steps`, `elapsed_s` (int), `km`, `km_end`, `x_cm`, `y_cm`, `z_cm`, `speed_mps` (float); on `phase` 0, `lift_cm`, `back_cm`, `reach_cm`, `width_cm`, `touchdown_cm` (float) |
 
 - **The path.** For a sample of the steps (one every 2 to 7 seconds per foot),
   the export holds the foot's path over one gait cycle, from mid-stance to the
@@ -56,6 +57,16 @@ There is nothing to configure: the `user` tag comes from
   resampled to 64 points of its cycle. `steps` and `speed_mps` say how many
   steps and at what speed. A run is a stretch of steps with no gap over 10
   minutes; `run` is its local start, in `TRIBUTARY_TZ`, to the minute.
+- **The run km by km**, per foot: the same median loop for each 500 m of the
+  run, from all its steps there (at least 3; whatever their pace: a hill or a
+  rep is what the segment shows), so a dashboard draws the stride at km 3, or
+  from km 5 to 8, and how lift, back swing, reach and touchdown change along
+  the run. `km` and `km_end` bound the segment (the last one ends where the
+  run does), `elapsed_s` is its first step's time after the run's start. The
+  export holds no distance: it is the steps' speeds summed over time, from the
+  run's first running step (walking steps count; two samples more than 30 s
+  apart count as a stop). On three years of runs it was within 2 to 3% of the
+  watch's distance for 80% of them (median +0.4%).
 - **The export repeats itself.** A run synced from the phone and uploaded again
   later is there two to five times, whole or in part, under different names.
   A step is the same in every copy (same foot, same timestamp): the steps are

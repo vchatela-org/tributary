@@ -23,7 +23,7 @@ and, for an API, how often it runs by default (change it in the UI).
 | Connector | Source | Input | Writes |
 |---|---|---|---|
 | [**MyFitnessPal**](myfitnesspal.md) | `myfitnesspal` | export file, imported in the UI | `BodyStats`: `body_composition`, `nutrition`, `exercise` |
-| [**Stryd**](stryd.md) | `stryd` | export file, imported in the UI | `BodyStats`: `footpath_step`, `footpath_loop` |
+| [**Stryd**](stryd.md) | `stryd` | export file, imported in the UI | `BodyStats`: `footpath_step`, `footpath_loop`, `footpath_segment` |
 
 ### Sleep
 
