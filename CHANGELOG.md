@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/vchatela-org/tributary/compare/v0.26.2...v0.27.0) (2026-11-05)
+
+
+### Features
+
+* **grafana:** Running shows a Stryd footpod's power and form ([#106](https://github.com/vchatela-org/tributary/issues/106)) ([cc54c6c](https://github.com/vchatela-org/tributary/commit/cc54c6c16326a52da5bbedbc10fc48254151258c))
+
 ## [0.26.2](https://github.com/vchatela-org/tributary/compare/v0.26.1...v0.26.2) (2026-11-03)
 
 
