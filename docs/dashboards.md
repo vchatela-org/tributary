@@ -281,7 +281,7 @@ classify. Variables: time zone, exercise category, exercise.
 
 garmin-grafana's `GarminStats`: `ActivitySummary`, `ActivityLap`,
 `ActivityGPS`, `VO2_Max` (a Garmin watch's runs: one summary per run, its laps
-and its seconds). A run is an activity whose type contains `run` (running,
+and its seconds), and `StrydMetrics` for a Stryd footpod's figures. A run is an activity whose type contains `run` (running,
 trail, treadmill...) and that covers at least 1 km. The queries are written by
 [`scripts/build-running-dashboard.py`](../scripts/build-running-dashboard.py).
 
@@ -308,6 +308,12 @@ trail, treadmill...) and that covers at least 1 km. The queries are written by
 - **Running form:** cadence and step length (speed over cadence) for every run
   with its seconds; ground contact time, vertical oscillation and ratio where
   a running dynamics sensor measured them.
+- **Running power and form (Stryd):** each run's average power with the
+  Critical Power of the day, power per kilo, form power ratio, leg spring
+  stiffness, impact loading rate, and the left/right balance of the last three
+  against 50%. They need a Stryd footpod recorded by its Connect IQ data field
+  and garmin-grafana's `stryd` option (`FETCH_SELECTION`); its power is also a
+  column of the 10 km and run tables.
 - **Recovery around the running:** distance per week above the resting heart
   rate and the HRV of the same weeks, each from its picker.
 - **Every run, as a table**, latest first.
