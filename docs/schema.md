@@ -102,6 +102,7 @@ time*.
 | `daily_activity` | `source`, `user` | `strain` (float), `energy_kcal` (float), `avg_hr` (float), `max_hr` (float), `steps` (int), `duration_s` (int) | Tributary: `whoop` |
 | `footpath_step` | `source`, `user`, `side`, `pace` | `lift_cm` (float), `back_cm` (float), `reach_cm` (float), `width_cm` (float), `touchdown_cm` (float), `speed_mps` (float), `power_w` (float), `incline` (float) | Tributary: `stryd` |
 | `footpath_loop` | `source`, `user`, `run`, `side` | `phase` (int), `x_cm` (float), `y_cm` (float), `z_cm` (float), `steps` (int), `speed_mps` (float) | Tributary: `stryd` |
+| `footpath_segment` | `source`, `user`, `run`, `side` | `phase` (int), `km` (float), `km_end` (float), `elapsed_s` (int), `x_cm` (float), `y_cm` (float), `z_cm` (float), `steps` (int), `speed_mps` (float), `lift_cm` (float), `back_cm` (float), `reach_cm` (float), `width_cm` (float), `touchdown_cm` (float) | Tributary: `stryd` |
 
 - `body_composition`: one point per weigh-in, at its time, with a field
   for each metric the scale measured (none for one it didn't: never a
@@ -181,6 +182,14 @@ time*.
   path (x forward, y sideways, z up, in cm), one a second from the run's
   start, `phase` its index. `run` is the run's local start
   (`2026-03-01 08:15`), the key a dashboard picks a run by.
+- `footpath_segment`: the same loop for each 500 m of a run (`km` to
+  `km_end`, the last segment ending where the run does), per foot: the
+  median of that stretch's steps, whatever their pace, 64 points a second
+  apart from the run's start + 64 s per segment (not the segment's real
+  time: that is `elapsed_s` after the run's start). The segment's first
+  point (`phase` 0) also carries the median `lift_cm`, `back_cm`,
+  `reach_cm`, `width_cm` and `touchdown_cm` of its steps. The distance is
+  the step speeds summed over time: within a few percent of the watch's.
 
 ### `SleepStats`
 

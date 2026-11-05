@@ -322,8 +322,9 @@ Variables: time zone, user, Resting HR from, HRV from.
 
 ## Running footpath
 
-The Stryd connector's `BodyStats`: `footpath_loop`, `footpath_step` (a Stryd
-Duo's Footpath, from the export Stryd sends on request). The queries are
+The Stryd connector's `BodyStats`: `footpath_loop`, `footpath_segment`,
+`footpath_step` (a Stryd Duo's Footpath, from the export Stryd sends on
+request). The queries are
 written by
 [`scripts/build-running-footpath-dashboard.py`](../scripts/build-running-footpath-dashboard.py).
 
@@ -333,13 +334,26 @@ written by
   drawn dashed to compare with; below, each loop's lift, back swing, forward
   reach, sideways range, pace and the steps it is drawn from. Grafana has no
   3D panel of its own: the three views are its XY chart.
+- **The run km by km:** any stretch of the run, picked in *From km* and *To
+  km* (km 3 is From 2 To 3; by default the whole run): its loop per foot (the
+  median of its 500 m segments' loops) from the side, from behind and from
+  above, against the whole run's typical loop (dashed); its lift, back swing,
+  reach, touchdown, sideways travel, pace and time from the start; the same
+  loops in **3D**, at one scale on the three axes, turned with the mouse; each
+  segment's side profile set along the km in 3D, for the foot picked, light to
+  dark as the run goes on; and, for the whole run, each figure per 500 m along
+  the km. The two 3D panels need the [Business
+  Charts](https://grafana.com/grafana/plugins/volkovlabs-echarts-panel/) panel
+  plugin (`volkovlabs-echarts-panel`, which bundles ECharts GL); without it they
+  say the plugin is missing and the rest of the dashboard works.
 - **Form over time, at the same pace:** per run and foot, the median foot
   lift, back swing, forward reach, touchdown (how far ahead of mid-stance the
   foot lands: the overstride) and sideways travel of the steps at the paces
   picked, and their pace. The loop grows with speed, so runs are compared at
   the same pace.
 
-Variables: time zone, user, run, run to compare with, pace.
+Variables: time zone, user, run, run to compare with, from km, to km, foot
+(the 3D panel along the run), pace.
 
 ## GitHub: commits and hosted minutes
 
