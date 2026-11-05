@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.1](https://github.com/vchatela-org/tributary/compare/v0.27.0...v0.27.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **docker:** rebase on Chainguard python with expat 2.10.0 ([#108](https://github.com/vchatela-org/tributary/issues/108)) ([c29dcd3](https://github.com/vchatela-org/tributary/commit/c29dcd3ebbddcfee3ed084be4a723b097b0c71d8))
+
 ## [0.27.0](https://github.com/vchatela-org/tributary/compare/v0.26.2...v0.27.0) (2026-11-05)
 
 
