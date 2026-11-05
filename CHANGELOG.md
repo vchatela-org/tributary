@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.29.0](https://github.com/vchatela-org/tributary/compare/v0.28.0...v0.29.0) (2026-11-05)
+
+
+### Features
+
+* **stryd:** draw any stretch of a run's footpath, km by km and in 3D ([a310469](https://github.com/vchatela-org/tributary/commit/a3104697e43be276e90cc5ee7fc3fdb1117d57c2))
+* **stryd:** draw any stretch of a run's footpath, km by km and in 3D ([#112](https://github.com/vchatela-org/tributary/issues/112)) ([440d671](https://github.com/vchatela-org/tributary/commit/440d67177561d0566a507b12b32e497b27d85057))
+
 ## [0.28.0](https://github.com/vchatela-org/tributary/compare/v0.27.1...v0.28.0) (2026-11-05)
 
 
