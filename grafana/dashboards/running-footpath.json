@@ -1,0 +1,1560 @@
+{
+  "uid": "tributary-running-footpath",
+  "title": "Running footpath",
+  "description": "The path of each foot through a stride, from a Stryd Duo's Footpath (the Stryd connector: footpath_loop, footpath_step): a run's typical stride seen from the side, from behind and from above, compared with another run, and the shape of the stride over time at the same pace.",
+  "tags": [
+    "tributary",
+    "running"
+  ],
+  "editable": true,
+  "graphTooltip": 0,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-2y",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "refresh": "",
+  "links": [
+    {
+      "type": "link",
+      "title": "Running",
+      "url": "/d/tributary-running",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "body",
+        "label": "InfluxDB BodyStats",
+        "query": "influxdb",
+        "regex": "/BodyStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "textbox",
+        "name": "tz",
+        "label": "Time zone",
+        "description": "IANA time zone the days are cut in (TRIBUTARY_TZ).",
+        "query": "Europe/Paris",
+        "current": {
+          "text": "Europe/Paris",
+          "value": "Europe/Paris"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "Europe/Paris",
+            "value": "Europe/Paris"
+          }
+        ],
+        "hide": 0
+      },
+      {
+        "type": "query",
+        "name": "user",
+        "label": "User",
+        "description": "The person, in BodyStats.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"footpath_step\" WITH KEY = \"user\"",
+        "query": "SHOW TAG VALUES FROM \"footpath_step\" WITH KEY = \"user\"",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "run",
+        "label": "Run",
+        "description": "The run whose loops are drawn, by its local start time.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"footpath_loop\" WITH KEY = \"run\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"footpath_loop\" WITH KEY = \"run\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 2,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "compare",
+        "label": "Compare with",
+        "description": "A second run, drawn dashed.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"footpath_loop\" WITH KEY = \"run\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"footpath_loop\" WITH KEY = \"run\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 2,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "pace",
+        "label": "Pace",
+        "description": "The paces (per km, 15 s bands: 4:30 is 4:30 to 4:44) whose steps the graphs over time read.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${body}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"footpath_step\" WITH KEY = \"pace\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"footpath_step\" WITH KEY = \"pace\" WHERE \"user\" = '$user'",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Footpath of a run",
+      "id": 1,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "xychart",
+      "title": "Seen from the side",
+      "id": 2,
+      "description": "The run's typical stride, seen from the side: each foot's path from mid-stance to the next mid-stance, with the run's forward motion taken out, so the loop shows where the foot travels relative to the body. To the right is forward. The foot pushes off and travels back (left of 0), lifts, swings forward, reaches ahead and comes down. It is the median, point by point, of the run's steps at its usual pace (within 5% of its median speed). Dashed: the run to compare with.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 12,
+        "h": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "show": "lines",
+            "lineWidth": 2,
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "pointSize": {
+              "fixed": 1
+            },
+            "pointShape": "circle",
+            "pointStrokeWidth": 0,
+            "fillOpacity": 0,
+            "axisPlacement": "auto",
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A1"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "left foot"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A2"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "right foot"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B1"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "left foot, compared run"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B2"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "right foot, compared run"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "x_cm"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Forward (cm)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "z_cm"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Up (cm)"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "mapping": "auto",
+        "series": [
+          {}
+        ],
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A1",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"x_cm\", \"z_cm\" FROM \"footpath_loop\" WHERE \"run\" = '$run' AND \"side\" = 'left' AND \"user\" = '$user'"
+        },
+        {
+          "refId": "A2",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"x_cm\", \"z_cm\" FROM \"footpath_loop\" WHERE \"run\" = '$run' AND \"side\" = 'right' AND \"user\" = '$user'"
+        },
+        {
+          "refId": "B1",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"x_cm\", \"z_cm\" FROM \"footpath_loop\" WHERE \"run\" = '$compare' AND \"side\" = 'left' AND \"user\" = '$user'"
+        },
+        {
+          "refId": "B2",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"x_cm\", \"z_cm\" FROM \"footpath_loop\" WHERE \"run\" = '$compare' AND \"side\" = 'right' AND \"user\" = '$user'"
+        }
+      ]
+    },
+    {
+      "type": "xychart",
+      "title": "Seen from behind",
+      "id": 3,
+      "description": "The same loops seen from behind: sideways and up. Stryd reports the left foot's sideways travel as negative. Dashed: the run to compare with.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 6,
+        "h": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "show": "lines",
+            "lineWidth": 2,
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "pointSize": {
+              "fixed": 1
+            },
+            "pointShape": "circle",
+            "pointStrokeWidth": 0,
+            "fillOpacity": 0,
+            "axisPlacement": "auto",
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A1"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "left foot"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A2"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "right foot"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B1"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "left foot, compared run"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B2"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "right foot, compared run"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "y_cm"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Sideways (cm)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "z_cm"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Up (cm)"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "mapping": "auto",
+        "series": [
+          {}
+        ],
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A1",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"y_cm\", \"z_cm\" FROM \"footpath_loop\" WHERE \"run\" = '$run' AND \"side\" = 'left' AND \"user\" = '$user'"
+        },
+        {
+          "refId": "A2",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"y_cm\", \"z_cm\" FROM \"footpath_loop\" WHERE \"run\" = '$run' AND \"side\" = 'right' AND \"user\" = '$user'"
+        },
+        {
+          "refId": "B1",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"y_cm\", \"z_cm\" FROM \"footpath_loop\" WHERE \"run\" = '$compare' AND \"side\" = 'left' AND \"user\" = '$user'"
+        },
+        {
+          "refId": "B2",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"y_cm\", \"z_cm\" FROM \"footpath_loop\" WHERE \"run\" = '$compare' AND \"side\" = 'right' AND \"user\" = '$user'"
+        }
+      ]
+    },
+    {
+      "type": "xychart",
+      "title": "Seen from above",
+      "id": 4,
+      "description": "The same loops seen from above: forward (to the right) and sideways. Dashed: the run to compare with.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 11
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "show": "lines",
+            "lineWidth": 2,
+            "lineStyle": {
+              "fill": "solid"
+            },
+            "pointSize": {
+              "fixed": 1
+            },
+            "pointShape": "circle",
+            "pointStrokeWidth": 0,
+            "fillOpacity": 0,
+            "axisPlacement": "auto",
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A1"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "left foot"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A2"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "right foot"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B1"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "left foot, compared run"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B2"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    6,
+                    4
+                  ]
+                }
+              },
+              {
+                "id": "displayName",
+                "value": "right foot, compared run"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "x_cm"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Forward (cm)"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "y_cm"
+            },
+            "properties": [
+              {
+                "id": "custom.axisLabel",
+                "value": "Sideways (cm)"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "mapping": "auto",
+        "series": [
+          {}
+        ],
+        "legend": {
+          "showLegend": true,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A1",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"x_cm\", \"y_cm\" FROM \"footpath_loop\" WHERE \"run\" = '$run' AND \"side\" = 'left' AND \"user\" = '$user'"
+        },
+        {
+          "refId": "A2",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"x_cm\", \"y_cm\" FROM \"footpath_loop\" WHERE \"run\" = '$run' AND \"side\" = 'right' AND \"user\" = '$user'"
+        },
+        {
+          "refId": "B1",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"x_cm\", \"y_cm\" FROM \"footpath_loop\" WHERE \"run\" = '$compare' AND \"side\" = 'left' AND \"user\" = '$user'"
+        },
+        {
+          "refId": "B2",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT \"x_cm\", \"y_cm\" FROM \"footpath_loop\" WHERE \"run\" = '$compare' AND \"side\" = 'right' AND \"user\" = '$user'"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "The two runs' loops",
+      "id": 5,
+      "description": "Read on the loops above, per foot: Lift is the loop's highest point; Back swing how far behind the foot travels after push-off, Forward reach how far ahead it swings (both from mid-stance); Sideways its sideways range; Pace and Steps, the pace and the number of steps the loop is the median of.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 24,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Lift"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "cm"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Back swing"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "cm"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Forward reach"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "cm"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Sideways"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "cm"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Pace"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "clocks"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Steps"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": ""
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"z_cm\") AS \"Lift\", min(\"x_cm\") * -1 AS \"Back swing\", max(\"x_cm\") AS \"Forward reach\", spread(\"y_cm\") AS \"Sideways\", 1000 / last(\"speed_mps\") AS \"Pace\", last(\"steps\") AS \"Steps\" FROM \"footpath_loop\" WHERE (\"run\" = '$run' OR \"run\" = '$compare') AND \"user\" = '$user' GROUP BY \"run\", \"side\""
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            },
+            "indexByName": {
+              "run": 0,
+              "side": 1,
+              "Lift": 2,
+              "Back swing": 3,
+              "Forward reach": 4,
+              "Sideways": 5,
+              "Pace": 6,
+              "Steps": 7
+            },
+            "renameByName": {
+              "run": "Run",
+              "side": "Foot"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Form over time, at the same pace",
+      "id": 6,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 19,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Foot lift",
+      "id": 7,
+      "description": "How high the foot rises in the swing (the loop's highest point). One point per run and foot: the median of its steps at the paces picked in *Pace*. Compare runs at the same pace: the loop grows with speed.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: cm",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "drawStyle": "points",
+            "pointSize": 6,
+            "showPoints": "always",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "spanNulls": true,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"lift_cm\") FROM \"footpath_step\" WHERE \"user\" = '$user' AND \"pace\" =~ /^(${pace:regex})$/ AND $timeFilter GROUP BY time(1d), \"side\" fill(none) tz('$tz')",
+          "alias": "$tag_side"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Back swing",
+      "id": 8,
+      "description": "How far behind the foot travels after push-off, from mid-stance. One point per run and foot: the median of its steps at the paces picked in *Pace*. Compare runs at the same pace: the loop grows with speed.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: cm",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "drawStyle": "points",
+            "pointSize": 6,
+            "showPoints": "always",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "spanNulls": true,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"back_cm\") FROM \"footpath_step\" WHERE \"user\" = '$user' AND \"pace\" =~ /^(${pace:regex})$/ AND $timeFilter GROUP BY time(1d), \"side\" fill(none) tz('$tz')",
+          "alias": "$tag_side"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Forward reach",
+      "id": 9,
+      "description": "How far ahead the foot swings before it comes down, from mid-stance. One point per run and foot: the median of its steps at the paces picked in *Pace*. Compare runs at the same pace: the loop grows with speed.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: cm",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "drawStyle": "points",
+            "pointSize": 6,
+            "showPoints": "always",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "spanNulls": true,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"reach_cm\") FROM \"footpath_step\" WHERE \"user\" = '$user' AND \"pace\" =~ /^(${pace:regex})$/ AND $timeFilter GROUP BY time(1d), \"side\" fill(none) tz('$tz')",
+          "alias": "$tag_side"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Touchdown",
+      "id": 10,
+      "description": "Where the foot meets the ground, ahead of mid-stance: the further ahead, the more the foot lands in front of the body (overstriding). One point per run and foot: the median of its steps at the paces picked in *Pace*. Compare runs at the same pace: the loop grows with speed.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 28,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: cm",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "drawStyle": "points",
+            "pointSize": 6,
+            "showPoints": "always",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "spanNulls": true,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"touchdown_cm\") FROM \"footpath_step\" WHERE \"user\" = '$user' AND \"pace\" =~ /^(${pace:regex})$/ AND $timeFilter GROUP BY time(1d), \"side\" fill(none) tz('$tz')",
+          "alias": "$tag_side"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Sideways travel",
+      "id": 11,
+      "description": "The foot's sideways range through the stride. One point per run and foot: the median of its steps at the paces picked in *Pace*. Compare runs at the same pace: the loop grows with speed.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: cm",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "drawStyle": "points",
+            "pointSize": 6,
+            "showPoints": "always",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "spanNulls": true,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT median(\"width_cm\") FROM \"footpath_step\" WHERE \"user\" = '$user' AND \"pace\" =~ /^(${pace:regex})$/ AND $timeFilter GROUP BY time(1d), \"side\" fill(none) tz('$tz')",
+          "alias": "$tag_side"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Pace of the steps compared",
+      "id": 12,
+      "description": "The median pace of the steps the graphs above read, per run: check that the runs compared ran at the same pace. One point per run and foot.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${body}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 36,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "clocks",
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "custom": {
+            "drawStyle": "points",
+            "pointSize": 6,
+            "showPoints": "always",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "spanNulls": true,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "left"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "right"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${body}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT 1000 / median(\"speed_mps\") FROM \"footpath_step\" WHERE \"user\" = '$user' AND \"pace\" =~ /^(${pace:regex})$/ AND $timeFilter GROUP BY time(1d), \"side\" fill(none) tz('$tz')",
+          "alias": "$tag_side"
+        }
+      ]
+    }
+  ]
+}

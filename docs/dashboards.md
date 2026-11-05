@@ -320,6 +320,27 @@ trail, treadmill...) and that covers at least 1 km. The queries are written by
 
 Variables: time zone, user, Resting HR from, HRV from.
 
+## Running footpath
+
+The Stryd connector's `BodyStats`: `footpath_loop`, `footpath_step` (a Stryd
+Duo's Footpath, from the export Stryd sends on request). The queries are
+written by
+[`scripts/build-running-footpath-dashboard.py`](../scripts/build-running-footpath-dashboard.py).
+
+- **Footpath of a run:** the run's typical stride per foot, the median of its
+  steps at its usual pace, seen from the side (forward and up), from behind
+  (sideways and up) and from above (forward and sideways), with a second run
+  drawn dashed to compare with; below, each loop's lift, back swing, forward
+  reach, sideways range, pace and the steps it is drawn from. Grafana has no
+  3D panel of its own: the three views are its XY chart.
+- **Form over time, at the same pace:** per run and foot, the median foot
+  lift, back swing, forward reach, touchdown (how far ahead of mid-stance the
+  foot lands: the overstride) and sideways travel of the steps at the paces
+  picked, and their pace. The loop grows with speed, so runs are compared at
+  the same pace.
+
+Variables: time zone, user, run, run to compare with, pace.
+
 ## GitHub: commits and hosted minutes
 
 `DevStats`, from the [GitHub connector](connectors/github.md): `github_commit`,

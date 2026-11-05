@@ -32,6 +32,7 @@ def _register_builtin() -> None:
     from app.connectors.mytherapy import MyTherapyConnector
     from app.connectors.renpho import RenphoConnector
     from app.connectors.sleep_as_android import SleepAsAndroidConnector
+    from app.connectors.stryd import StrydConnector
     from app.connectors.todoist import TodoistConnector
     from app.connectors.whoop import WhoopConnector
 
@@ -44,6 +45,7 @@ def _register_builtin() -> None:
     register(MedisafeConnector())
     register(WhoopConnector())
     register(SleepAsAndroidConnector())
+    register(StrydConnector())
 
 
 _register_builtin()

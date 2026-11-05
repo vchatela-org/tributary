@@ -13,7 +13,7 @@ sources.
 ```mermaid
 flowchart LR
     api["APIs<br>Renpho, Audiobookshelf, Todoist, GitHub, Whoop"] -- on a schedule --> T
-    files["Export files<br>MyTherapy, Medisafe, MyFitnessPal, Whoop, Sleep as Android"] -- uploaded in the UI --> T
+    files["Export files<br>MyTherapy, Medisafe, MyFitnessPal, Stryd, Whoop, Sleep as Android"] -- uploaded in the UI --> T
     T["<b>Tributary</b><br>fetch or import, normalise,<br>write: same key, same point"] --> DB[("InfluxDB 1.x<br>a database per domain")]
     tools["Compatible tools<br>garmin-grafana, Takeback..."] -.-> DB
     DB --> G["<b>Grafana</b><br>the dashboards"]
@@ -48,6 +48,7 @@ Light or dark follows your system; the other pages are in [docs/ui.md](docs/ui.m
 | [**MyTherapy**](docs/connectors/mytherapy.md) | Medication | Export, uploaded in the UI | `medication` → `BodyStats` | none: you import a file |
 | [**Medisafe**](docs/connectors/medisafe.md) | Medication | Export, uploaded in the UI | `medication` → `BodyStats` | none: you import a file |
 | [**MyFitnessPal**](docs/connectors/myfitnesspal.md) | Nutrition & fitness | Export, uploaded in the UI | `body_composition`, `nutrition`, `exercise` → `BodyStats` | none: you import a file |
+| [**Stryd**](docs/connectors/stryd.md) | Nutrition & fitness | Export, uploaded in the UI | `footpath_step`, `footpath_loop` → `BodyStats` | none: you import a file |
 | [**Whoop**](docs/connectors/whoop.md), built on kryoseu's [Whoops](https://github.com/kryoseu/whoops) | Sleep | API (OAuth: connect on its page), and its export uploaded in the UI | `sleep_session`, `journal` → `SleepStats`; `daily_activity`, `exercise` → `BodyStats` | Daily at 10:35 |
 | [**Sleep as Android**](docs/connectors/sleep_as_android.md) | Sleep | Export, uploaded in the UI | `sleep_session`, `sleep_stage`, `sleep_vitals` → `SleepStats` | none: you import a file |
 | [**Audiobookshelf**](docs/connectors/audiobookshelf.md) | Reading & media | API | `reading_session`, `book_finished` → `MediaStats` | Daily at 03:10 |
@@ -89,6 +90,7 @@ Tributary only writes; dashboards read InfluxDB. [grafana/](grafana/) ships:
 | [Habits & recovery](grafana/dashboards/habits-recovery.json) | `SleepStats`: `journal`, `sleep_session`, `GarminStats`: `SleepSummary` | a daily journal's answers from any source, and the night after a yes against the night after a no: recovery, HRV, time asleep, each from its picker |
 | [Strength training](grafana/dashboards/strength-training.json) | `GarminStats`: `StrengthExerciseSet`, `StrengthHRZones` | volume, sets and reps, estimated one-rep max and records per exercise, time under tension, heart-rate zones |
 | [Running](grafana/dashboards/running.json) | `GarminStats`: `ActivitySummary`, `ActivityLap`, `ActivityGPS`, `VO2_Max`, `SleepSummary`, `SleepStats`: `sleep_session`, `FitbitHealthStats`: `RestingHR`, `HRV` | distance and regularity, easy against hard running, every 10 km compared on its best 10 km with the running dynamics, pace, heart rate and heartbeats per km run by run, VO₂ max, running form, the resting heart rate and HRV of the same weeks |
+| [Running footpath](grafana/dashboards/running-footpath.json) | `BodyStats`: `footpath_loop`, `footpath_step` | a Stryd Duo's Footpath: a run's typical stride seen from the side, from behind and from above against another run, and foot lift, back swing, forward reach, touchdown and sideways travel over time, at the paces you pick |
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/grafana-reading-dark.png">
