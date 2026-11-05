@@ -16,6 +16,11 @@ window over the laps of each activity (ActivityID is a tag, so each activity is
 its own series), kept when the window covers 10 km to within 50 m. It needs the
 watch's 1 km auto-lap; a run with manual laps, or imported without its laps,
 lists its totals without a best 10 km.
+
+Running power and the Stryd form metrics come from a Stryd footpod, recorded
+by its Connect IQ data field into the watch's FIT file, and stored by
+garmin-grafana when its FETCH_SELECTION has `stryd`: StrydMetrics (one point
+per run), Stryd_Lap_Power on the laps. Without them those panels stay empty.
 """
 
 import json
@@ -48,6 +53,20 @@ RUNS = f'FROM "ActivitySummary" WHERE {RUN}'
 # 2:45 into the best 10 km.
 LAPS = 'FROM "ActivityLap" WHERE "ActivityName" =~ /run/'
 GPS = 'FROM "ActivityGPS" WHERE "ActivityName" =~ /run/'
+# Stryd's figures for a run (1 km or more, as everywhere here), read once per activity (a run retyped in Garmin
+# Connect keeps a copy under its old ActivitySelector, as its summary does).
+STRYD_FIELDS = ('max("Avg_Power") AS "power", "Critical_Power" AS "cp", "Weight" AS "kg", "Avg_Form_Power" AS "form", '
+                '"Avg_Leg_Spring_Stiffness" AS "lss", "Avg_Impact_Loading_Rate" AS "ilr", '
+                '"Avg_Leg_Spring_Stiffness_Balance" AS "lss_balance", "Avg_Impact_Loading_Rate_Balance" AS "ilr_balance", '
+                '"Avg_Vertical_Oscillation_Balance" AS "vo_balance"')
+
+
+def stryd_runs(times="$timeFilter"):
+    return (f'FROM (SELECT {STRYD_FIELDS} FROM "StrydMetrics" WHERE "ActivityName" =~ /run/ AND "Distance" >= 1000 '
+            f'AND {times} GROUP BY "ActivityID")')
+
+
+TREND_TIMES = "time >= ${__from}ms - 365d AND time <= ${__to}ms"
 WEEK = "GROUP BY time(1w, -3d) fill(0) tz('$tz')"
 DAY = "GROUP BY time(1d) fill(none) tz('$tz')"
 TEN_K = 10
@@ -71,6 +90,7 @@ def best(km, extra_window_fields=True):
             f'moving_average("Avg_Vertical_Ratio", {n}) AS "vr"',
             f'moving_average("Ascent", {n}) * {n} AS "ascent"',
             f'moving_average("Avg_Temperature", {n}) AS "temp"',
+            f'moving_average("Stryd_Lap_Power", {n}) AS "power"',
         ]
     inner = f'SELECT {", ".join(fields)} {LAPS} AND $timeFilter GROUP BY "ActivityID", "ActivitySelector"'
     window = f'"d" >= {km * 1000 - 50} AND "d" <= {km * 1000 + 50}'
@@ -83,7 +103,7 @@ def best_rows(select):
     return f'SELECT {select} FROM ({inner}) WHERE {window} GROUP BY "ActivityID"'
 
 
-BEST_SELECT = 'min("t") AS "best", "hr", "step", "gct", "vo", "vr", "ascent", "temp"'
+BEST_SELECT = 'min("t") AS "best", "hr", "step", "gct", "vo", "vr", "ascent", "temp", "power"'
 
 
 _ids = iter(range(1, 1000))
@@ -360,7 +380,7 @@ def build():
         target(best_rows('min("t") AS "Best 10 km", "t" / 10 AS "Pace", "hr" AS "Heart rate", '
                          '"hr" * "t" / 600 AS "Beats / km", "step" AS "Step length", "gct" AS "Ground contact", '
                          '"vo" AS "Vertical oscillation", "vr" AS "Vertical ratio", "ascent" AS "Ascent", '
-                         '"temp" AS "Temperature"'), fmt="table", ref="B"),
+                         '"temp" AS "Temperature", "power" AS "Power"'), fmt="table", ref="B"),
         target(f'SELECT {CADENCE} AS "Cadence" {GPS} AND "Cadence" > 0 AND $timeFilter GROUP BY "ActivityID"',
                fmt="table", ref="C"),
     ]
@@ -368,14 +388,14 @@ def build():
              "Heart rate": ("suffix: bpm", 0), "Beats / km": ("none", 0), "Step length": ("suffix: m", 2),
              "Ground contact": ("ms", 0), "Vertical oscillation": ("lengthcm", 1), "Vertical ratio": ("percent", 1),
              "Ascent": ("lengthm", 0), "Temperature": ("celsius", 0), "Cadence": ("suffix: spm", 0),
-             "Aerobic TE": ("none", 1), "Load": ("none", 0)}
-    order = ["Time ActivitySummary", "Name", "Distance", "Duration", "Best 10 km", "Pace", "Heart rate", "Beats / km", "Cadence",
-             "Step length", "Ground contact", "Vertical oscillation", "Vertical ratio", "Ascent", "Temperature",
+             "Aerobic TE": ("none", 1), "Load": ("none", 0), "Power": ("watt", 0)}
+    order = ["Time ActivitySummary", "Name", "Distance", "Duration", "Best 10 km", "Pace", "Heart rate", "Beats / km", "Power",
+             "Cadence", "Step length", "Ground contact", "Vertical oscillation", "Vertical ratio", "Ascent", "Temperature",
              "Aerobic TE", "Load"]
     panels.append({
         "type": "table", "title": "Every 10 km, on its best 10 km", "id": next(_ids), "description": ten_k_desc +
         " Columns from Best 10 km to Temperature are the best 10 km's; Distance, Time, Cadence, training effect "
-        "and load are the whole run's. Click a header to sort.",
+        "and load are the whole run's. Power is a Stryd footpod's, when the run had one. Click a header to sort.",
         "datasource": GARMIN, "gridPos": pos(0, y, 24, 12),
         "fieldConfig": {"defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}}},
                         "overrides": [{"matcher": {"id": "byName", "options": k},
@@ -479,6 +499,61 @@ def build():
             unit, pos(i * 8, y, 8, 8), decimals=dec, legend=False))
     y += 8
 
+    # ----------------------------------------------------------- Stryd power
+    panels.append(row("Running power and form (Stryd)", y)); y += 1
+    stryd = (" From a Stryd footpod, through its Connect IQ data field (garmin-grafana's `stryd` option); runs "
+             "without one have none.")
+    runs = 10
+
+    def stryd_panel(title, desc, expr, alias, unit, p, decimals, extra_targets=(), overrides=(), thresholds=None,
+                    where=""):
+        """One point per run, and the moving average of the last `runs` runs."""
+        targets = [target(f'SELECT {expr} AS "v" {stryd_runs()}{where}', alias),
+                   target(f'SELECT moving_average("v", {runs}) AS "trend" FROM (SELECT {expr} AS "v" '
+                          f'{stryd_runs(TREND_TIMES)}{where})', f"{runs}-run average"),
+                   *extra_targets]
+        return timeseries(title, desc + stryd, targets, unit, p, decimals=decimals, thresholds=thresholds,
+                          overrides=[as_line(f"{runs}-run average"), *overrides])
+
+    panels.append(stryd_panel(
+        "Power and Critical Power",
+        "Each run's average power (seconds standing still left out), the average of the last 10 runs, and the "
+        "Critical Power Stryd had for the runner on the day: the power that can be held for about an hour. A "
+        "Critical Power rising over months is fitness improving.",
+        '"power"', "power", "watt", pos(0, y, 12, 8), 0,
+        extra_targets=[target(f'SELECT "cp" {stryd_runs()} WHERE "cp" > 0', "Critical Power")],
+        overrides=[as_line("Critical Power"), colour("Critical Power", "text"),
+                   {"matcher": {"id": "byName", "options": "Critical Power"},
+                    "properties": [{"id": "custom.lineInterpolation", "value": "stepAfter"}]}]))
+    panels.append(stryd_panel(
+        "Power per kilo",
+        "Each run's average power over the weight set in Stryd at the time: watts per kilo let a run be "
+        "compared across a change of weight.",
+        '"power" / "kg"', "W/kg", "suffix: W/kg", pos(12, y, 12, 8), 2, where=' WHERE "kg" > 0'))
+    y += 8
+    for i, (title, desc, expr, alias, unit, dec) in enumerate([
+        ("Form power ratio", "Form power (what goes into lifting the body at each step, not into moving forward) "
+         "over the run's power. Lower is more economical.", '"form" / "power"', "form power ratio", "percentunit", 1),
+        ("Leg spring stiffness", "How much the leg resists compressing at landing, in kilonewtons per metre: a "
+         "stiffer spring returns more of each landing's energy.", '"lss"', "kN/m", "suffix: kN/m", 1),
+        ("Impact loading rate", "How fast the foot's landing loads the body, in body weights per second. A high "
+         "or rising rate is linked to running injuries.", '"ilr"', "BW/s", "suffix: BW/s", 0),
+    ]):
+        panels.append(stryd_panel(title, desc + " Each run's average.", expr, alias, unit, pos(i * 8, y, 8, 8), dec))
+    y += 8
+    panels.append(timeseries(
+        "Left/right balance",
+        "Each run's average balance between the legs of leg spring stiffness, impact loading rate and vertical "
+        "oscillation, in % (the dashed line is 50%, both legs alike). A balance drifting away from 50% is one leg "
+        "working differently from the other, a thing to watch around an injury." + stryd,
+        [target(f'SELECT "lss_balance" {stryd_runs()} WHERE "lss_balance" > 0', "leg spring stiffness"),
+         target(f'SELECT "ilr_balance" {stryd_runs()} WHERE "ilr_balance" > 0', "impact loading rate"),
+         target(f'SELECT "vo_balance" {stryd_runs()} WHERE "vo_balance" > 0', "vertical oscillation")],
+        "percent", pos(0, y, 24, 8), decimals=1, thresholds=[50],
+        overrides=[colour("leg spring stiffness", ORANGE), colour("impact loading rate", BLUE),
+                   colour("vertical oscillation", AQUA)]))
+    y += 8
+
     # ---------------------------------------------------------------- recovery
     panels.append(row("Recovery around the running", y)); y += 1
     recovery = ("Weekly averages, under the running of the same weeks: a resting heart rate climbing, or an HRV "
@@ -520,14 +595,15 @@ def build():
     log_units = {"Distance": ("lengthkm", 2), "Duration": (DURATION, 0), "Pace": (PACE, 1), "Heart rate": ("suffix: bpm", 0),
                  "Max heart rate": ("suffix: bpm", 0), "Beats / km": ("none", 0), "Cadence": ("suffix: spm", 0),
                  "Ascent": ("lengthm", 0), "Aerobic TE": ("none", 1), "Anaerobic TE": ("none", 1),
-                 "Load": ("none", 0), "Calories": ("suffix: kcal", 0)}
+                 "Load": ("none", 0), "Calories": ("suffix: kcal", 0), "Power": ("watt", 0)}
     log_order = ["Time ActivitySummary", "Name", "Type", "Distance", "Duration", "Pace", "Heart rate", "Max heart rate", "Beats / km",
-                 "Cadence", "Ascent", "Aerobic TE", "Anaerobic TE", "Load", "Calories"]
+                 "Power", "Cadence", "Ascent", "Aerobic TE", "Anaerobic TE", "Load", "Calories"]
     panels.append({
         "type": "table", "title": "Runs", "id": next(_ids),
         "description": "Every run in the time range, latest first. Pace is the moving pace; Ascent is the watch's elevation gain "
                        "(the older imports have none); "
-                       "Cadence is the mean over the seconds moving. Click a header to sort.",
+                       "Cadence is the mean over the seconds moving; Power is a Stryd footpod's average, when the run had one. "
+                       "Click a header to sort.",
         "datasource": GARMIN, "gridPos": pos(0, y, 24, 12),
         "fieldConfig": {"defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}}},
                         "overrides": [{"matcher": {"id": "byName", "options": k},
@@ -546,13 +622,15 @@ def build():
                    f'GROUP BY "ActivityID"', fmt="table", ref="A"),
             target(f'SELECT {CADENCE} AS "Cadence" {GPS} AND "Cadence" > 0 AND $timeFilter GROUP BY "ActivityID"',
                    fmt="table", ref="B"),
+            target('SELECT max("Avg_Power") AS "Power" FROM "StrydMetrics" WHERE "ActivityName" =~ /run/ AND $timeFilter '
+                   'GROUP BY "ActivityID"', fmt="table", ref="C"),
         ]),
         "transformations": [
             {"id": "joinByField", "options": {"byField": "ActivityID", "mode": "outerTabular"}},
             {"id": "filterByValue", "options": {"type": "exclude", "match": "any", "filters": [
                 {"fieldName": "Distance", "config": {"id": "isNull", "options": {}}}]}},
             {"id": "organize", "options": {
-                "excludeByName": {"ActivityID": True, "Time ActivityGPS": True},
+                "excludeByName": {"ActivityID": True, "Time ActivityGPS": True, "Time StrydMetrics": True},
                 "indexByName": {k: i for i, k in enumerate(log_order)},
                 "renameByName": {"Time ActivitySummary": "Date"}}},
         ]})
@@ -563,7 +641,8 @@ def build():
         "description": "A Garmin watch's runs, as garmin-grafana writes them (ActivitySummary, ActivityLap, "
                        "ActivityGPS, VO2_Max): volume and regularity, intensity, every 10 km compared on its best "
                        "10 km with the running dynamics, pace, heart rate and fitness run by run, running form, "
-                       "and the resting heart rate and HRV of the same weeks.",
+                       "running power and form from a Stryd footpod (StrydMetrics), and the resting heart rate and "
+                       "HRV of the same weeks.",
         "tags": ["tributary", "running"],
         "editable": True,
         "graphTooltip": 1,

@@ -1,7 +1,7 @@
 {
   "uid": "tributary-running",
   "title": "Running",
-  "description": "A Garmin watch's runs, as garmin-grafana writes them (ActivitySummary, ActivityLap, ActivityGPS, VO2_Max): volume and regularity, intensity, every 10 km compared on its best 10 km with the running dynamics, pace, heart rate and fitness run by run, running form, and the resting heart rate and HRV of the same weeks.",
+  "description": "A Garmin watch's runs, as garmin-grafana writes them (ActivitySummary, ActivityLap, ActivityGPS, VO2_Max): volume and regularity, intensity, every 10 km compared on its best 10 km with the running dynamics, pace, heart rate and fitness run by run, running form, running power and form from a Stryd footpod (StrydMetrics), and the resting heart rate and HRV of the same weeks.",
   "tags": [
     "tributary",
     "running"
@@ -675,7 +675,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT min(\"best\") FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")"
+          "query": "SELECT min(\"best\") FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")"
         }
       ]
     },
@@ -2268,7 +2268,7 @@
       "type": "table",
       "title": "Every 10 km, on its best 10 km",
       "id": 31,
-      "description": "Every run of 10 km or more, compared on its best 10 km: its fastest 10 consecutive 1 km laps (the watch's auto-lap), and what the laps measured over the same 10 km. A run without 1 km laps (manual laps, an import without its laps) shows its totals only. Columns from Best 10 km to Temperature are the best 10 km's; Distance, Time, Cadence, training effect and load are the whole run's. Click a header to sort.",
+      "description": "Every run of 10 km or more, compared on its best 10 km: its fastest 10 consecutive 1 km laps (the watch's auto-lap), and what the laps measured over the same 10 km. A run without 1 km laps (manual laps, an import without its laps) shows its totals only. Columns from Best 10 km to Temperature are the best 10 km's; Distance, Time, Cadence, training effect and load are the whole run's. Power is a Stryd footpod's, when the run had one. Click a header to sort.",
       "datasource": {
         "type": "influxdb",
         "uid": "${garmin}"
@@ -2532,6 +2532,22 @@
           {
             "matcher": {
               "id": "byName",
+              "options": "Power"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "watt"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
               "options": "Date"
             },
             "properties": [
@@ -2579,7 +2595,7 @@
           },
           "rawQuery": true,
           "resultFormat": "table",
-          "query": "SELECT min(\"t\") AS \"Best 10 km\", \"t\" / 10 AS \"Pace\", \"hr\" AS \"Heart rate\", \"hr\" * \"t\" / 600 AS \"Beats / km\", \"step\" AS \"Step length\", \"gct\" AS \"Ground contact\", \"vo\" AS \"Vertical oscillation\", \"vr\" AS \"Vertical ratio\", \"ascent\" AS \"Ascent\", \"temp\" AS \"Temperature\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\""
+          "query": "SELECT min(\"t\") AS \"Best 10 km\", \"t\" / 10 AS \"Pace\", \"hr\" AS \"Heart rate\", \"hr\" * \"t\" / 600 AS \"Beats / km\", \"step\" AS \"Step length\", \"gct\" AS \"Ground contact\", \"vo\" AS \"Vertical oscillation\", \"vr\" AS \"Vertical ratio\", \"ascent\" AS \"Ascent\", \"temp\" AS \"Temperature\", \"power\" AS \"Power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\""
         },
         {
           "refId": "C",
@@ -2633,15 +2649,16 @@
               "Pace": 5,
               "Heart rate": 6,
               "Beats / km": 7,
-              "Cadence": 8,
-              "Step length": 9,
-              "Ground contact": 10,
-              "Vertical oscillation": 11,
-              "Vertical ratio": 12,
-              "Ascent": 13,
-              "Temperature": 14,
-              "Aerobic TE": 15,
-              "Load": 16
+              "Power": 8,
+              "Cadence": 9,
+              "Step length": 10,
+              "Ground contact": 11,
+              "Vertical oscillation": 12,
+              "Vertical ratio": 13,
+              "Ascent": 14,
+              "Temperature": 15,
+              "Aerobic TE": 16,
+              "Load": 17
             },
             "renameByName": {
               "Time ActivitySummary": "Date"
@@ -2735,7 +2752,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT \"best\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "query": "SELECT \"best\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
           "alias": "best 10 km"
         },
         {
@@ -2746,7 +2763,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"best\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"best\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
           "alias": "5-run average"
         }
       ]
@@ -2836,7 +2853,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT \"hr\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "query": "SELECT \"hr\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
           "alias": "best 10 km"
         },
         {
@@ -2847,7 +2864,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"hr\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"hr\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
           "alias": "5-run average"
         }
       ]
@@ -2937,7 +2954,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT \"hr\" * \"best\" / 600 AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "query": "SELECT \"hr\" * \"best\" / 600 AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
           "alias": "best 10 km"
         },
         {
@@ -2948,7 +2965,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"hr\" * \"best\" / 600 AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"hr\" * \"best\" / 600 AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
           "alias": "5-run average"
         }
       ]
@@ -3038,7 +3055,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT \"step\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "query": "SELECT \"step\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
           "alias": "best 10 km"
         },
         {
@@ -3049,7 +3066,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"step\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"step\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
           "alias": "5-run average"
         }
       ]
@@ -3139,7 +3156,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT 600000 / (\"best\" * \"step\") AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "query": "SELECT 600000 / (\"best\" * \"step\") AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
           "alias": "best 10 km"
         },
         {
@@ -3150,7 +3167,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT 600000 / (\"best\" * \"step\") AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT 600000 / (\"best\" * \"step\") AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
           "alias": "5-run average"
         }
       ]
@@ -3240,7 +3257,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT \"gct\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "query": "SELECT \"gct\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
           "alias": "best 10 km"
         },
         {
@@ -3251,7 +3268,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"gct\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"gct\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
           "alias": "5-run average"
         }
       ]
@@ -3341,7 +3358,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT \"vo\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "query": "SELECT \"vo\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
           "alias": "best 10 km"
         },
         {
@@ -3352,7 +3369,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"vo\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"vo\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
           "alias": "5-run average"
         }
       ]
@@ -3442,7 +3459,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT \"vr\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "query": "SELECT \"vr\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
           "alias": "best 10 km"
         },
         {
@@ -3453,7 +3470,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"vr\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"vr\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
           "alias": "5-run average"
         }
       ]
@@ -3543,7 +3560,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT \"temp\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
+          "query": "SELECT \"temp\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\")",
           "alias": "best 10 km"
         },
         {
@@ -3554,7 +3571,7 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"temp\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
+          "query": "SELECT moving_average(\"v\", 5) AS \"trend\" FROM (SELECT \"temp\" AS \"v\" FROM (SELECT min(\"t\") AS \"best\", \"hr\", \"step\", \"gct\", \"vo\", \"vr\", \"ascent\", \"temp\", \"power\" FROM (SELECT moving_average(\"Elapsed_Time\", 10) / moving_average(\"Distance\", 10) * 10000 AS \"t\", moving_average(\"Distance\", 10) * 10 AS \"d\", moving_average(\"Avg_HR\", 10) AS \"hr\", moving_average(\"Avg_Step_Length\", 10) / 1000 AS \"step\", moving_average(\"Avg_Stance_Time\", 10) AS \"gct\", moving_average(\"Avg_Vertical_Oscillation\", 10) / 10 AS \"vo\", moving_average(\"Avg_Vertical_Ratio\", 10) AS \"vr\", moving_average(\"Ascent\", 10) * 10 AS \"ascent\", moving_average(\"Avg_Temperature\", 10) AS \"temp\", moving_average(\"Stryd_Lap_Power\", 10) AS \"power\" FROM \"ActivityLap\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\", \"ActivitySelector\") WHERE \"d\" >= 9950 AND \"d\" <= 10050 GROUP BY \"ActivityID\"))",
           "alias": "5-run average"
         }
       ]
@@ -4304,7 +4321,7 @@
     },
     {
       "type": "row",
-      "title": "Recovery around the running",
+      "title": "Running power and form (Stryd)",
       "id": 52,
       "collapsed": false,
       "gridPos": {
@@ -4317,9 +4334,9 @@
     },
     {
       "type": "timeseries",
-      "title": "Distance per week",
+      "title": "Power and Critical Power",
       "id": 53,
-      "description": "Kilometres run each week, to read the two graphs below against.",
+      "description": "Each run's average power (seconds standing still left out), the average of the last 10 runs, and the Critical Power Stryd had for the runner on the day: the power that can be held for about an hour. A Critical Power rising over months is fitness improving. From a Stryd footpod, through its Connect IQ data field (garmin-grafana's `stryd` option); runs without one have none.",
       "datasource": {
         "type": "influxdb",
         "uid": "${garmin}"
@@ -4327,6 +4344,732 @@
       "gridPos": {
         "x": 0,
         "y": 115,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "10-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Critical Power"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Critical Power"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Critical Power"
+            },
+            "properties": [
+              {
+                "id": "custom.lineInterpolation",
+                "value": "stepAfter"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"power\" AS \"v\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\")",
+          "alias": "power"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 10) AS \"trend\" FROM (SELECT \"power\" AS \"v\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND time >= ${__from}ms - 365d AND time <= ${__to}ms GROUP BY \"ActivityID\"))",
+          "alias": "10-run average"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"cp\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE \"cp\" > 0",
+          "alias": "Critical Power"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Power per kilo",
+      "id": 54,
+      "description": "Each run's average power over the weight set in Stryd at the time: watts per kilo let a run be compared across a change of weight. From a Stryd footpod, through its Connect IQ data field (garmin-grafana's `stryd` option); runs without one have none.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 115,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: W/kg",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 2
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "10-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"power\" / \"kg\" AS \"v\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE \"kg\" > 0",
+          "alias": "W/kg"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 10) AS \"trend\" FROM (SELECT \"power\" / \"kg\" AS \"v\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND time >= ${__from}ms - 365d AND time <= ${__to}ms GROUP BY \"ActivityID\") WHERE \"kg\" > 0)",
+          "alias": "10-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Form power ratio",
+      "id": 55,
+      "description": "Form power (what goes into lifting the body at each step, not into moving forward) over the run's power. Lower is more economical. Each run's average. From a Stryd footpod, through its Connect IQ data field (garmin-grafana's `stryd` option); runs without one have none.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 123,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "10-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"form\" / \"power\" AS \"v\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\")",
+          "alias": "form power ratio"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 10) AS \"trend\" FROM (SELECT \"form\" / \"power\" AS \"v\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND time >= ${__from}ms - 365d AND time <= ${__to}ms GROUP BY \"ActivityID\"))",
+          "alias": "10-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Leg spring stiffness",
+      "id": 56,
+      "description": "How much the leg resists compressing at landing, in kilonewtons per metre: a stiffer spring returns more of each landing's energy. Each run's average. From a Stryd footpod, through its Connect IQ data field (garmin-grafana's `stryd` option); runs without one have none.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 123,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: kN/m",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "10-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"lss\" AS \"v\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\")",
+          "alias": "kN/m"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 10) AS \"trend\" FROM (SELECT \"lss\" AS \"v\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND time >= ${__from}ms - 365d AND time <= ${__to}ms GROUP BY \"ActivityID\"))",
+          "alias": "10-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Impact loading rate",
+      "id": 57,
+      "description": "How fast the foot's landing loads the body, in body weights per second. A high or rising rate is linked to running injuries. Each run's average. From a Stryd footpod, through its Connect IQ data field (garmin-grafana's `stryd` option); runs without one have none.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 123,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: BW/s",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "10-run average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "never"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"ilr\" AS \"v\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\")",
+          "alias": "BW/s"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(\"v\", 10) AS \"trend\" FROM (SELECT \"ilr\" AS \"v\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND time >= ${__from}ms - 365d AND time <= ${__to}ms GROUP BY \"ActivityID\"))",
+          "alias": "10-run average"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Left/right balance",
+      "id": 58,
+      "description": "Each run's average balance between the legs of leg spring stiffness, impact loading rate and vertical oscillation, in % (the dashed line is 50%, both legs alike). A balance drifting away from 50% is one leg working differently from the other, a thing to watch around an injury. From a Stryd footpod, through its Connect IQ data field (garmin-grafana's `stryd` option); runs without one have none.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 131,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "drawStyle": "points",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "always",
+            "pointSize": 6,
+            "lineInterpolation": "linear",
+            "spanNulls": true,
+            "axisBorderShow": false,
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "dashed"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d95926"
+          },
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "text",
+                "value": 50
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "leg spring stiffness"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "impact loading rate"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "vertical oscillation"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"lss_balance\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE \"lss_balance\" > 0",
+          "alias": "leg spring stiffness"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"ilr_balance\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE \"ilr_balance\" > 0",
+          "alias": "impact loading rate"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT \"vo_balance\" FROM (SELECT max(\"Avg_Power\") AS \"power\", \"Critical_Power\" AS \"cp\", \"Weight\" AS \"kg\", \"Avg_Form_Power\" AS \"form\", \"Avg_Leg_Spring_Stiffness\" AS \"lss\", \"Avg_Impact_Loading_Rate\" AS \"ilr\", \"Avg_Leg_Spring_Stiffness_Balance\" AS \"lss_balance\", \"Avg_Impact_Loading_Rate_Balance\" AS \"ilr_balance\", \"Avg_Vertical_Oscillation_Balance\" AS \"vo_balance\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND \"Distance\" >= 1000 AND $timeFilter GROUP BY \"ActivityID\") WHERE \"vo_balance\" > 0",
+          "alias": "vertical oscillation"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Recovery around the running",
+      "id": 59,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 139
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Distance per week",
+      "id": 60,
+      "description": "Kilometres run each week, to read the two graphs below against.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${garmin}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 140,
         "w": 24,
         "h": 6
       },
@@ -4388,7 +5131,7 @@
     {
       "type": "timeseries",
       "title": "Resting heart rate per week",
-      "id": 54,
+      "id": 61,
       "description": "Weekly averages, under the running of the same weeks: a resting heart rate climbing, or an HRV falling, for more than a few days after a heavy week is the body asking for rest. Read from the source picked in *Resting HR from*.",
       "datasource": {
         "type": "datasource",
@@ -4396,7 +5139,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 121,
+        "y": 146,
         "w": 24,
         "h": 7
       },
@@ -4539,7 +5282,7 @@
     {
       "type": "timeseries",
       "title": "HRV per week",
-      "id": 55,
+      "id": 62,
       "description": "Weekly averages, under the running of the same weeks: a resting heart rate climbing, or an HRV falling, for more than a few days after a heavy week is the body asking for rest. Read from the source picked in *HRV from*.",
       "datasource": {
         "type": "datasource",
@@ -4547,7 +5290,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 128,
+        "y": 153,
         "w": 24,
         "h": 7
       },
@@ -4690,28 +5433,28 @@
     {
       "type": "row",
       "title": "Every run",
-      "id": 56,
+      "id": 63,
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 135
+        "y": 160
       },
       "panels": []
     },
     {
       "type": "table",
       "title": "Runs",
-      "id": 57,
-      "description": "Every run in the time range, latest first. Pace is the moving pace; Ascent is the watch's elevation gain (the older imports have none); Cadence is the mean over the seconds moving. Click a header to sort.",
+      "id": 64,
+      "description": "Every run in the time range, latest first. Pace is the moving pace; Ascent is the watch's elevation gain (the older imports have none); Cadence is the mean over the seconds moving; Power is a Stryd footpod's average, when the run had one. Click a header to sort.",
       "datasource": {
         "type": "influxdb",
         "uid": "${garmin}"
       },
       "gridPos": {
         "x": 0,
-        "y": 136,
+        "y": 161,
         "w": 24,
         "h": 12
       },
@@ -4920,6 +5663,22 @@
           {
             "matcher": {
               "id": "byName",
+              "options": "Power"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "watt"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
               "options": "Date"
             },
             "properties": [
@@ -4968,6 +5727,16 @@
           "rawQuery": true,
           "resultFormat": "table",
           "query": "SELECT mean(\"Cadence\") * 2 + mean(\"Fractional_Cadence\") * 2 AS \"Cadence\" FROM \"ActivityGPS\" WHERE \"ActivityName\" =~ /run/ AND \"Cadence\" > 0 AND $timeFilter GROUP BY \"ActivityID\""
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${garmin}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"Avg_Power\") AS \"Power\" FROM \"StrydMetrics\" WHERE \"ActivityName\" =~ /run/ AND $timeFilter GROUP BY \"ActivityID\""
         }
       ],
       "transformations": [
@@ -4999,7 +5768,8 @@
           "options": {
             "excludeByName": {
               "ActivityID": true,
-              "Time ActivityGPS": true
+              "Time ActivityGPS": true,
+              "Time StrydMetrics": true
             },
             "indexByName": {
               "Time ActivitySummary": 0,
@@ -5011,12 +5781,13 @@
               "Heart rate": 6,
               "Max heart rate": 7,
               "Beats / km": 8,
-              "Cadence": 9,
-              "Ascent": 10,
-              "Aerobic TE": 11,
-              "Anaerobic TE": 12,
-              "Load": 13,
-              "Calories": 14
+              "Power": 9,
+              "Cadence": 10,
+              "Ascent": 11,
+              "Aerobic TE": 12,
+              "Anaerobic TE": 13,
+              "Load": 14,
+              "Calories": 15
             },
             "renameByName": {
               "Time ActivitySummary": "Date"
