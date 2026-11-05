@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.28.0](https://github.com/vchatela-org/tributary/compare/v0.27.1...v0.28.0) (2026-11-05)
+
+
+### Features
+
+* **stryd:** import a Stryd Duo's Footpath and draw it in Grafana ([7cb4bd7](https://github.com/vchatela-org/tributary/commit/7cb4bd7c1a28a0c469a5025da2ec8b23ce0e6d80))
+* **stryd:** import a Stryd Duo's Footpath and draw it in Grafana ([#110](https://github.com/vchatela-org/tributary/issues/110)) ([3363f39](https://github.com/vchatela-org/tributary/commit/3363f39530b4ef9219b7e19e278e27af720fe20d))
+
 ## [0.27.1](https://github.com/vchatela-org/tributary/compare/v0.27.0...v0.27.1) (2026-11-05)
 
 
