@@ -100,6 +100,8 @@ time*.
 | `nutrition` | `source`, `user`, `meal` | `energy_kcal` (float), `fat_g` (float), `carbs_g` (float), `protein_g` (float), `saturated_fat_g` (float), `polyunsaturated_fat_g` (float), `monounsaturated_fat_g` (float), `trans_fat_g` (float), `fiber_g` (float), `sugar_g` (float), `cholesterol_mg` (float), `sodium_mg` (float), `potassium_mg` (float) | Tributary: `myfitnesspal` |
 | `exercise` | `source`, `user`, `category`, `sport` | `activity` (str), `energy_kcal` (float), `duration_s` (int), `strain` (float), `avg_hr` (float), `max_hr` (float), `distance_m` (float), `altitude_gain_m` (float), `altitude_change_m` (float), `percent_recorded` (float), `zone0_s` (int), `zone1_s` (int), `zone2_s` (int), `zone3_s` (int), `zone4_s` (int), `zone5_s` (int), `zone1_pct` (float), `zone2_pct` (float), `zone3_pct` (float), `zone4_pct` (float), `zone5_pct` (float), `gps_enabled` (int) | Tributary: `myfitnesspal` (the first three fields), `whoop` |
 | `daily_activity` | `source`, `user` | `strain` (float), `energy_kcal` (float), `avg_hr` (float), `max_hr` (float), `steps` (int), `duration_s` (int) | Tributary: `whoop` |
+| `footpath_step` | `source`, `user`, `side`, `pace` | `lift_cm` (float), `back_cm` (float), `reach_cm` (float), `width_cm` (float), `touchdown_cm` (float), `speed_mps` (float), `power_w` (float), `incline` (float) | Tributary: `stryd` |
+| `footpath_loop` | `source`, `user`, `run`, `side` | `phase` (int), `x_cm` (float), `y_cm` (float), `z_cm` (float), `steps` (int), `speed_mps` (float) | Tributary: `stryd` |
 
 - `body_composition`: one point per weigh-in, at its time, with a field
   for each metric the scale measured (none for one it didn't: never a
@@ -167,6 +169,18 @@ time*.
   the evening before the day it is named after). `energy_kcal` is the
   energy burned (WHOOP's kilojoules / 4.184), `steps` WHOOP's `step_count`,
   `duration_s` absent while the cycle is still open (today's).
+- `footpath_step`: one point per step a Stryd Duo sampled (one every 2 to 7
+  seconds per foot), at its second, running steps only (2 m/s or faster).
+  The `_cm` fields are read on the foot's path through the stride, with the
+  forward motion taken out, from mid-stance: its highest point, how far back
+  and how far ahead it travels, its sideways range, and where it touches
+  down. `side` is `left` or `right`; `pace` the 15 s/km band of the step's
+  speed, by its lower bound (`4:30` is 4:30 to 4:44 per km). Details in
+  [the connector's page](connectors/stryd.md).
+- `footpath_loop`: a run's typical stride per foot, 64 points of the median
+  path (x forward, y sideways, z up, in cm), one a second from the run's
+  start, `phase` its index. `run` is the run's local start
+  (`2026-03-01 08:15`), the key a dashboard picks a run by.
 
 ### `SleepStats`
 

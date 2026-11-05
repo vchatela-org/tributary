@@ -39,7 +39,9 @@ DATABASE = {**_written_elsewhere(), **DECLARED}
 SOURCES = {c.key for c in connectors.all_connectors()} | {"kindle", "audible", "garmin", "whoop", "fitbit"}
 # Tag values every user has: the schema's own vocabularies, nobody's data.
 VOCABULARY = {"p1", "p2", "p3", "p4", "taken", "missed", "skipped", "unlogged",
-              "breakfast", "lunch", "dinner", "snacks", "audiobook", "ebook", "podcast"}
+              "breakfast", "lunch", "dinner", "snacks", "audiobook", "ebook", "podcast",
+              # footpath_step's feet
+              "left", "right"}
 # Built-in Grafana datasources a panel may use besides the dashboard's own.
 BUILT_IN = {"-- Grafana --", "-- Mixed --", "__expr__"}
 
@@ -369,6 +371,17 @@ def test_running_is_what_its_builder_writes():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.build() == _load(RUNNING), "run python3 scripts/build-running-dashboard.py"
+
+
+FOOTPATH = ROOT / "grafana" / "dashboards" / "running-footpath.json"
+
+
+def test_running_footpath_is_what_its_builder_writes():
+    """scripts/build-running-footpath-dashboard.py writes every query; the JSON is its output."""
+    spec = importlib.util.spec_from_file_location("footpath", ROOT / "scripts" / "build-running-footpath-dashboard.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.build() == _load(FOOTPATH), "run python3 scripts/build-running-footpath-dashboard.py"
 
 
 def test_a_healthspan_colour_says_years_never_a_source():
