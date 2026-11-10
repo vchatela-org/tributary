@@ -143,7 +143,11 @@ def test_nothing_is_saved_in_the_variables(dashboard):
     a medication...): the lists fill from the reader's own series. The time zone
     is the one value allowed, at TRIBUTARY_TZ's default."""
     for v in _variables(dashboard):
-        assert v["type"] in ("datasource", "query", "textbox", "custom"), (dashboard["uid"], v["name"], v["type"])
+        assert v["type"] in ("datasource", "query", "textbox", "custom", "adhoc"), (dashboard["uid"], v["name"], v["type"])
+        if v["type"] == "adhoc":
+            # ad hoc filters: none saved, a deployment adds its own
+            assert not v.get("filters") and not v.get("baseFilters"), (dashboard["uid"], v["name"])
+            continue
         current = v.get("current") or {}
         if v["type"] == "custom":
             # a source picker: the dashboard's own lists of sources, plus a source
@@ -428,6 +432,21 @@ def test_phone_is_what_its_builder_writes():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.build() == _load(PHONE), "run python3 scripts/build-phone-dashboard.py"
+
+
+def test_ad_hoc_filters_find_their_tags_beside_every_time_filter(dashboard):
+    """Grafana writes an ad hoc filter ("app" != 'X') beside a query's $timeFilter. A
+    $timeFilter outside a subquery reads the subquery's series: each must keep its
+    tags (GROUP BY *), or the filter never matches (`!=` keeps everything, `=`
+    nothing)."""
+    if not any(v["type"] == "adhoc" for v in _variables(dashboard)):
+        return
+    for panel, target in _queries(dashboard):
+        q = target["query"]
+        if "FROM (" not in q:
+            continue
+        for inner in re.findall(r"\(SELECT (?:(?!\(SELECT).)*?\)(?=,|\s+WHERE|\s*$)", q):
+            assert "GROUP BY *" in inner, (dashboard["uid"], panel and panel.get("title"), inner)
 
 
 def test_links_stay_among_tributary_s_dashboards(dashboard):
