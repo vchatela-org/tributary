@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.30.0](https://github.com/vchatela-org/tributary/compare/v0.29.1...v0.30.0) (2026-11-10)
+
+
+### Features
+
+* **app_usage:** categorise apps by kind of use (Google Play opt-in), and a Phone dashboard ([#123](https://github.com/vchatela-org/tributary/issues/123)) ([fea26bf](https://github.com/vchatela-org/tributary/commit/fea26bf6bde0a070713ea07421b72c9d321c9a09))
+* **app_usage:** categorise apps by kind of use, and a Phone dashboard ([5822a51](https://github.com/vchatela-org/tributary/commit/5822a514914c55756e7a58fc96b37c0bc40fbbf7))
+* **app_usage:** import the phone's screen time from App Usage backups ([6451854](https://github.com/vchatela-org/tributary/commit/64518547f3ab4e2997450989f2beaf143e5c7d6f))
+* **app_usage:** import the phone's screen time from App Usage backups ([#121](https://github.com/vchatela-org/tributary/issues/121)) ([1d9fc07](https://github.com/vchatela-org/tributary/commit/1d9fc070a6282ed4e51cc1a29bab88b4996954b6))
+* **app_usage:** read an app's category from Google Play (opt-in) ([a6355b1](https://github.com/vchatela-org/tributary/commit/a6355b10008e4e18b8605cad8e9f366d08f2d5cf))
+
 ## [0.29.1](https://github.com/vchatela-org/tributary/compare/v0.29.0...v0.29.1) (2026-11-10)
 
 
