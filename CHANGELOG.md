@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.29.1](https://github.com/vchatela-org/tributary/compare/v0.29.0...v0.29.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* restore main's pydantic and cronsim pins in the merge resolution ([6ee70a0](https://github.com/vchatela-org/tributary/commit/6ee70a01dc0295a085f11edaf1806550a3192b39))
+
+
+### Dependencies
+
+* bump chainguard/python from `29ab100` to `6b7c43c` ([14a3f33](https://github.com/vchatela-org/tributary/commit/14a3f3364284ec88f8a963755d77fa7b8163666b))
+* bump chainguard/python from `29ab100` to `6b7c43c` ([#114](https://github.com/vchatela-org/tributary/issues/114)) ([3d0f813](https://github.com/vchatela-org/tributary/commit/3d0f8133c02b35c714985f29f4f55fb1000f24bb))
+* bump cronsim from 2.7 to 2.8 ([1a46bc9](https://github.com/vchatela-org/tributary/commit/1a46bc98cb0a767797c69389b026b73ec40d8cc2))
+* bump cronsim from 2.7 to 2.8 ([#117](https://github.com/vchatela-org/tributary/issues/117)) ([c6f7988](https://github.com/vchatela-org/tributary/commit/c6f7988b0cdfffa339b6bc2344345715f0fc5292))
+* bump pydantic from 2.14.2 to 2.14.3 ([3af9812](https://github.com/vchatela-org/tributary/commit/3af98123a74487832bfc34305ab33395e88281be))
+* bump pydantic from 2.14.2 to 2.14.3 ([#118](https://github.com/vchatela-org/tributary/issues/118)) ([cef2326](https://github.com/vchatela-org/tributary/commit/cef2326638ecfe987a801088807f01aeeb48d254))
+* bump python-multipart from 0.0.32 to 0.0.33 ([0bcedd2](https://github.com/vchatela-org/tributary/commit/0bcedd245c9676c2551d5ea3a6f4a1818d5b7a80))
+* bump python-multipart from 0.0.32 to 0.0.33 ([#115](https://github.com/vchatela-org/tributary/issues/115)) ([c7389ea](https://github.com/vchatela-org/tributary/commit/c7389eab78845dfe1318d9d1bc53898d67c0e44e))
+* bump sqlalchemy from 2.1.6 to 2.1.8 ([9fbad43](https://github.com/vchatela-org/tributary/commit/9fbad43b7cf1845d659909f58ea5b67f5ca10742))
+* bump sqlalchemy from 2.1.6 to 2.1.8 ([#119](https://github.com/vchatela-org/tributary/issues/119)) ([88d6218](https://github.com/vchatela-org/tributary/commit/88d6218cf3e205bd260cebdb70dd66971ec169a3))
+
 ## [0.29.0](https://github.com/vchatela-org/tributary/compare/v0.28.0...v0.29.0) (2026-11-05)
 
 
