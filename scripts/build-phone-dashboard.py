@@ -14,9 +14,15 @@ a map while driving, the home screen between two apps). Seven, because a stack
 of seventeen colours can't be read; the ranked bars and the table at the bottom
 keep every category and every app.
 
+The *Filters* variable (Grafana's ad hoc filters) leaves apps out of every
+panel: a medication reminder that keeps the screen on, the home screen. Grafana
+puts each filter beside a query's $timeFilter, so a query that reads apps
+through a subquery keeps their tags there (GROUP BY *).
+
 A value "per day" is a total over the time range divided by the days it holds
-data (screen_time has one point per day), with Grafana's expressions: a range
-that starts before the first backup does not dilute it.
+data (screen_time has one point per day; the hidden variable $days): a range
+that starts before the first backup does not dilute it. Not with Grafana's
+expressions: a query feeding one never gets the ad hoc filters.
 """
 
 import json
@@ -30,7 +36,6 @@ sys.path.insert(0, str(ROOT))
 from app.connectors.app_usage_categories import CATEGORIES, LEAN_BACK  # noqa: E402
 
 DIGITAL = {"type": "influxdb", "uid": "${digital}"}
-EXPR = {"type": "__expr__", "uid": "__expr__"}
 
 # (name, categories, colour): the reference palette's first seven slots, dark
 # steps, in its validated order (adjacent pairs clear the CVD and normal-vision
@@ -57,7 +62,14 @@ PICKED = '"category" =~ /^${category:regex}$/'
 DAY = "GROUP BY time(1d) fill(none) tz('$tz')"
 NIGHT = "GROUP BY time(1d, -12h) fill(none) tz('$tz')"
 AT_NIGHT = '("local_hour" >= 22 OR "local_hour" < 6)'
-VALUE = "v"
+# The days of the range that hold data, and the unlocks over it: hidden
+# variables, read again at each change of the time range. A value "per day" is
+# divided by them in its own query, not in a Grafana expression: Grafana
+# leaves a query feeding an expression out of the ad hoc filters. `0$days`:
+# with no data (an empty variable) the query divides by 0, which InfluxDB
+# answers with 0, rather than failing on "/ " (041 is read as 41).
+DAYS = "0$days"
+UNLOCKS = "0$unlocks"
 # Hours that stay hours: Grafana's `h` turns 30 hours into "1.3 days".
 HOURS = "suffix: h"
 
@@ -74,20 +86,12 @@ def apps(*conditions):
 
 
 def target(query, alias=None, fmt="time_series", ref=None, hide=False):
-    """A hidden target is an expression's input: all of them are named VALUE,
-    or Grafana's expressions see labels that differ (app_usage.sum,
-    screen_time.count), drop the pair from their union, and warn."""
-    alias = VALUE if hide and alias is None else alias
     t = {"refId": ref, "datasource": DIGITAL, "rawQuery": True, "resultFormat": fmt, "query": query}
     if alias:
         t["alias"] = alias
     if hide:
         t["hide"] = True
     return t
-
-
-def math(ref, expression):
-    return {"refId": ref, "datasource": EXPR, "type": "math", "expression": expression, "hide": False}
 
 
 def refs(targets):
@@ -124,11 +128,8 @@ def stat(title, description, targets, unit, p, decimals=None):
 
 
 def per_day(select, where, measurement="app_usage"):
-    """A total over the range divided by the days that have data: [A, DAYS, value]."""
-    return [target(f'SELECT {select} FROM "{measurement}" WHERE {where}', ref="A", hide=True),
-            target(f'SELECT count("screen_on_s") FROM "screen_time" WHERE {USER} AND $timeFilter', ref="DAYS",
-                   hide=True),
-            math("V", "$A / $DAYS")]
+    """A total over the range divided by the days that have data ($days)."""
+    return [target(f'SELECT {select} / {DAYS} FROM "{measurement}" WHERE {where}')]
 
 
 def bars(title, description, targets, unit, p, overrides=(), stack=True, decimals=None, legend=True):
@@ -162,15 +163,16 @@ def by_hour(title, description, categories, hex_, p):
     divided by the days with data (expressions), one bar per hour. Each hour's
     sum also reads the user's sessions times 0 from the same measurement, which
     InfluxDB merges into the same series: an hour never used is a 0, not a
-    missing bar (fill() only fills a series that exists)."""
-    targets = [target(f'SELECT count("screen_on_s") FROM "screen_time" WHERE {USER} AND $timeFilter', ref="DAYS",
-                      hide=True)]
+    missing bar (fill() only fills a series that exists). Both subqueries keep
+    every tag (GROUP BY *): Grafana's ad hoc filters ($filters) land beside the
+    outer $timeFilter, and must find `app` or `category` there."""
+    targets = []
     for h in range(24):
         used = among(categories) + f' AND "local_hour" = {h}'
-        targets.append(target(f'SELECT sum("v") FROM (SELECT "duration_s" / 60 AS "v" FROM "app_session" '
-                              f'WHERE {USER} AND {PICKED} AND {used}), (SELECT "count" * 0 AS "v" '
-                              f'FROM "app_session" WHERE {USER}) WHERE $timeFilter', ref=f"H{h:02d}", hide=True))
-    targets += [math(f"{h:02d}h", f"$H{h:02d} / $DAYS") for h in range(24)]
+        targets.append(target(f'SELECT sum("v") / {DAYS} AS "{h:02d}h" FROM (SELECT "duration_s" / 60 AS "v" '
+                              f'FROM "app_session" WHERE {USER} AND {PICKED} AND {used} GROUP BY *), '
+                              f'(SELECT "count" * 0 AS "v" FROM "app_session" WHERE {USER} GROUP BY *) '
+                              f'WHERE $timeFilter', alias=f"{h:02d}h"))
     return {"type": "barchart", "title": title, "id": next(_ids), "description": description,
             "datasource": DIGITAL, "gridPos": p,
             "fieldConfig": {"defaults": {"unit": "m", "min": 0, "decimals": 0,
@@ -182,11 +184,7 @@ def by_hour(title, description, categories, hex_, p):
                                                       "placement": "bottom"},
                         "tooltip": {"mode": "single", "sort": "none"}, "xTickLabelSpacing": 0,
                         "stacking": "none"},
-            # An expression's output is named after its refId and its inputs' label
-            # ("07h v"): the hour alone.
-            "transformations": [{"id": "renameByRegex", "options": {"regex": "^(\\d\\dh).*$",
-                                                                   "renamePattern": "$1"}},
-                                {"id": "reduce", "options": {"mode": "seriesToRows", "reducers": ["lastNotNull"],
+            "transformations": [{"id": "reduce", "options": {"mode": "seriesToRows", "reducers": ["lastNotNull"],
                                                              "includeTimeField": False}}],
             "targets": refs(targets)}
 
@@ -212,10 +210,8 @@ def build():
              pos(12, y, 4, 4), decimals=0),
         stat("Hands-on per unlock", "Hands-on time divided by the unlocks: how long the phone stays in hand once "
              "picked up.",
-             [target(f'SELECT sum("foreground_s") FROM "app_usage" WHERE {apps(hands_on)}', ref="A", hide=True),
-              target(f'SELECT sum("unlocks") FROM "screen_time" WHERE {USER} AND $timeFilter', ref="U",
-                     hide=True),
-              math("V", "$A / $U")], "s", pos(16, y, 4, 4)),
+             [target(f'SELECT sum("foreground_s") / {UNLOCKS} FROM "app_usage" WHERE {apps(hands_on)}')], "s",
+             pos(16, y, 4, 4)),
         stat("At night", "Time in apps between 22:00 and 06:00 (local time), per day, the home screen left out.",
              per_day('sum("duration_s")', apps(among(tuple(c for c in CATEGORIES if c != "launcher")), AT_NIGHT),
                      "app_session"), "s", pos(20, y, 4, 4)),
@@ -342,6 +338,25 @@ def variables():
          "query": 'SHOW TAG VALUES FROM "app_usage" WITH KEY = "category" WHERE "user" = \'$user\'',
          "refresh": 2, "sort": 1, "hide": 0, "current": {"text": "All", "value": "$__all"}, "options": [],
          "multi": True, "includeAll": True},
+        {"type": "query", "name": "days", "label": "Days with data", "datasource": DIGITAL,
+         "description": "The days of the time range that hold data: what a value per day is divided by.",
+         "definition": f'SELECT count("screen_on_s") FROM "screen_time" WHERE {USER} AND $timeFilter',
+         "query": f'SELECT count("screen_on_s") FROM "screen_time" WHERE {USER} AND $timeFilter',
+         "refresh": 2, "sort": 0, "hide": 2, "current": {}, "options": [], "multi": False, "includeAll": False},
+        {"type": "query", "name": "unlocks", "label": "Unlocks", "datasource": DIGITAL,
+         "description": "The unlocks over the time range: what hands-on time per unlock is divided by.",
+         "definition": f'SELECT sum("unlocks") FROM "screen_time" WHERE {USER} AND $timeFilter',
+         "query": f'SELECT sum("unlocks") FROM "screen_time" WHERE {USER} AND $timeFilter',
+         "refresh": 2, "sort": 0, "hide": 2, "current": {}, "options": [], "multi": False, "includeAll": False},
+        # Grafana adds each filter to every query, beside its $timeFilter: `app !=
+        # <an app>` leaves an app out of every panel (a reminder that keeps the
+        # screen on, the home screen...), `app = <an app>` looks at one. Empty:
+        # a deployment saves its own in its copy of the dashboard.
+        {"type": "adhoc", "name": "filters", "label": "Filters",
+         "description": "Leave apps out (app != ...), or look at one (app = ...); category and package work too. "
+                        "Screen on and unlocks are the phone's own figures: an app filter leaves them as they are, "
+                        "and `app = ...` empties them.",
+         "datasource": DIGITAL, "filters": [], "baseFilters": [], "hide": 0},
     ]
 
 

@@ -404,4 +404,15 @@ the bottom keep every category and every app.
 The *Categories* variable filters every panel that reads apps (screen on and
 unlocks are the phone's own figures and ignore it). An app in the wrong
 category is moved with `TRIBUTARY_APP_USAGE_CATEGORIES` and an import of the
-next backup. Variables: time zone, user, categories.
+next backup.
+
+*Filters* (Grafana's ad hoc filters) cleans the dashboard up: `app != <an
+app>` leaves an app out of every panel, `category != launcher` the home
+screen; `app = <an app>` looks at one alone. A medication reminder whose
+screen stays on until the dose is confirmed, for instance, counts as minutes
+in the app that nobody spent in it. The dashboard ships with none: add yours
+and save them as the dashboard's default (*Save dashboard*, *Update default
+variable values*), or in the copy your Grafana provisions. Screen on and
+unlocks are the phone's own figures: an app filter leaves them as they are,
+and `app = ...` empties them. Variables: time zone, user, categories,
+filters.
