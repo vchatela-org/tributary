@@ -443,7 +443,7 @@ def test_ad_hoc_filters_find_their_tags_beside_every_time_filter(dashboard):
         return
     for panel, target in _queries(dashboard):
         q = target["query"]
-        if "FROM (" not in q:
+        if panel is None or "FROM (" not in q:  # a variable: Grafana never adds ad hoc filters to it
             continue
         for inner in re.findall(r"\(SELECT (?:(?!\(SELECT).)*?\)(?=,|\s+WHERE|\s*$)", q):
             assert "GROUP BY *" in inner, (dashboard["uid"], panel and panel.get("title"), inner)
