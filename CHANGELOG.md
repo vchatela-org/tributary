@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.32.0](https://github.com/vchatela-org/tributary/compare/v0.31.0...v0.32.0) (2026-11-10)
+
+
+### Features
+
+* **dashboards:** week heatmaps and session lengths on the Phone dashboard ([407e287](https://github.com/vchatela-org/tributary/commit/407e28773e95f3ee788d9afcf80c5f880e5d5afd))
+* **dashboards:** week heatmaps and session lengths on the Phone dashboard ([#126](https://github.com/vchatela-org/tributary/issues/126)) ([e478e68](https://github.com/vchatela-org/tributary/commit/e478e687a9d5289d2a6b24218784919920b3eb96))
+
 ## [0.31.0](https://github.com/vchatela-org/tributary/compare/v0.30.0...v0.31.0) (2026-11-10)
 
 
