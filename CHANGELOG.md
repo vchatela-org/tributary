@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.31.0](https://github.com/vchatela-org/tributary/compare/v0.30.0...v0.31.0) (2026-11-10)
+
+
+### Features
+
+* **dashboards:** filter apps out of the Phone dashboard ([b3295ff](https://github.com/vchatela-org/tributary/commit/b3295ff71c4a9d9659ca8a5965157e4d64f88c2b))
+* **dashboards:** filter apps out of the Phone dashboard ([#124](https://github.com/vchatela-org/tributary/issues/124)) ([8f6d2c3](https://github.com/vchatela-org/tributary/commit/8f6d2c38e064019c251808f26e819dfbf18e8719))
+
 ## [0.30.0](https://github.com/vchatela-org/tributary/compare/v0.29.1...v0.30.0) (2026-11-10)
 
 
