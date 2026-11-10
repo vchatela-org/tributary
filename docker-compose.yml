@@ -26,7 +26,7 @@ services:
       - influxdb
 
   influxdb:
-    image: influxdb:1.13.1
+    image: influxdb:1.13.2
     restart: unless-stopped
     environment:
       INFLUXDB_REPORTING_DISABLED: "true"
