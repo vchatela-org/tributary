@@ -373,3 +373,35 @@ Variables: time zone, user, run, run to compare with, from km, to km, foot
 The connector writes one point per account and month, on its first day: the
 monthly panels draw those, as InfluxQL has no calendar month. Variables:
 time zone, account.
+
+## Phone
+
+`DigitalStats`, from the [App Usage connector](connectors/app_usage.md):
+`screen_time`, `app_usage`, `app_session`. Built by
+[`scripts/build-phone-dashboard.py`](../scripts/build-phone-dashboard.py).
+
+Not every minute of screen is the same use. Each app has a category (the
+connector's: `watching`, `social`, `communication`, `launcher`...), and the
+dashboard draws them in seven groups, four **hands-on** (*Social, news & web*,
+*Messages & calls*, *Work & tools*, *Home, health & other*) and three
+**lean-back** (*Watching & listening*, *Maps*, *Home screen*): a video or music
+playing, a map while driving, the home screen between two apps. Seven, because
+seventeen colours in one stack can't be told apart; the bars and the table at
+the bottom keep every category and every app.
+
+- **Per day, over the time range:** screen on, hands-on time, watching and
+  listening, unlocks, hands-on time per unlock, time in apps at night (22:00 to
+  06:00). A total is divided by the days that hold data, so a range starting
+  before the first backup does not dilute it.
+- **Day by day:** time in apps per day, stacked by group; screen on and
+  unlocks per day.
+- **When in the day:** minutes per day in each hour, hands-on and watching and
+  listening apart (local time); time in apps each night from 22:00 to 06:00,
+  stacked by group, next to the [Sleep](#sleep) dashboard.
+- **Apps and categories:** hours per category, ranked; every app with its
+  category, hours, launches and minutes per launch.
+
+The *Categories* variable filters every panel that reads apps (screen on and
+unlocks are the phone's own figures and ignore it). An app in the wrong
+category is moved with `TRIBUTARY_APP_USAGE_CATEGORIES` and an import of the
+next backup. Variables: time zone, user, categories.

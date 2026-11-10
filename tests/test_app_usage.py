@@ -7,6 +7,7 @@ import pytest
 from app import connectors, runner
 from app.config import settings
 from app.connectors.app_usage import day_of
+from app.connectors.app_usage_categories import CATEGORIES as VOCABULARY, KNOWN, LEAN_BACK, categorize
 from tests.fakes import epoch, ms, parse
 
 USER = "alice"
@@ -128,7 +129,7 @@ def test_a_backup_writes_the_days_the_apps_their_sessions_and_the_unlocks(connec
         {"foreground_s": "1800i", "launches": "12i", "notifications": "3i"})
     assert apps[("org.example.reader", midnight1)][0]["category"] == "productivity"  # the user's choice
     assert apps[("org.example.launcher", midnight1)][0]["app"] == "org.example.launcher"
-    assert apps[("org.example.launcher", midnight1)][0]["category"] == "others"
+    assert apps[("org.example.launcher", midnight1)][0]["category"] == "other"
 
     sessions = _lines(influx, "app_session")
     assert sessions == [(
@@ -223,3 +224,44 @@ def test_it_takes_uploads_only(connector, tmp_path):
         assert connector.watch_dir is None and connector.is_configured() is False
     finally:
         connector.settings.watch_dir = None
+
+
+def test_an_app_s_category_is_yours_then_the_one_you_chose_in_the_app_then_tributary_s_then_the_app_s():
+    mine = {"org.example.tv": "watching"}
+    assert categorize("org.example.tv", "SOCIAL", "VIDEO", mine) == "watching"
+    # Your choice in App Usage, in its words or in a category you named after one of ours.
+    assert categorize("com.google.android.youtube", "MAPS", "VIDEO", {}) == "navigation"
+    assert categorize("org.example.cam", "Smart_Home", None, {}) == "smart_home"
+    # A category of your own that is none of ours: the next rule decides.
+    assert categorize("com.google.android.gm", "Mine", "SOCIAL", {}) == "communication"
+    # Well-known apps, whatever App Usage files them under (it says SOCIAL for a browser).
+    assert categorize("com.brave.browser", None, "SOCIAL", {}) == "browsing"
+    assert categorize("org.example.game", None, "GAME", {}) == "games"
+    assert categorize("com.miui.weather2", None, "OTHERS", {}) == "system"
+    assert categorize("org.example.app", None, "OTHERS", {}) == "other"
+    assert categorize("org.example.app", None, None, {}) == "other"
+
+
+def test_the_vocabulary_is_closed():
+    assert set(KNOWN.values()) <= set(VOCABULARY) and set(LEAN_BACK) <= set(VOCABULARY)
+    assert len(VOCABULARY) == len(set(VOCABULARY))
+
+
+def test_your_categories_come_from_the_environment(connector, influx, db, tmp_path, monkeypatch):
+    monkeypatch.setattr(connector.settings, "categories", '{"org.example.chat": "Watching"}')
+    assert connector.import_fingerprint() == {"categories": '{"org.example.chat": "Watching"}'}
+    assert _import(db, connector, write_backup(tmp_path)).status == "ok"
+    assert {t["category"] for _m, t, _f, _ts in _lines(influx, "app_session")} == {"watching"}
+
+
+@pytest.mark.parametrize("value, message", [
+    ('{"org.example.chat": "tv"}', "'tv' is not a category"),
+    ('["watching"]', "must be a JSON object"),
+    ("{not json", "not valid JSON"),
+])
+def test_a_wrong_category_fails_the_import_before_anything_is_dropped(connector, influx, db, tmp_path, monkeypatch,
+                                                                        value, message):
+    monkeypatch.setattr(connector.settings, "categories", value)
+    run = _import(db, connector, write_backup(tmp_path))
+    assert run.status == "error" and message in run.message, run.message
+    assert not [q for _db, q in influx.queries if q.startswith(("DROP", "DELETE"))]

@@ -32,8 +32,8 @@ What is written:
                 summed over the apps), notifications.
   app_usage     one point per app and day, at local midnight: foreground_s,
                 launches, notifications. Tags: `app` (the name the phone
-                shows), `package`, `category` (lower case; the user's choice
-                in the app, or the app's).
+                shows), `package`, `category` (the kind of use, Tributary's
+                vocabulary: app_usage_categories.py says how it is chosen).
   app_session   one point per foreground session (act.csv, type 7), at its
                 start, *local time*: duration_s and count (1; two sessions of
                 an app starting in the same second add up). Same tags.
@@ -57,15 +57,17 @@ the geofences of the app's "at home / at work" feature) are not read.
 """
 import csv
 import io
+import json
 import math
 import zipfile
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
-from typing import Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Set
 from zoneinfo import ZoneInfo
 
 from pydantic_settings import SettingsConfigDict
 
+from app.connectors.app_usage_categories import CATEGORIES, categorize
 from app.connectors.base import Connector, ConnectorError, ConnectorSettings, FileImport, Span
 from app.points import Measurement, Point
 
@@ -89,8 +91,6 @@ SCREEN_ON = "5"
 UNLOCKED_FLAG = 0x400
 # A member larger than this is not an App Usage table (act.csv is ~1 MB a month).
 MAX_MEMBER_BYTES = 512 * 2**20
-# The category of an app the backup files under none.
-NO_CATEGORY = "others"
 
 SCREEN_TIME = Measurement(
     database="DigitalStats", name="screen_time", tags=(),
@@ -166,17 +166,38 @@ def read_backup(path: Path) -> Dict[str, List[Dict[str, str]]]:
         raise ConnectorError(f"unreadable ({type(exc).__name__}: {exc}).") from None
 
 
-def read_apps(tables: Dict[str, List[Dict[str, str]]]) -> Dict[str, App]:
-    """pid -> App: the user's category when they chose one, else the app's."""
-    categories = {row["cid"]: row["name"].strip().lower() for row in tables["categories.csv"] if row["name"].strip()}
+def parse_categories(value: Optional[str]) -> Dict[str, str]:
+    """TRIBUTARY_APP_USAGE_CATEGORIES: {"<package>": "<category>"}, each one a
+    word of CATEGORIES."""
+    if not value or not value.strip():
+        return {}
+    try:
+        mapping = json.loads(value)
+    except ValueError:
+        raise ConnectorError(f"{PREFIX}CATEGORIES is not valid JSON.") from None
+    if not isinstance(mapping, dict):
+        raise ConnectorError(f'{PREFIX}CATEGORIES must be a JSON object: {{"<package>": "<category>"}}.')
+    out = {}
+    for package, category in mapping.items():
+        word = category.strip().lower() if isinstance(category, str) else None
+        if word not in CATEGORIES:
+            raise ConnectorError(f"{PREFIX}CATEGORIES: {category!r} is not a category, use one of "
+                                 f"{', '.join(CATEGORIES)}.")
+        out[str(package).strip()] = word
+    return out
+
+
+def read_apps(tables: Dict[str, List[Dict[str, str]]], mine: Dict[str, str]) -> Dict[str, App]:
+    """pid -> App, its category chosen by app_usage_categories.categorize."""
+    names = {row["cid"]: row["name"] for row in tables["categories.csv"]}
     apps = {}
     for row in tables["pkgs.csv"]:
         package = row["pkg_name"].strip()
         if not package:
             continue
-        chosen = row["user_category"] if row["user_category"] not in ("", "-1") else row["category"]
-        apps[row["pid"]] = App(name=row["app_name"].strip() or package, package=package,
-                               category=categories.get(chosen, NO_CATEGORY))
+        chosen = names.get(row["user_category"]) if row["user_category"] not in ("", "-1") else None
+        category = categorize(package, chosen, names.get(row["category"]), mine)
+        apps[row["pid"]] = App(name=row["app_name"].strip() or package, package=package, category=category)
     return apps
 
 
@@ -195,6 +216,11 @@ def _span(days: Iterable[date]) -> Optional[Span]:
 
 class AppUsageSettings(ConnectorSettings):
     model_config = SettingsConfigDict(env_prefix=PREFIX, env_file=".env", extra="ignore")
+
+    # {"<package>": "<category>"}, JSON: your own apps' categories, over the
+    # built-in ones (app_usage_categories.py). Read at each import, so a
+    # mistake fails the import, not the start.
+    categories: Optional[str] = None
 
 
 class AppUsageConnector(Connector):
@@ -217,12 +243,18 @@ class AppUsageConnector(Connector):
         # folder of them is not what a watched folder's rebuild assumes.
         return None
 
+    def import_fingerprint(self) -> Dict[str, Any]:
+        """The categories decide the `category` tag: changing them invalidates a
+        checked upload rather than applying a diff the user never saw."""
+        return {"categories": self.settings.categories}
+
     def import_file(self, path: Path) -> FileImport:
         from app.config import settings
 
         tz = ZoneInfo(settings.tz)
+        mine = parse_categories(self.settings.categories)
         tables = read_backup(path)
-        apps = read_apps(tables)
+        apps = read_apps(tables, mine)
         points: List[Point] = []
         unknown: Set[str] = set()
 

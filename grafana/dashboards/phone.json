@@ -1,0 +1,2639 @@
+{
+  "uid": "tributary-phone",
+  "title": "Phone",
+  "description": "A phone's screen time, from the App Usage connector (DigitalStats): per day and per group of apps, hands-on time against video, music, maps and the home screen, unlocks, when in the day and at night, and every app.",
+  "tags": [
+    "tributary",
+    "phone"
+  ],
+  "editable": true,
+  "graphTooltip": 1,
+  "schemaVersion": 41,
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "refresh": "",
+  "links": [
+    {
+      "type": "link",
+      "title": "Sleep",
+      "url": "/d/tributary-sleep",
+      "icon": "dashboard",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": true,
+      "targetBlank": false,
+      "tooltip": "",
+      "tags": []
+    }
+  ],
+  "annotations": {
+    "list": []
+  },
+  "templating": {
+    "list": [
+      {
+        "type": "datasource",
+        "name": "digital",
+        "label": "InfluxDB DigitalStats",
+        "query": "influxdb",
+        "regex": "/DigitalStats/i",
+        "hide": 0,
+        "refresh": 1,
+        "current": {},
+        "options": [],
+        "includeAll": false,
+        "multi": false
+      },
+      {
+        "type": "textbox",
+        "name": "tz",
+        "label": "Time zone",
+        "description": "IANA time zone the days are cut in (TRIBUTARY_TZ).",
+        "query": "Europe/Paris",
+        "current": {
+          "text": "Europe/Paris",
+          "value": "Europe/Paris"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "Europe/Paris",
+            "value": "Europe/Paris"
+          }
+        ],
+        "hide": 0
+      },
+      {
+        "type": "query",
+        "name": "user",
+        "label": "User",
+        "description": "The person.",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${digital}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"screen_time\" WITH KEY = \"user\"",
+        "query": "SHOW TAG VALUES FROM \"screen_time\" WITH KEY = \"user\"",
+        "refresh": 1,
+        "sort": 1,
+        "hide": 0,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "category",
+        "label": "Categories",
+        "description": "The categories of apps every panel counts (all by default).",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${digital}"
+        },
+        "definition": "SHOW TAG VALUES FROM \"app_usage\" WITH KEY = \"category\" WHERE \"user\" = '$user'",
+        "query": "SHOW TAG VALUES FROM \"app_usage\" WITH KEY = \"category\" WHERE \"user\" = '$user'",
+        "refresh": 2,
+        "sort": 1,
+        "hide": 0,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [],
+        "multi": true,
+        "includeAll": true
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Per day, over the time range",
+      "id": 1,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Screen on",
+      "id": 2,
+      "description": "How long the screen was on, per day: the phone's own figure, lock screen and calls included.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"screen_on_s\") FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Hands-on",
+      "id": 3,
+      "description": "Time in apps of the hands-on groups (feeds, messages, tools, the rest), per day: not a video or music playing, a map while driving, or the home screen.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"foreground_s\") FROM \"app_usage\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "DAYS",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"screen_on_s\") FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "V",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$A / $DAYS",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Watching & listening",
+      "id": 4,
+      "description": "Time in video and audio apps, per day.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"foreground_s\") FROM \"app_usage\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "DAYS",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"screen_on_s\") FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "V",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$A / $DAYS",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Unlocks",
+      "id": 5,
+      "description": "Times the phone was unlocked, per day (the screen woken and left locked is not one).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT mean(\"unlocks\") FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Hands-on per unlock",
+      "id": 6,
+      "description": "Hands-on time divided by the unlocks: how long the phone stays in hand once picked up.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"foreground_s\") FROM \"app_usage\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "U",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"unlocks\") FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "V",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$A / $U",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "At night",
+      "id": 7,
+      "description": "Time in apps between 22:00 and 06:00 (local time), per day, the home screen left out.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "textMode": "value",
+        "wideLayout": true,
+        "showPercentChange": false,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"duration_s\") FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening|social|communication|browsing|productivity|navigation|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND (\"local_hour\" >= 22 OR \"local_hour\" < 6) AND $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "DAYS",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"screen_on_s\") FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "V",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$A / $DAYS",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Day by day",
+      "id": 8,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Time in apps per day, by group",
+      "id": 9,
+      "description": "Hours in the foreground per day, stacked by group: the hands-on groups at the bottom, then a video or music playing, a map, and the home screen. The category filter above applies.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "min": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 90,
+            "showPoints": "never",
+            "barAlignment": -1,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8c8b84"
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Social, news & web"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Messages & calls"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Work & tools"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Home, health & other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Watching & listening"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Maps"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Home screen"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#9085e9"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"foreground_s\") / 3600 AS \"Social, news & web\" FROM \"app_usage\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|news|browsing)$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "Social, news & web"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"foreground_s\") / 3600 AS \"Messages & calls\" FROM \"app_usage\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(communication)$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "Messages & calls"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"foreground_s\") / 3600 AS \"Work & tools\" FROM \"app_usage\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(productivity|finance|system)$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "Work & tools"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"foreground_s\") / 3600 AS \"Home, health & other\" FROM \"app_usage\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(smart_home|health|shopping|photos|games|other)$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "Home, health & other"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"foreground_s\") / 3600 AS \"Watching & listening\" FROM \"app_usage\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "Watching & listening"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"foreground_s\") / 3600 AS \"Maps\" FROM \"app_usage\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(navigation)$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "Maps"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"foreground_s\") / 3600 AS \"Home screen\" FROM \"app_usage\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(launcher)$/ AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "Home screen"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Screen on per day",
+      "id": 10,
+      "description": "How long the screen was on, per day (the phone's own figure).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 12,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "min": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 90,
+            "showPoints": "never",
+            "barAlignment": -1,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8c8b84"
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"screen_on_s\") / 3600 AS \"Screen on\" FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Unlocks per day",
+      "id": 11,
+      "description": "Times the phone was unlocked, per day.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 15,
+        "w": 12,
+        "h": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 90,
+            "showPoints": "never",
+            "barAlignment": -1,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8c8b84"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"unlocks\") AS \"Unlocks\" FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "When in the day",
+      "id": 12,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "barchart",
+      "title": "Hands-on, by hour of the day",
+      "id": 13,
+      "description": "Minutes per day in each hour (local time) in the hands-on groups' apps, over the time range: when the phone is in hand.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m",
+          "min": 0,
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8c8b84"
+          },
+          "custom": {
+            "fillOpacity": 90,
+            "lineWidth": 0,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "vertical",
+        "xField": "Field",
+        "showValue": "never",
+        "barWidth": 0.8,
+        "groupWidth": 0.7,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelSpacing": 0,
+        "stacking": "none"
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^(\\d\\dh).*$",
+            "renamePattern": "$1"
+          }
+        },
+        {
+          "id": "reduce",
+          "options": {
+            "mode": "seriesToRows",
+            "reducers": [
+              "lastNotNull"
+            ],
+            "includeTimeField": false
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "DAYS",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"screen_on_s\") FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H00",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 0), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H01",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 1), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H02",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 2), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H03",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 3), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H04",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 4), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H05",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 5), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H06",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 6), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H07",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 7), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H08",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 8), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H09",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 9), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H10",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 10), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H11",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 11), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H12",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 12), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H13",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 13), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H14",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 14), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H15",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 15), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H16",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 16), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H17",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 17), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H18",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 18), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H19",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 19), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H20",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 20), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H21",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 21), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H22",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 22), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H23",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_hour\" = 23), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "00h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H00 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "01h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H01 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "02h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H02 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "03h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H03 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "04h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H04 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "05h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H05 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "06h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H06 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "07h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H07 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "08h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H08 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "09h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H09 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "10h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H10 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "11h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H11 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "12h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H12 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "13h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H13 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "14h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H14 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "15h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H15 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "16h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H16 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "17h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H17 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "18h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H18 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "19h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H19 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "20h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H20 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "21h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H21 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "22h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H22 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "23h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H23 / $DAYS",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Watching & listening, by hour of the day",
+      "id": 14,
+      "description": "Minutes per day in each hour (local time) in video and audio apps, over the time range.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 23,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m",
+          "min": 0,
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#d55181"
+          },
+          "custom": {
+            "fillOpacity": 90,
+            "lineWidth": 0,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "vertical",
+        "xField": "Field",
+        "showValue": "never",
+        "barWidth": 0.8,
+        "groupWidth": 0.7,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelSpacing": 0,
+        "stacking": "none"
+      },
+      "transformations": [
+        {
+          "id": "renameByRegex",
+          "options": {
+            "regex": "^(\\d\\dh).*$",
+            "renamePattern": "$1"
+          }
+        },
+        {
+          "id": "reduce",
+          "options": {
+            "mode": "seriesToRows",
+            "reducers": [
+              "lastNotNull"
+            ],
+            "includeTimeField": false
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "DAYS",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT count(\"screen_on_s\") FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H00",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 0), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H01",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 1), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H02",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 2), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H03",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 3), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H04",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 4), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H05",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 5), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H06",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 6), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H07",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 7), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H08",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 8), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H09",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 9), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H10",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 10), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H11",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 11), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H12",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 12), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H13",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 13), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H14",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 14), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H15",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 15), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H16",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 16), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H17",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 17), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H18",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 18), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H19",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 19), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H20",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 20), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H21",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 21), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H22",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 22), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "H23",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND \"local_hour\" = 23), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user') WHERE $timeFilter",
+          "alias": "v",
+          "hide": true
+        },
+        {
+          "refId": "00h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H00 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "01h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H01 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "02h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H02 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "03h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H03 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "04h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H04 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "05h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H05 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "06h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H06 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "07h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H07 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "08h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H08 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "09h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H09 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "10h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H10 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "11h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H11 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "12h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H12 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "13h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H13 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "14h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H14 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "15h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H15 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "16h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H16 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "17h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H17 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "18h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H18 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "19h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H19 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "20h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H20 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "21h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H21 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "22h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H22 / $DAYS",
+          "hide": false
+        },
+        {
+          "refId": "23h",
+          "datasource": {
+            "type": "__expr__",
+            "uid": "__expr__"
+          },
+          "type": "math",
+          "expression": "$H23 / $DAYS",
+          "hide": false
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "At night (22:00 to 06:00), per night",
+      "id": 15,
+      "description": "Hours in apps between 22:00 and 06:00 (local time), each night from noon to noon, stacked by group; the home screen left out. Next to the Sleep dashboard: the evenings the phone stays in hand.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 31,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "min": 0,
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 90,
+            "showPoints": "never",
+            "barAlignment": -1,
+            "axisBorderShow": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8c8b84"
+          },
+          "decimals": 1
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Social, news & web"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Messages & calls"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d95926"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Work & tools"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#199e70"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Home, health & other"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#c98500"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Watching & listening"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#d55181"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Maps"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#008300"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"duration_s\") / 3600 AS \"Social, news & web\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|news|browsing)$/ AND (\"local_hour\" >= 22 OR \"local_hour\" < 6) AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "Social, news & web"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"duration_s\") / 3600 AS \"Messages & calls\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(communication)$/ AND (\"local_hour\" >= 22 OR \"local_hour\" < 6) AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "Messages & calls"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"duration_s\") / 3600 AS \"Work & tools\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(productivity|finance|system)$/ AND (\"local_hour\" >= 22 OR \"local_hour\" < 6) AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "Work & tools"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"duration_s\") / 3600 AS \"Home, health & other\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(smart_home|health|shopping|photos|games|other)$/ AND (\"local_hour\" >= 22 OR \"local_hour\" < 6) AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "Home, health & other"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"duration_s\") / 3600 AS \"Watching & listening\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(watching|listening)$/ AND (\"local_hour\" >= 22 OR \"local_hour\" < 6) AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "Watching & listening"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"duration_s\") / 3600 AS \"Maps\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(navigation)$/ AND (\"local_hour\" >= 22 OR \"local_hour\" < 6) AND $timeFilter GROUP BY time(1d, -12h) fill(none) tz('$tz')",
+          "alias": "Maps"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Apps and categories",
+      "id": 16,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 39,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "barchart",
+      "title": "Time by category",
+      "id": 17,
+      "description": "Hours in the foreground over the time range, per category (Tributary's: app/connectors/app_usage_categories.py; yours in TRIBUTARY_APP_USAGE_CATEGORIES).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 8,
+        "h": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: h",
+          "min": 0,
+          "decimals": 1,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8c8b84"
+          },
+          "custom": {
+            "fillOpacity": 90,
+            "lineWidth": 0,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xField": "category",
+        "showValue": "always",
+        "barWidth": 0.8,
+        "groupWidth": 0.7,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "stacking": "none"
+      },
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "hours",
+                "desc": true
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT sum(\"foreground_s\") / 3600 AS \"hours\" FROM \"app_usage\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND $timeFilter GROUP BY \"category\""
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Apps",
+      "id": 18,
+      "description": "Every app used over the time range: its category, hours in the foreground, launches and minutes per launch. Sort by any column.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 40,
+        "w": 16,
+        "h": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hours"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "suffix: h"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "minutes per launch"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "m"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "hours",
+            "desc": true
+          }
+        ],
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": "",
+          "countRows": false
+        }
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT sum(\"foreground_s\") / 3600 AS \"hours\", sum(\"launches\") AS \"launches\", sum(\"foreground_s\") / sum(\"launches\") / 60 AS \"minutes per launch\" FROM \"app_usage\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND $timeFilter GROUP BY \"app\", \"category\""
+        }
+      ]
+    }
+  ]
+}

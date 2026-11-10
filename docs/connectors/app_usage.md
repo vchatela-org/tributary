@@ -40,8 +40,7 @@ is rewritten in place, never doubled. A day's totals (`screen_time`,
   `launches` are `app_usage` summed over the day's apps. The screen can be on
   with no app in the foreground (the lock screen, a call), so `screen_on_s`
   is usually the larger.
-- `category` is the one you chose for the app in App Usage, else the app's own
-  (`social`, `video`, `game`, `productivity`... `others` for none).
+- `category` is the kind of use (see [Categories](#categories)).
 - `notifications` stays 0 unless App Usage's notification tracking is on.
 - The launcher (your home screen) counts as an app: a panel that wants the
   time spent in apps leaves its `package` out.
@@ -51,6 +50,49 @@ is rewritten in place, never doubled. A day's totals (`screen_time`,
 - `app_session` and `unlock` carry `local_hour` and `local_weekday`: when in
   the day (or night) the phone is used, next to the night's sleep in
   `SleepStats`.
+
+## Categories
+
+App Usage's own categories don't say how a phone is used: it files a browser
+and a mail client under *Social*, most apps under none, and can't tell a video
+watched from a feed scrolled. So each app gets one word of Tributary's own:
+
+| Category | For | |
+|---|---|---|
+| `launcher` | the home screen | lean-back |
+| `watching` | video, streaming, TV | lean-back |
+| `listening` | music, podcasts, audiobooks | lean-back |
+| `navigation` | maps, transport | lean-back |
+| `social` | feeds: social networks | |
+| `communication` | messages, mail, calls, meetings | |
+| `browsing` | browsers, search | |
+| `productivity` | work tools, notes, tasks, documents, AI assistants | |
+| `smart_home` | home automation, cameras, appliances | |
+| `health` | trackers, medication, fitness | |
+| `shopping`, `finance`, `games`, `news`, `photos` | | |
+| `system` | settings, clock, store, passwords and authenticators | |
+| `other` | everything else | |
+
+Lean-back is the screen on without the phone in hand: the
+[Phone dashboard](../dashboards.md#phone) counts the rest as hands-on time.
+
+An app's category is, first match wins:
+
+1. yours, in `TRIBUTARY_APP_USAGE_CATEGORIES`:
+   `{"<package>": "<category>"}`, e.g. `{"org.example.iptv": "watching"}` (the
+   package is in the *Apps* table of the dashboard, or on the app's Play Store
+   address). A word outside the list fails the import;
+2. the category you gave the app in App Usage, when it maps to one of these
+   (*Video* is `watching`, *Audio* `listening`, *Maps* `navigation`...), or a
+   category you created there under one of these names;
+3. Tributary's list of well-known apps
+   (`app/connectors/app_usage_categories.py`);
+4. the category App Usage gives the app;
+5. `system` for Android's and the phone maker's own packages, `other`
+   otherwise.
+
+A change applies from the next import, to every day that backup holds: import
+a backup again after changing the variable.
 
 ## Privacy
 

@@ -92,6 +92,7 @@ Tributary only writes; dashboards read InfluxDB. [grafana/](grafana/) ships:
 | [Strength training](grafana/dashboards/strength-training.json) | `GarminStats`: `StrengthExerciseSet`, `StrengthHRZones` | volume, sets and reps, estimated one-rep max and records per exercise, time under tension, heart-rate zones |
 | [Running](grafana/dashboards/running.json) | `GarminStats`: `ActivitySummary`, `ActivityLap`, `ActivityGPS`, `VO2_Max`, `SleepSummary`, `SleepStats`: `sleep_session`, `FitbitHealthStats`: `RestingHR`, `HRV` | distance and regularity, easy against hard running, every 10 km compared on its best 10 km with the running dynamics, pace, heart rate and heartbeats per km run by run, VO₂ max, running form, the resting heart rate and HRV of the same weeks |
 | [Running footpath](grafana/dashboards/running-footpath.json) | `BodyStats`: `footpath_loop`, `footpath_segment`, `footpath_step` | a Stryd Duo's Footpath: a run's typical stride seen from the side, from behind and from above against another run; any stretch of the run (km 5 to 8...) in 2D and in 3D (Business Charts plugin), and each figure km by km; and foot lift, back swing, forward reach, touchdown and sideways travel over time, at the paces you pick |
+| [Phone](grafana/dashboards/phone.json) | `DigitalStats`: `screen_time`, `app_usage`, `app_session` | screen time per day, hands-on against watching, music, maps and the home screen, unlocks, when in the day and at night, time per category and per app |
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/grafana-reading-dark.png">
@@ -104,7 +105,7 @@ plus Kindle sessions from Takeback). The others are in
 
 - The quick start below provisions them: [grafana/provisioning/](grafana/provisioning/)
   declares an `InfluxDB <database>` datasource for `MediaStats`, `BodyStats`,
-  `TodoistStats`, `SleepStats`, `DevStats` and garmin-grafana's `GarminStats`, and loads
+  `TodoistStats`, `SleepStats`, `DevStats`, `DigitalStats` and garmin-grafana's `GarminStats`, and loads
   `grafana/dashboards/` into a *Tributary* folder.
 - In a Grafana you already run, import the JSON: each dashboard uses any
   InfluxDB datasource whose name contains its database ([deployment](docs/deployment.md#docker-compose)).
