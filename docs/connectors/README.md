@@ -47,6 +47,7 @@ sleep.
 |---|---|---|---|
 | [**Todoist**](todoist.md) | `todoist` | API, daily | `TodoistStats`: `todoist_task_completed`, `todoist_completion`, `todoist_karma`, `todoist_stats` |
 | [**GitHub**](github.md) | `github` | API, daily, a token per organisation or user | `DevStats`: `github_commit`, `github_actions_usage`, `github_actions_month` |
+| [**App Usage**](app_usage.md) | `app_usage` | backup file, imported in the UI | `DigitalStats`: `screen_time`, `app_usage`, `app_session`, `unlock` |
 
 A test compares this table with the code: a connector that is registered but
 missing here, or filed under another `category`, fails the suite.

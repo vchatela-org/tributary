@@ -12,7 +12,8 @@ what the connectors declare (`app/schema.py`, each connector's
 - **One database per domain:** `MediaStats` (reading, listening),
   `BodyStats` (weight, body composition, medication, food, workouts, daily
   activity), `SleepStats` (sleep, recovery, the morning journal),
-  `TodoistStats`, `DevStats` (commits, CI), `ShoppingStats`, `DigitalStats`... A
+  `TodoistStats`, `DevStats` (commits, CI), `ShoppingStats`, `DigitalStats` (screen
+  time, app use)... A
   domain's database holds every tracker of that domain.
 - **A `source` tag on every point**, naming the tracker
   (`audiobookshelf`, `kindle`, `renpho`...). Dashboards filter and colour by
@@ -323,6 +324,35 @@ they took, and the minutes GitHub's hosted runners spent on them.
   (UTC): InfluxQL has no calendar month. `counted_minutes` is what counts
   against a plan's included minutes: the private repositories' standard
   runners, Windows twice and macOS ten times.
+
+### `DigitalStats`
+
+Life on screens. Also written by Takeback (`item`: the dated items of a GDPR
+archive, as counts, `source` = the platform), which does not touch these
+measurements.
+
+| Measurement | Tags | Fields | Written by |
+|---|---|---|---|
+| `screen_time` | `source`, `user` | `unlocks` (int), `screen_on_s` (int), `app_s` (int), `launches` (int), `notifications` (int) | Tributary: `app_usage` |
+| `app_usage` | `source`, `user`, `app`, `package`, `category` | `foreground_s` (int), `launches` (int), `notifications` (int) | Tributary: `app_usage` |
+| `app_session` | `source`, `user`, `app`, `package`, `category`, `time_precision` | `duration_s` (float), `count` (int), `local_hour` (int), `local_weekday` (int) | Tributary: `app_usage` |
+| `unlock` | `source`, `user`, `time_precision` | `count` (int), `local_hour` (int), `local_weekday` (int) | Tributary: `app_usage` |
+
+- `screen_time`: one point per day, at local midnight: how many times the
+  phone was unlocked, how long its screen was on, the time apps were in the
+  foreground and how many times one was opened (summed over the apps), and the
+  notifications counted.
+- `app_usage`: one point per app and day, at local midnight. `app` is the name
+  the phone shows, `package` the Android package (the stable one: a name can
+  change with an update), `category` the phone app's (`social`, `video`,
+  `productivity`... `others` for none), lower case.
+- `app_session`: one point per time an app was in the foreground, at its
+  start, *local time*: its `duration_s` and `count` = 1 (sessions of an app
+  that start in the same second add up).
+- `unlock`: one point per unlock, at its time, *local time*, `count` = 1. The
+  screen woken and turned off again without an unlock is not one.
+- The phone's launcher (its home screen) counts as an app: leave its
+  `package` out to count the time in apps only.
 
 ## Adding a measurement
 
