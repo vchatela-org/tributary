@@ -1,12 +1,17 @@
 """App Usage: the phone's screen time from the app's backup, imported in the UI."""
+import threading
 import zipfile
 from datetime import date
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
 from app import connectors, runner
 from app.config import settings
+from app.connectors import play_store
 from app.connectors.app_usage import day_of
+from app.connectors.app_usage_categories import CATEGORIES as VOCABULARY, KNOWN, LEAN_BACK, categorize
 from tests.fakes import epoch, ms, parse
 
 USER = "alice"
@@ -128,7 +133,7 @@ def test_a_backup_writes_the_days_the_apps_their_sessions_and_the_unlocks(connec
         {"foreground_s": "1800i", "launches": "12i", "notifications": "3i"})
     assert apps[("org.example.reader", midnight1)][0]["category"] == "productivity"  # the user's choice
     assert apps[("org.example.launcher", midnight1)][0]["app"] == "org.example.launcher"
-    assert apps[("org.example.launcher", midnight1)][0]["category"] == "others"
+    assert apps[("org.example.launcher", midnight1)][0]["category"] == "other"
 
     sessions = _lines(influx, "app_session")
     assert sessions == [(
@@ -223,3 +228,171 @@ def test_it_takes_uploads_only(connector, tmp_path):
         assert connector.watch_dir is None and connector.is_configured() is False
     finally:
         connector.settings.watch_dir = None
+
+
+def test_an_app_s_category_is_yours_then_the_one_you_chose_in_the_app_then_tributary_s_then_the_app_s():
+    mine = {"org.example.tv": "watching"}
+    assert categorize("org.example.tv", "SOCIAL", "VIDEO", mine) == "watching"
+    # Your choice in App Usage, in its words or in a category you named after one of ours.
+    assert categorize("com.google.android.youtube", "MAPS", "VIDEO", {}) == "navigation"
+    assert categorize("org.example.cam", "Smart_Home", None, {}) == "smart_home"
+    # A category of your own that is none of ours: the next rule decides.
+    assert categorize("com.google.android.gm", "Mine", "SOCIAL", {}) == "communication"
+    # Well-known apps, whatever App Usage files them under (it says SOCIAL for a browser).
+    assert categorize("com.brave.browser", None, "SOCIAL", {}) == "browsing"
+    assert categorize("org.example.game", None, "GAME", {}) == "games"
+    assert categorize("com.miui.weather2", None, "OTHERS", {}) == "system"
+    assert categorize("org.example.app", None, "OTHERS", {}) == "other"
+    assert categorize("org.example.app", None, None, {}) == "other"
+
+
+def test_the_vocabulary_is_closed():
+    assert set(KNOWN.values()) <= set(VOCABULARY) and set(LEAN_BACK) <= set(VOCABULARY)
+    assert len(VOCABULARY) == len(set(VOCABULARY))
+
+
+def test_your_categories_come_from_the_environment(connector, influx, db, tmp_path, monkeypatch):
+    monkeypatch.setattr(connector.settings, "categories", '{"org.example.chat": "Watching"}')
+    assert connector.import_fingerprint() == {"categories": '{"org.example.chat": "Watching"}', "play_lookup": False}
+    assert _import(db, connector, write_backup(tmp_path)).status == "ok"
+    assert {t["category"] for _m, t, _f, _ts in _lines(influx, "app_session")} == {"watching"}
+
+
+@pytest.mark.parametrize("value, message", [
+    ('{"org.example.chat": "tv"}', "'tv' is not a category"),
+    ('["watching"]', "must be a JSON object"),
+    ("{not json", "not valid JSON"),
+])
+def test_a_wrong_category_fails_the_import_before_anything_is_dropped(connector, influx, db, tmp_path, monkeypatch,
+                                                                        value, message):
+    monkeypatch.setattr(connector.settings, "categories", value)
+    run = _import(db, connector, write_backup(tmp_path))
+    assert run.status == "error" and message in run.message, run.message
+    assert not [q for _db, q in influx.queries if q.startswith(("DROP", "DELETE"))]
+
+
+# ── Google Play ─────────────────────────────────────────────────────────────
+
+class FakePlay:
+    """play.google.com's app page: its structured data's category, a 404 for
+    an app it doesn't have, or an error for every page (`fail`)."""
+
+    def __init__(self, genres):
+        self.genres, self.asked, self.fail, self.agents = dict(genres), [], None, set()
+        outer = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802
+                query = parse_qs(urlparse(self.path).query)
+                outer.asked.append(query["id"][0])
+                outer.agents.add(self.headers.get("User-Agent"))
+                if outer.fail:
+                    self.send_response(outer.fail)
+                    self.end_headers()
+                    return
+                genre = outer.genres.get(query["id"][0])
+                if genre is None:
+                    self.send_response(404)
+                    self.end_headers()
+                    return
+                body = ('<html><script type="application/ld+json">{"@type":"SoftwareApplication",'
+                        f'"applicationCategory":"{genre}"}}</script></html>').encode()
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.url = f"http://127.0.0.1:{self.server.server_address[1]}/store/apps/details"
+
+    def close(self):
+        self.server.shutdown()
+
+
+@pytest.fixture()
+def play(monkeypatch, tmp_path):
+    # org.example.chat is decided by App Usage's own SOCIAL... after Google Play;
+    # the reader by the user's choice in App Usage: never asked.
+    fake = FakePlay({"org.example.chat": "VIDEO_PLAYERS", "org.example.launcher": "TOOLS"})
+    monkeypatch.setattr(play_store, "PLAY_URL", fake.url)
+    monkeypatch.setattr(play_store, "DELAY_S", 0)
+    monkeypatch.setattr(settings, "data_dir", str(tmp_path / "data"))
+    yield fake
+    fake.close()
+
+
+def _categories(influx):
+    return {t["package"]: t["category"] for _m, t, _f, _ts in _lines(influx, "app_usage")}
+
+
+def test_google_play_is_never_asked_unless_turned_on(connector, influx, db, tmp_path, play):
+    assert _import(db, connector, write_backup(tmp_path)).status == "ok"
+    assert play.asked == []
+
+
+def test_google_play_s_category_comes_after_yours_and_the_built_in_list(connector, influx, db, tmp_path, play,
+                                                                       monkeypatch):
+    monkeypatch.setattr(connector.settings, "play_lookup", True)
+    pkgs = PKGS + [("4", "com.brave.browser", "Brave", "4", "-1"), ("5", "org.example.gone", "Gone", "-1", "-1")]
+    usage = USAGE + [("4", key(DAY1), "1000", "1", "0"), ("5", key(DAY1), "1000", "1", "0")]
+    play.genres["com.brave.browser"] = "COMMUNICATION"
+    run = _import(db, connector, write_backup(tmp_path, pkgs=pkgs, usage=usage))
+    assert run.status == "ok", run.message
+    assert "Google Play: 3 app(s) looked up, 1 not on it" in run.message
+    # The reader (the user's choice in App Usage) and Brave (built-in) are never asked.
+    assert sorted(play.asked) == ["org.example.chat", "org.example.gone", "org.example.launcher"]
+    assert play.agents == {play_store.USER_AGENT}
+    assert _categories(influx) == {
+        "org.example.chat": "watching",          # Google Play over App Usage's SOCIAL
+        "org.example.reader": "productivity",
+        "org.example.launcher": "system",        # TOOLS
+        "com.brave.browser": "browsing",         # the built-in list over COMMUNICATION
+        "org.example.gone": "other",             # not on Google Play: the next rules
+    }
+
+    # Cached: the same backup again asks nothing, and writes the same.
+    play.asked.clear()
+    run = _import(db, connector, write_backup(tmp_path, pkgs=pkgs, usage=usage))
+    assert run.status == "ok" and play.asked == [] and "Google Play" not in run.message
+    assert _categories(influx)["org.example.chat"] == "watching"
+
+
+def test_an_unreachable_google_play_never_fails_the_import(connector, influx, db, tmp_path, play, monkeypatch):
+    monkeypatch.setattr(connector.settings, "play_lookup", True)
+    play.fail = 503
+    run = _import(db, connector, write_backup(tmp_path))
+    assert run.status == "ok", run.message
+    assert "Google Play unreachable (HTTP 503): 2 app(s) left to the next import" in run.message
+    assert len(play.asked) == 1  # stops at the first failure
+    assert _categories(influx)["org.example.chat"] == "social"  # App Usage's own, meanwhile
+    # Nothing cached: the next import asks again.
+    play.fail = None
+    play.asked.clear()
+    assert _import(db, connector, write_backup(tmp_path)).status == "ok"
+    assert sorted(play.asked) == ["org.example.chat", "org.example.launcher"]
+
+
+def test_a_lookup_stops_at_its_budget_and_the_cache_expires(tmp_path, play, monkeypatch):
+    monkeypatch.setattr(play_store, "MAX_LOOKUPS", 1)
+    found = play_store.lookup(["org.example.chat", "org.example.launcher", "not a package"], str(tmp_path),
+                              today=date(2026, 3, 1))
+    assert found.genres == {"org.example.chat": "VIDEO_PLAYERS"}
+    assert found.summary == ["Google Play: 1 app(s) looked up, 0 not on it",
+                             "Google Play: 1 app(s) left to the next import"]
+    assert play.asked == ["org.example.chat"]  # "not a package" never leaves
+    play.asked.clear()
+    play_store.lookup(["org.example.chat"], str(tmp_path), today=date(2026, 3, 1) + date.resolution * 179)
+    assert play.asked == []
+    play_store.lookup(["org.example.chat"], str(tmp_path), today=date(2026, 3, 1) + date.resolution * 180)
+    assert play.asked == ["org.example.chat"]
+
+
+def test_google_play_s_categories_map_to_tributary_s():
+    assert play_store.category_of("GAME_PUZZLE") == "games"
+    assert play_store.category_of("VIDEO_PLAYERS") == "watching"
+    assert play_store.category_of("SOMETHING_NEW") is None and play_store.category_of(None) is None
+    assert set(play_store.GENRES.values()) <= set(VOCABULARY)

@@ -344,8 +344,13 @@ measurements.
   notifications counted.
 - `app_usage`: one point per app and day, at local midnight. `app` is the name
   the phone shows, `package` the Android package (the stable one: a name can
-  change with an update), `category` the phone app's (`social`, `video`,
-  `productivity`... `others` for none), lower case.
+  change with an update), `category` the kind of use, one word of a fixed
+  vocabulary: `launcher`, `watching`, `listening`, `social`, `communication`,
+  `browsing`, `productivity`, `navigation`, `smart_home`, `health`,
+  `shopping`, `finance`, `games`, `news`, `photos`, `system`, `other`
+  (`app/connectors/app_usage_categories.py`). `launcher`, `watching`,
+  `listening` and `navigation` are lean-back: the screen on without the phone
+  in hand.
 - `app_session`: one point per time an app was in the foreground, at its
   start, *local time*: its `duration_s` and `count` = 1 (sessions of an app
   that start in the same second add up).

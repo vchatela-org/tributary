@@ -419,6 +419,17 @@ def test_every_healthspan_bar_has_its_scale_underneath():
         assert builder.label(ind, ind["target"]).replace(" ", "&nbsp;") in line, bar["title"]
 
 
+PHONE = ROOT / "grafana" / "dashboards" / "phone.json"
+
+
+def test_phone_is_what_its_builder_writes():
+    """scripts/build-phone-dashboard.py writes every query; the JSON is its output."""
+    spec = importlib.util.spec_from_file_location("phone", ROOT / "scripts" / "build-phone-dashboard.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.build() == _load(PHONE), "run python3 scripts/build-phone-dashboard.py"
+
+
 def test_links_stay_among_tributary_s_dashboards(dashboard):
     uids = {_load(p)["uid"] for p in DASHBOARDS}
     for link in dashboard.get("links", []):

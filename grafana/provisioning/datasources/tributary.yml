@@ -76,3 +76,13 @@ datasources:
       dbName: DevStats
       httpMode: POST
     editable: true
+
+  - name: InfluxDB DigitalStats
+    uid: tributary-influxdb-digitalstats
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    jsonData:
+      dbName: DigitalStats
+      httpMode: POST
+    editable: true
