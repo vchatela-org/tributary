@@ -67,7 +67,9 @@ from zoneinfo import ZoneInfo
 
 from pydantic_settings import SettingsConfigDict
 
-from app.connectors.app_usage_categories import CATEGORIES, categorize
+from app.connectors import play_store
+from app.connectors.app_usage_categories import CATEGORIES, categorize, decided_without_play
+from app.connectors.play_store import category_of
 from app.connectors.base import Connector, ConnectorError, ConnectorSettings, FileImport, Span
 from app.points import Measurement, Point
 
@@ -187,17 +189,37 @@ def parse_categories(value: Optional[str]) -> Dict[str, str]:
     return out
 
 
-def read_apps(tables: Dict[str, List[Dict[str, str]]], mine: Dict[str, str]) -> Dict[str, App]:
-    """pid -> App, its category chosen by app_usage_categories.categorize."""
+def _packages(tables: Dict[str, List[Dict[str, str]]]) -> Dict[str, Dict[str, str]]:
+    """pid -> its pkgs.csv row, for the rows that name a package."""
+    return {row["pid"]: row for row in tables["pkgs.csv"] if row["pkg_name"].strip()}
+
+
+def _chosen_name(row: Dict[str, str], names: Dict[str, str]) -> Optional[str]:
+    return names.get(row["user_category"]) if row["user_category"] not in ("", "-1") else None
+
+
+def to_look_up(tables: Dict[str, List[Dict[str, str]]], mine: Dict[str, str]) -> Set[str]:
+    """The packages Google Play is asked about: the ones the backup shows in use
+    (a day's usage, a session) that no earlier rule decides."""
+    names = {row["cid"]: row["name"] for row in tables["categories.csv"]}
+    rows = _packages(tables)
+    used = {row["pid"] for row in tables["usage.csv"]} | {
+        row["pid"] for row in tables["act.csv"] if row["type"] == APP_FOREGROUND}
+    return {rows[pid]["pkg_name"].strip() for pid in used if pid in rows
+            and not decided_without_play(rows[pid]["pkg_name"].strip(), _chosen_name(rows[pid], names), mine)}
+
+
+def read_apps(tables: Dict[str, List[Dict[str, str]]], mine: Dict[str, str],
+              play: Optional[Dict[str, Optional[str]]] = None) -> Dict[str, App]:
+    """pid -> App, its category chosen by app_usage_categories.categorize.
+    `play`: Google Play's category per package (its own words), when looked up."""
     names = {row["cid"]: row["name"] for row in tables["categories.csv"]}
     apps = {}
-    for row in tables["pkgs.csv"]:
+    for pid, row in _packages(tables).items():
         package = row["pkg_name"].strip()
-        if not package:
-            continue
-        chosen = names.get(row["user_category"]) if row["user_category"] not in ("", "-1") else None
-        category = categorize(package, chosen, names.get(row["category"]), mine)
-        apps[row["pid"]] = App(name=row["app_name"].strip() or package, package=package, category=category)
+        category = categorize(package, _chosen_name(row, names), names.get(row["category"]), mine,
+                              category_of((play or {}).get(package)))
+        apps[pid] = App(name=row["app_name"].strip() or package, package=package, category=category)
     return apps
 
 
@@ -221,6 +243,10 @@ class AppUsageSettings(ConnectorSettings):
     # built-in ones (app_usage_categories.py). Read at each import, so a
     # mistake fails the import, not the start.
     categories: Optional[str] = None
+    # Ask Google Play for the category of the apps nothing else decides
+    # (play_store.py): off by default, as it sends their package names to
+    # play.google.com.
+    play_lookup: bool = False
 
 
 class AppUsageConnector(Connector):
@@ -246,7 +272,7 @@ class AppUsageConnector(Connector):
     def import_fingerprint(self) -> Dict[str, Any]:
         """The categories decide the `category` tag: changing them invalidates a
         checked upload rather than applying a diff the user never saw."""
-        return {"categories": self.settings.categories}
+        return {"categories": self.settings.categories, "play_lookup": self.settings.play_lookup}
 
     def import_file(self, path: Path) -> FileImport:
         from app.config import settings
@@ -254,7 +280,9 @@ class AppUsageConnector(Connector):
         tz = ZoneInfo(settings.tz)
         mine = parse_categories(self.settings.categories)
         tables = read_backup(path)
-        apps = read_apps(tables, mine)
+        play = (play_store.lookup(to_look_up(tables, mine), settings.data_dir)
+                if self.settings.play_lookup else None)
+        apps = read_apps(tables, mine, play.genres if play else None)
         points: List[Point] = []
         unknown: Set[str] = set()
 
@@ -332,4 +360,6 @@ class AppUsageConnector(Connector):
                    f"{unlocks} unlock(s)"]
         if unknown:
             summary.append(f"{len(unknown)} package id(s) not in pkgs.csv left out")
+        if play:
+            summary.extend(play.summary)
         return FileImport(points, spans, summary)

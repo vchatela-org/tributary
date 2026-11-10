@@ -86,10 +86,38 @@ An app's category is, first match wins:
    (*Video* is `watching`, *Audio* `listening`, *Maps* `navigation`...), or a
    category you created there under one of these names;
 3. Tributary's list of well-known apps
-   (`app/connectors/app_usage_categories.py`);
-4. the category App Usage gives the app;
-5. `system` for Android's and the phone maker's own packages, `other`
+   (`app/connectors/app_usage_categories.py`), chiefly the ones Google Play
+   files under something else than their use (browsers are *Communication*
+   there, launchers *Tools*);
+4. **Google Play's category**, with `TRIBUTARY_APP_USAGE_PLAY_LOOKUP=true`
+   (below);
+5. the category App Usage gives the app: the one its developer declared in
+   the app's manifest, which few do (most apps have none);
+6. `system` for Android's and the phone maker's own packages, `other`
    otherwise.
+
+### Google Play's categories
+
+Every app on Google Play has a store category, which its public page carries.
+With `TRIBUTARY_APP_USAGE_PLAY_LOOKUP=true`, an import reads it for the apps
+the backup shows in use that the first three rules don't decide, and maps it
+to the words above (*Video players* and *Entertainment* are `watching`,
+*Medical* `health`, *Tools* `system`, *Lifestyle* and *Travel* `other`...:
+`app/connectors/play_store.py`).
+
+- **Off by default.** Each lookup sends the app's package name, and nothing
+  else (no cookie, no account), to `play.google.com`: Google knows the apps
+  installed from it, but not which you use.
+- Google publishes no API for it: Tributary reads the app's public page, as a
+  browser would. If Google changes that page, the lookups find nothing and the
+  next rules apply; the import never fails for it.
+- One request per app, half a second apart, at most 400 and 4 minutes per
+  import (the first import of a phone asks for a hundred or two; the rest wait
+  for the next import). Each answer is kept in `TRIBUTARY_DATA_DIR`
+  (`app_usage_play.json`) for 180 days, an app Google Play doesn't have
+  (installed from elsewhere, withdrawn) for 30.
+- Tributary needs to reach `https://play.google.com` (a network policy
+  allowing it, in a cluster).
 
 A change applies from the next import, to every day that backup holds: import
 a backup again after changing the variable.
@@ -100,7 +128,9 @@ The backup holds, besides the usage, the list of installed apps, their install
 and update history, the battery's level, the places you set for the app's
 "at home / at work" feature, and the apps' icons. Only the usage leaves: the
 apps' names and packages and the categories' names (tags), and numbers.
-Installs, battery, places and icons are not read.
+Installs, battery, places and icons are not read. With
+`TRIBUTARY_APP_USAGE_PLAY_LOOKUP`, the packages of the apps you use are sent
+to Google Play ([above](#google-plays-categories)).
 
 Nothing in the backup is a message, a title or a URL: App Usage records which
 app was open and for how long, not what it showed.

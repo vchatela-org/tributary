@@ -9,10 +9,15 @@ under one word of its own vocabulary, CATEGORIES, at import:
   2. the category you chose for the app in App Usage, when you chose one and it
      maps to one of these words (the app's own words, by APP_USAGE_WORDS, or a
      category you created under one of these names);
-  3. KNOWN, below: well-known apps, by package;
-  4. the category App Usage gives the app, by APP_USAGE_WORDS;
-  5. `system` for the phone maker's and Android's own packages, SYSTEM_PREFIXES;
-  6. `other`.
+  3. KNOWN, below: well-known apps, by package, chiefly the ones Google Play
+     files under something else than their use (browsers are COMMUNICATION
+     there, launchers TOOLS), and a default that needs no network;
+  4. Google Play's category, with TRIBUTARY_APP_USAGE_PLAY_LOOKUP
+     (play_store.py: read once per app, cached, mapped by play_store.GENRES);
+  5. the category App Usage gives the app (the one its developer declared in
+     the manifest, which few do), by APP_USAGE_WORDS;
+  6. `system` for the phone maker's and Android's own packages, SYSTEM_PREFIXES;
+  7. `other`.
 
 LEAN_BACK are the categories where the screen is on without the phone being in
 hand: the home screen between two apps, a video, music, a map while driving.
@@ -124,19 +129,33 @@ _KNOWN: Dict[str, Tuple[str, ...]] = {
 KNOWN: Dict[str, str] = {package: category for category, packages in _KNOWN.items() for package in packages}
 
 
-def categorize(package: str, chosen: Optional[str], own: Optional[str], mine: Dict[str, str]) -> str:
+def _chosen(chosen: Optional[str]) -> Optional[str]:
+    if not chosen:
+        return None
+    word = chosen.strip().lower()
+    return word if word in CATEGORIES else APP_USAGE_WORDS.get(word)
+
+
+def decided_without_play(package: str, chosen: Optional[str], mine: Dict[str, str]) -> bool:
+    """Whether a rule before Google Play's decides the app: then it is never
+    looked up."""
+    return package in mine or _chosen(chosen) is not None or package in KNOWN
+
+
+def categorize(package: str, chosen: Optional[str], own: Optional[str], mine: Dict[str, str],
+               play: Optional[str] = None) -> str:
     """The app's category. `chosen`: the name of the category the user gave it
     in App Usage (None when they gave none); `own`: App Usage's; `mine`:
-    TRIBUTARY_APP_USAGE_CATEGORIES, already checked."""
+    TRIBUTARY_APP_USAGE_CATEGORIES, already checked; `play`: Google Play's,
+    already in Tributary's words (play_store.category_of)."""
     if package in mine:
         return mine[package]
-    if chosen:
-        word = chosen.strip().lower()
-        word = word if word in CATEGORIES else APP_USAGE_WORDS.get(word)
-        if word:
-            return word
+    if _chosen(chosen):
+        return _chosen(chosen)
     if package in KNOWN:
         return KNOWN[package]
+    if play:
+        return play
     word = APP_USAGE_WORDS.get((own or "").strip().lower())
     if word:
         return word
