@@ -394,10 +394,19 @@ the bottom keep every category and every app.
   06:00). A total is divided by the days that hold data, so a range starting
   before the first backup does not dilute it.
 - **Day by day:** time in apps per day, stacked by group; screen on and
-  unlocks per day.
-- **When in the day:** minutes per day in each hour, hands-on and watching and
-  listening apart (local time); time in apps each night from 22:00 to 06:00,
-  stacked by group, next to the [Sleep](#sleep) dashboard.
+  unlocks per day, each with its 7-day moving average.
+- **When in the day:** two heatmaps of the week, a row per weekday and a cell
+  per hour (local time): hands-on minutes and unlocks, per day of that
+  weekday, the day's total on the right. A cell is the hour's total divided by
+  the number of such weekdays with data; the darker, the more, on fixed steps
+  so a colour means the same from one range to the next. Then minutes per day
+  in each hour, hands-on and watching and listening apart; time in apps each
+  night from 22:00 to 06:00, stacked by group, next to the [Sleep](#sleep)
+  dashboard.
+- **How long each time:** hands-on sessions per day by length (under 10 s,
+  10 s to 1 min, 1 to 5 min, 5 to 15 min, 15 min and more), and the minutes
+  they add up to: many quick checks, or a few long stretches. A session is an
+  app in the foreground, from opening it to leaving it.
 - **Apps and categories:** hours per category, ranked; every app with its
   category, hours, launches and minutes per launch.
 

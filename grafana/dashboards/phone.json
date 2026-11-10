@@ -147,6 +147,139 @@
         "includeAll": false
       },
       {
+        "type": "query",
+        "name": "days_1",
+        "label": "Mon with data",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${digital}"
+        },
+        "description": "The Mon of the time range that hold data: what a Mon cell is divided by.",
+        "definition": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "query": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "refresh": 2,
+        "sort": 0,
+        "hide": 2,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "days_2",
+        "label": "Tue with data",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${digital}"
+        },
+        "description": "The Tue of the time range that hold data: what a Tue cell is divided by.",
+        "definition": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "query": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "refresh": 2,
+        "sort": 0,
+        "hide": 2,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "days_3",
+        "label": "Wed with data",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${digital}"
+        },
+        "description": "The Wed of the time range that hold data: what a Wed cell is divided by.",
+        "definition": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "query": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "refresh": 2,
+        "sort": 0,
+        "hide": 2,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "days_4",
+        "label": "Thu with data",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${digital}"
+        },
+        "description": "The Thu of the time range that hold data: what a Thu cell is divided by.",
+        "definition": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "query": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "refresh": 2,
+        "sort": 0,
+        "hide": 2,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "days_5",
+        "label": "Fri with data",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${digital}"
+        },
+        "description": "The Fri of the time range that hold data: what a Fri cell is divided by.",
+        "definition": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "query": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "refresh": 2,
+        "sort": 0,
+        "hide": 2,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "days_6",
+        "label": "Sat with data",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${digital}"
+        },
+        "description": "The Sat of the time range that hold data: what a Sat cell is divided by.",
+        "definition": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "query": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "refresh": 2,
+        "sort": 0,
+        "hide": 2,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
+        "type": "query",
+        "name": "days_7",
+        "label": "Sun with data",
+        "datasource": {
+          "type": "influxdb",
+          "uid": "${digital}"
+        },
+        "description": "The Sun of the time range that hold data: what a Sun cell is divided by.",
+        "definition": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "query": "SELECT count(\"d\") FROM (SELECT count(\"count\") AS \"d\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz'))",
+        "refresh": 2,
+        "sort": 0,
+        "hide": 2,
+        "current": {},
+        "options": [],
+        "multi": false,
+        "includeAll": false
+      },
+      {
         "type": "adhoc",
         "name": "filters",
         "label": "Filters",
@@ -816,7 +949,7 @@
       "type": "timeseries",
       "title": "Screen on per day",
       "id": 10,
-      "description": "How long the screen was on, per day (the phone's own figure).",
+      "description": "How long the screen was on, per day (the phone's own figure), and its 7-day moving average: the trend under the day-to-day noise.",
       "datasource": {
         "type": "influxdb",
         "uid": "${digital}"
@@ -852,13 +985,41 @@
           },
           "decimals": 1
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "7-day average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": false
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -874,7 +1035,19 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"screen_on_s\") / 3600 AS \"Screen on\" FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')"
+          "query": "SELECT sum(\"screen_on_s\") / 3600 AS \"Screen on\" FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "Screen on"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"screen_on_s\"), 7) / 3600 AS \"7-day average\" FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "7-day average"
         }
       ]
     },
@@ -882,7 +1055,7 @@
       "type": "timeseries",
       "title": "Unlocks per day",
       "id": 11,
-      "description": "Times the phone was unlocked, per day.",
+      "description": "Times the phone was unlocked, per day, and the 7-day moving average.",
       "datasource": {
         "type": "influxdb",
         "uid": "${digital}"
@@ -918,13 +1091,41 @@
           },
           "decimals": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "7-day average"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#3987e5"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
-          "showLegend": false
+          "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
@@ -940,7 +1141,19 @@
           },
           "rawQuery": true,
           "resultFormat": "time_series",
-          "query": "SELECT sum(\"unlocks\") AS \"Unlocks\" FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')"
+          "query": "SELECT sum(\"unlocks\") AS \"Unlocks\" FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "Unlocks"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT moving_average(sum(\"unlocks\"), 7) AS \"7-day average\" FROM \"screen_time\" WHERE \"user\" = '$user' AND $timeFilter GROUP BY time(1d) fill(none) tz('$tz')",
+          "alias": "7-day average"
         }
       ]
     },
@@ -958,10 +1171,10 @@
       "panels": []
     },
     {
-      "type": "barchart",
-      "title": "Hands-on, by hour of the day",
+      "type": "table",
+      "title": "Hands-on, by weekday and hour",
       "id": 13,
-      "description": "Minutes per day in each hour (local time) in the hands-on groups' apps, over the time range: when the phone is in hand.",
+      "description": "Minutes per day in the hands-on groups' apps, for each weekday (row) and hour (column, local time), over the time range: each cell is that hour's total divided by the number of such weekdays with data. The darker, the longer; an empty cell is an hour never used. On the right, the day's total. A session counts in the hour it started.",
       "datasource": {
         "type": "influxdb",
         "uid": "${digital}"
@@ -969,6 +1182,592 @@
       "gridPos": {
         "x": 0,
         "y": 23,
+        "w": 24,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "",
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 0,
+                "to": 0.5,
+                "result": {
+                  "text": "·"
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "#cde2fb",
+                "value": 0.01
+              },
+              {
+                "color": "#9ec5f4",
+                "value": 2
+              },
+              {
+                "color": "#6da7ec",
+                "value": 5
+              },
+              {
+                "color": "#3987e5",
+                "value": 10
+              },
+              {
+                "color": "#256abf",
+                "value": 15
+              },
+              {
+                "color": "#184f95",
+                "value": 20
+              },
+              {
+                "color": "#0d366b",
+                "value": 30
+              }
+            ]
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background",
+              "mode": "basic"
+            },
+            "minWidth": 34,
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "day"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": " "
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              },
+              {
+                "id": "custom.width",
+                "value": 52
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "Mon",
+                        "index": 0
+                      },
+                      "2": {
+                        "text": "Tue",
+                        "index": 1
+                      },
+                      "3": {
+                        "text": "Wed",
+                        "index": 2
+                      },
+                      "4": {
+                        "text": "Thu",
+                        "index": 3
+                      },
+                      "5": {
+                        "text": "Fri",
+                        "index": 4
+                      },
+                      "6": {
+                        "text": "Sat",
+                        "index": 5
+                      },
+                      "7": {
+                        "text": "Sun",
+                        "index": 6
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "per day"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": []
+              },
+              {
+                "id": "unit",
+                "value": "suffix: h"
+              },
+              {
+                "id": "decimals",
+                "value": 1
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": "",
+          "countRows": false
+        }
+      },
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "day",
+                "desc": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_1 AS \"00\", sum(\"h01\") / 0$days_1 AS \"01\", sum(\"h02\") / 0$days_1 AS \"02\", sum(\"h03\") / 0$days_1 AS \"03\", sum(\"h04\") / 0$days_1 AS \"04\", sum(\"h05\") / 0$days_1 AS \"05\", sum(\"h06\") / 0$days_1 AS \"06\", sum(\"h07\") / 0$days_1 AS \"07\", sum(\"h08\") / 0$days_1 AS \"08\", sum(\"h09\") / 0$days_1 AS \"09\", sum(\"h10\") / 0$days_1 AS \"10\", sum(\"h11\") / 0$days_1 AS \"11\", sum(\"h12\") / 0$days_1 AS \"12\", sum(\"h13\") / 0$days_1 AS \"13\", sum(\"h14\") / 0$days_1 AS \"14\", sum(\"h15\") / 0$days_1 AS \"15\", sum(\"h16\") / 0$days_1 AS \"16\", sum(\"h17\") / 0$days_1 AS \"17\", sum(\"h18\") / 0$days_1 AS \"18\", sum(\"h19\") / 0$days_1 AS \"19\", sum(\"h20\") / 0$days_1 AS \"20\", sum(\"h21\") / 0$days_1 AS \"21\", sum(\"h22\") / 0$days_1 AS \"22\", sum(\"h23\") / 0$days_1 AS \"23\", sum(\"all\") / 0$days_1 / 60 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"duration_s\" / 60 AS \"all\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h00\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h01\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h02\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h03\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h04\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h05\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h06\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h07\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h08\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h09\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h10\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h11\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h12\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h13\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h14\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h15\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h16\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h17\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h18\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h19\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h20\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h21\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h22\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h23\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 1 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_2 AS \"00\", sum(\"h01\") / 0$days_2 AS \"01\", sum(\"h02\") / 0$days_2 AS \"02\", sum(\"h03\") / 0$days_2 AS \"03\", sum(\"h04\") / 0$days_2 AS \"04\", sum(\"h05\") / 0$days_2 AS \"05\", sum(\"h06\") / 0$days_2 AS \"06\", sum(\"h07\") / 0$days_2 AS \"07\", sum(\"h08\") / 0$days_2 AS \"08\", sum(\"h09\") / 0$days_2 AS \"09\", sum(\"h10\") / 0$days_2 AS \"10\", sum(\"h11\") / 0$days_2 AS \"11\", sum(\"h12\") / 0$days_2 AS \"12\", sum(\"h13\") / 0$days_2 AS \"13\", sum(\"h14\") / 0$days_2 AS \"14\", sum(\"h15\") / 0$days_2 AS \"15\", sum(\"h16\") / 0$days_2 AS \"16\", sum(\"h17\") / 0$days_2 AS \"17\", sum(\"h18\") / 0$days_2 AS \"18\", sum(\"h19\") / 0$days_2 AS \"19\", sum(\"h20\") / 0$days_2 AS \"20\", sum(\"h21\") / 0$days_2 AS \"21\", sum(\"h22\") / 0$days_2 AS \"22\", sum(\"h23\") / 0$days_2 AS \"23\", sum(\"all\") / 0$days_2 / 60 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"duration_s\" / 60 AS \"all\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h00\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h01\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h02\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h03\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h04\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h05\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h06\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h07\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h08\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h09\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h10\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h11\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h12\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h13\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h14\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h15\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h16\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h17\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h18\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h19\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h20\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h21\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h22\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h23\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 2 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_3 AS \"00\", sum(\"h01\") / 0$days_3 AS \"01\", sum(\"h02\") / 0$days_3 AS \"02\", sum(\"h03\") / 0$days_3 AS \"03\", sum(\"h04\") / 0$days_3 AS \"04\", sum(\"h05\") / 0$days_3 AS \"05\", sum(\"h06\") / 0$days_3 AS \"06\", sum(\"h07\") / 0$days_3 AS \"07\", sum(\"h08\") / 0$days_3 AS \"08\", sum(\"h09\") / 0$days_3 AS \"09\", sum(\"h10\") / 0$days_3 AS \"10\", sum(\"h11\") / 0$days_3 AS \"11\", sum(\"h12\") / 0$days_3 AS \"12\", sum(\"h13\") / 0$days_3 AS \"13\", sum(\"h14\") / 0$days_3 AS \"14\", sum(\"h15\") / 0$days_3 AS \"15\", sum(\"h16\") / 0$days_3 AS \"16\", sum(\"h17\") / 0$days_3 AS \"17\", sum(\"h18\") / 0$days_3 AS \"18\", sum(\"h19\") / 0$days_3 AS \"19\", sum(\"h20\") / 0$days_3 AS \"20\", sum(\"h21\") / 0$days_3 AS \"21\", sum(\"h22\") / 0$days_3 AS \"22\", sum(\"h23\") / 0$days_3 AS \"23\", sum(\"all\") / 0$days_3 / 60 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"duration_s\" / 60 AS \"all\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h00\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h01\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h02\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h03\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h04\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h05\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h06\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h07\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h08\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h09\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h10\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h11\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h12\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h13\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h14\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h15\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h16\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h17\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h18\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h19\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h20\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h21\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h22\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h23\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 3 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_4 AS \"00\", sum(\"h01\") / 0$days_4 AS \"01\", sum(\"h02\") / 0$days_4 AS \"02\", sum(\"h03\") / 0$days_4 AS \"03\", sum(\"h04\") / 0$days_4 AS \"04\", sum(\"h05\") / 0$days_4 AS \"05\", sum(\"h06\") / 0$days_4 AS \"06\", sum(\"h07\") / 0$days_4 AS \"07\", sum(\"h08\") / 0$days_4 AS \"08\", sum(\"h09\") / 0$days_4 AS \"09\", sum(\"h10\") / 0$days_4 AS \"10\", sum(\"h11\") / 0$days_4 AS \"11\", sum(\"h12\") / 0$days_4 AS \"12\", sum(\"h13\") / 0$days_4 AS \"13\", sum(\"h14\") / 0$days_4 AS \"14\", sum(\"h15\") / 0$days_4 AS \"15\", sum(\"h16\") / 0$days_4 AS \"16\", sum(\"h17\") / 0$days_4 AS \"17\", sum(\"h18\") / 0$days_4 AS \"18\", sum(\"h19\") / 0$days_4 AS \"19\", sum(\"h20\") / 0$days_4 AS \"20\", sum(\"h21\") / 0$days_4 AS \"21\", sum(\"h22\") / 0$days_4 AS \"22\", sum(\"h23\") / 0$days_4 AS \"23\", sum(\"all\") / 0$days_4 / 60 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"duration_s\" / 60 AS \"all\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h00\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h01\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h02\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h03\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h04\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h05\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h06\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h07\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h08\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h09\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h10\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h11\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h12\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h13\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h14\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h15\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h16\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h17\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h18\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h19\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h20\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h21\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h22\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h23\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 4 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_5 AS \"00\", sum(\"h01\") / 0$days_5 AS \"01\", sum(\"h02\") / 0$days_5 AS \"02\", sum(\"h03\") / 0$days_5 AS \"03\", sum(\"h04\") / 0$days_5 AS \"04\", sum(\"h05\") / 0$days_5 AS \"05\", sum(\"h06\") / 0$days_5 AS \"06\", sum(\"h07\") / 0$days_5 AS \"07\", sum(\"h08\") / 0$days_5 AS \"08\", sum(\"h09\") / 0$days_5 AS \"09\", sum(\"h10\") / 0$days_5 AS \"10\", sum(\"h11\") / 0$days_5 AS \"11\", sum(\"h12\") / 0$days_5 AS \"12\", sum(\"h13\") / 0$days_5 AS \"13\", sum(\"h14\") / 0$days_5 AS \"14\", sum(\"h15\") / 0$days_5 AS \"15\", sum(\"h16\") / 0$days_5 AS \"16\", sum(\"h17\") / 0$days_5 AS \"17\", sum(\"h18\") / 0$days_5 AS \"18\", sum(\"h19\") / 0$days_5 AS \"19\", sum(\"h20\") / 0$days_5 AS \"20\", sum(\"h21\") / 0$days_5 AS \"21\", sum(\"h22\") / 0$days_5 AS \"22\", sum(\"h23\") / 0$days_5 AS \"23\", sum(\"all\") / 0$days_5 / 60 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"duration_s\" / 60 AS \"all\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h00\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h01\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h02\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h03\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h04\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h05\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h06\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h07\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h08\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h09\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h10\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h11\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h12\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h13\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h14\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h15\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h16\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h17\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h18\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h19\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h20\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h21\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h22\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h23\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 5 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_6 AS \"00\", sum(\"h01\") / 0$days_6 AS \"01\", sum(\"h02\") / 0$days_6 AS \"02\", sum(\"h03\") / 0$days_6 AS \"03\", sum(\"h04\") / 0$days_6 AS \"04\", sum(\"h05\") / 0$days_6 AS \"05\", sum(\"h06\") / 0$days_6 AS \"06\", sum(\"h07\") / 0$days_6 AS \"07\", sum(\"h08\") / 0$days_6 AS \"08\", sum(\"h09\") / 0$days_6 AS \"09\", sum(\"h10\") / 0$days_6 AS \"10\", sum(\"h11\") / 0$days_6 AS \"11\", sum(\"h12\") / 0$days_6 AS \"12\", sum(\"h13\") / 0$days_6 AS \"13\", sum(\"h14\") / 0$days_6 AS \"14\", sum(\"h15\") / 0$days_6 AS \"15\", sum(\"h16\") / 0$days_6 AS \"16\", sum(\"h17\") / 0$days_6 AS \"17\", sum(\"h18\") / 0$days_6 AS \"18\", sum(\"h19\") / 0$days_6 AS \"19\", sum(\"h20\") / 0$days_6 AS \"20\", sum(\"h21\") / 0$days_6 AS \"21\", sum(\"h22\") / 0$days_6 AS \"22\", sum(\"h23\") / 0$days_6 AS \"23\", sum(\"all\") / 0$days_6 / 60 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"duration_s\" / 60 AS \"all\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h00\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h01\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h02\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h03\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h04\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h05\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h06\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h07\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h08\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h09\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h10\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h11\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h12\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h13\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h14\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h15\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h16\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h17\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h18\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h19\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h20\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h21\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h22\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h23\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 6 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_7 AS \"00\", sum(\"h01\") / 0$days_7 AS \"01\", sum(\"h02\") / 0$days_7 AS \"02\", sum(\"h03\") / 0$days_7 AS \"03\", sum(\"h04\") / 0$days_7 AS \"04\", sum(\"h05\") / 0$days_7 AS \"05\", sum(\"h06\") / 0$days_7 AS \"06\", sum(\"h07\") / 0$days_7 AS \"07\", sum(\"h08\") / 0$days_7 AS \"08\", sum(\"h09\") / 0$days_7 AS \"09\", sum(\"h10\") / 0$days_7 AS \"10\", sum(\"h11\") / 0$days_7 AS \"11\", sum(\"h12\") / 0$days_7 AS \"12\", sum(\"h13\") / 0$days_7 AS \"13\", sum(\"h14\") / 0$days_7 AS \"14\", sum(\"h15\") / 0$days_7 AS \"15\", sum(\"h16\") / 0$days_7 AS \"16\", sum(\"h17\") / 0$days_7 AS \"17\", sum(\"h18\") / 0$days_7 AS \"18\", sum(\"h19\") / 0$days_7 AS \"19\", sum(\"h20\") / 0$days_7 AS \"20\", sum(\"h21\") / 0$days_7 AS \"21\", sum(\"h22\") / 0$days_7 AS \"22\", sum(\"h23\") / 0$days_7 AS \"23\", sum(\"all\") / 0$days_7 / 60 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"duration_s\" / 60 AS \"all\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h00\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h01\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h02\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h03\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h04\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h05\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h06\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h07\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h08\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h09\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h10\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h11\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h12\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h13\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h14\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h15\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h16\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h17\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h18\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h19\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h20\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h21\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h22\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"duration_s\" / 60 AS \"h23\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"local_weekday\" = 7 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Unlocks, by weekday and hour",
+      "id": 14,
+      "description": "Unlocks per day for each weekday (row) and hour (column, local time), over the time range: when the phone gets picked up. On the right, the day's total.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 24,
+        "h": 9
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "noValue": "",
+          "mappings": [
+            {
+              "type": "range",
+              "options": {
+                "from": 0,
+                "to": 0.5,
+                "result": {
+                  "text": "·"
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "transparent",
+                "value": null
+              },
+              {
+                "color": "#cde2fb",
+                "value": 0.01
+              },
+              {
+                "color": "#9ec5f4",
+                "value": 1
+              },
+              {
+                "color": "#6da7ec",
+                "value": 2
+              },
+              {
+                "color": "#3987e5",
+                "value": 3
+              },
+              {
+                "color": "#256abf",
+                "value": 4
+              },
+              {
+                "color": "#184f95",
+                "value": 6
+              },
+              {
+                "color": "#0d366b",
+                "value": 8
+              }
+            ]
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background",
+              "mode": "basic"
+            },
+            "minWidth": 34,
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "day"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": " "
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              },
+              {
+                "id": "custom.width",
+                "value": 52
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "1": {
+                        "text": "Mon",
+                        "index": 0
+                      },
+                      "2": {
+                        "text": "Tue",
+                        "index": 1
+                      },
+                      "3": {
+                        "text": "Wed",
+                        "index": 2
+                      },
+                      "4": {
+                        "text": "Thu",
+                        "index": 3
+                      },
+                      "5": {
+                        "text": "Fri",
+                        "index": 4
+                      },
+                      "6": {
+                        "text": "Sat",
+                        "index": 5
+                      },
+                      "7": {
+                        "text": "Sun",
+                        "index": 6
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "per day"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": []
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.align",
+                "value": "right"
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "fields": "",
+          "countRows": false
+        }
+      },
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "day",
+                "desc": false
+              }
+            ]
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_1 AS \"00\", sum(\"h01\") / 0$days_1 AS \"01\", sum(\"h02\") / 0$days_1 AS \"02\", sum(\"h03\") / 0$days_1 AS \"03\", sum(\"h04\") / 0$days_1 AS \"04\", sum(\"h05\") / 0$days_1 AS \"05\", sum(\"h06\") / 0$days_1 AS \"06\", sum(\"h07\") / 0$days_1 AS \"07\", sum(\"h08\") / 0$days_1 AS \"08\", sum(\"h09\") / 0$days_1 AS \"09\", sum(\"h10\") / 0$days_1 AS \"10\", sum(\"h11\") / 0$days_1 AS \"11\", sum(\"h12\") / 0$days_1 AS \"12\", sum(\"h13\") / 0$days_1 AS \"13\", sum(\"h14\") / 0$days_1 AS \"14\", sum(\"h15\") / 0$days_1 AS \"15\", sum(\"h16\") / 0$days_1 AS \"16\", sum(\"h17\") / 0$days_1 AS \"17\", sum(\"h18\") / 0$days_1 AS \"18\", sum(\"h19\") / 0$days_1 AS \"19\", sum(\"h20\") / 0$days_1 AS \"20\", sum(\"h21\") / 0$days_1 AS \"21\", sum(\"h22\") / 0$days_1 AS \"22\", sum(\"h23\") / 0$days_1 AS \"23\", sum(\"all\") / 0$days_1 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"count\" * 1.0 AS \"all\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h00\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h01\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h02\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h03\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h04\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h05\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h06\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h07\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h08\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h09\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h10\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h11\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h12\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h13\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h14\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h15\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h16\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h17\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h18\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h19\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h20\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h21\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h22\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h23\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 1 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_2 AS \"00\", sum(\"h01\") / 0$days_2 AS \"01\", sum(\"h02\") / 0$days_2 AS \"02\", sum(\"h03\") / 0$days_2 AS \"03\", sum(\"h04\") / 0$days_2 AS \"04\", sum(\"h05\") / 0$days_2 AS \"05\", sum(\"h06\") / 0$days_2 AS \"06\", sum(\"h07\") / 0$days_2 AS \"07\", sum(\"h08\") / 0$days_2 AS \"08\", sum(\"h09\") / 0$days_2 AS \"09\", sum(\"h10\") / 0$days_2 AS \"10\", sum(\"h11\") / 0$days_2 AS \"11\", sum(\"h12\") / 0$days_2 AS \"12\", sum(\"h13\") / 0$days_2 AS \"13\", sum(\"h14\") / 0$days_2 AS \"14\", sum(\"h15\") / 0$days_2 AS \"15\", sum(\"h16\") / 0$days_2 AS \"16\", sum(\"h17\") / 0$days_2 AS \"17\", sum(\"h18\") / 0$days_2 AS \"18\", sum(\"h19\") / 0$days_2 AS \"19\", sum(\"h20\") / 0$days_2 AS \"20\", sum(\"h21\") / 0$days_2 AS \"21\", sum(\"h22\") / 0$days_2 AS \"22\", sum(\"h23\") / 0$days_2 AS \"23\", sum(\"all\") / 0$days_2 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"count\" * 1.0 AS \"all\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h00\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h01\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h02\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h03\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h04\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h05\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h06\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h07\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h08\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h09\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h10\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h11\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h12\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h13\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h14\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h15\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h16\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h17\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h18\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h19\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h20\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h21\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h22\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h23\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 2 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_3 AS \"00\", sum(\"h01\") / 0$days_3 AS \"01\", sum(\"h02\") / 0$days_3 AS \"02\", sum(\"h03\") / 0$days_3 AS \"03\", sum(\"h04\") / 0$days_3 AS \"04\", sum(\"h05\") / 0$days_3 AS \"05\", sum(\"h06\") / 0$days_3 AS \"06\", sum(\"h07\") / 0$days_3 AS \"07\", sum(\"h08\") / 0$days_3 AS \"08\", sum(\"h09\") / 0$days_3 AS \"09\", sum(\"h10\") / 0$days_3 AS \"10\", sum(\"h11\") / 0$days_3 AS \"11\", sum(\"h12\") / 0$days_3 AS \"12\", sum(\"h13\") / 0$days_3 AS \"13\", sum(\"h14\") / 0$days_3 AS \"14\", sum(\"h15\") / 0$days_3 AS \"15\", sum(\"h16\") / 0$days_3 AS \"16\", sum(\"h17\") / 0$days_3 AS \"17\", sum(\"h18\") / 0$days_3 AS \"18\", sum(\"h19\") / 0$days_3 AS \"19\", sum(\"h20\") / 0$days_3 AS \"20\", sum(\"h21\") / 0$days_3 AS \"21\", sum(\"h22\") / 0$days_3 AS \"22\", sum(\"h23\") / 0$days_3 AS \"23\", sum(\"all\") / 0$days_3 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"count\" * 1.0 AS \"all\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h00\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h01\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h02\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h03\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h04\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h05\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h06\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h07\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h08\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h09\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h10\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h11\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h12\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h13\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h14\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h15\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h16\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h17\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h18\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h19\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h20\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h21\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h22\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h23\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 3 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_4 AS \"00\", sum(\"h01\") / 0$days_4 AS \"01\", sum(\"h02\") / 0$days_4 AS \"02\", sum(\"h03\") / 0$days_4 AS \"03\", sum(\"h04\") / 0$days_4 AS \"04\", sum(\"h05\") / 0$days_4 AS \"05\", sum(\"h06\") / 0$days_4 AS \"06\", sum(\"h07\") / 0$days_4 AS \"07\", sum(\"h08\") / 0$days_4 AS \"08\", sum(\"h09\") / 0$days_4 AS \"09\", sum(\"h10\") / 0$days_4 AS \"10\", sum(\"h11\") / 0$days_4 AS \"11\", sum(\"h12\") / 0$days_4 AS \"12\", sum(\"h13\") / 0$days_4 AS \"13\", sum(\"h14\") / 0$days_4 AS \"14\", sum(\"h15\") / 0$days_4 AS \"15\", sum(\"h16\") / 0$days_4 AS \"16\", sum(\"h17\") / 0$days_4 AS \"17\", sum(\"h18\") / 0$days_4 AS \"18\", sum(\"h19\") / 0$days_4 AS \"19\", sum(\"h20\") / 0$days_4 AS \"20\", sum(\"h21\") / 0$days_4 AS \"21\", sum(\"h22\") / 0$days_4 AS \"22\", sum(\"h23\") / 0$days_4 AS \"23\", sum(\"all\") / 0$days_4 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"count\" * 1.0 AS \"all\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h00\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h01\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h02\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h03\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h04\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h05\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h06\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h07\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h08\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h09\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h10\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h11\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h12\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h13\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h14\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h15\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h16\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h17\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h18\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h19\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h20\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h21\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h22\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h23\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 4 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_5 AS \"00\", sum(\"h01\") / 0$days_5 AS \"01\", sum(\"h02\") / 0$days_5 AS \"02\", sum(\"h03\") / 0$days_5 AS \"03\", sum(\"h04\") / 0$days_5 AS \"04\", sum(\"h05\") / 0$days_5 AS \"05\", sum(\"h06\") / 0$days_5 AS \"06\", sum(\"h07\") / 0$days_5 AS \"07\", sum(\"h08\") / 0$days_5 AS \"08\", sum(\"h09\") / 0$days_5 AS \"09\", sum(\"h10\") / 0$days_5 AS \"10\", sum(\"h11\") / 0$days_5 AS \"11\", sum(\"h12\") / 0$days_5 AS \"12\", sum(\"h13\") / 0$days_5 AS \"13\", sum(\"h14\") / 0$days_5 AS \"14\", sum(\"h15\") / 0$days_5 AS \"15\", sum(\"h16\") / 0$days_5 AS \"16\", sum(\"h17\") / 0$days_5 AS \"17\", sum(\"h18\") / 0$days_5 AS \"18\", sum(\"h19\") / 0$days_5 AS \"19\", sum(\"h20\") / 0$days_5 AS \"20\", sum(\"h21\") / 0$days_5 AS \"21\", sum(\"h22\") / 0$days_5 AS \"22\", sum(\"h23\") / 0$days_5 AS \"23\", sum(\"all\") / 0$days_5 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"count\" * 1.0 AS \"all\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h00\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h01\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h02\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h03\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h04\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h05\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h06\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h07\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h08\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h09\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h10\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h11\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h12\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h13\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h14\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h15\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h16\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h17\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h18\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h19\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h20\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h21\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h22\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h23\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 5 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_6 AS \"00\", sum(\"h01\") / 0$days_6 AS \"01\", sum(\"h02\") / 0$days_6 AS \"02\", sum(\"h03\") / 0$days_6 AS \"03\", sum(\"h04\") / 0$days_6 AS \"04\", sum(\"h05\") / 0$days_6 AS \"05\", sum(\"h06\") / 0$days_6 AS \"06\", sum(\"h07\") / 0$days_6 AS \"07\", sum(\"h08\") / 0$days_6 AS \"08\", sum(\"h09\") / 0$days_6 AS \"09\", sum(\"h10\") / 0$days_6 AS \"10\", sum(\"h11\") / 0$days_6 AS \"11\", sum(\"h12\") / 0$days_6 AS \"12\", sum(\"h13\") / 0$days_6 AS \"13\", sum(\"h14\") / 0$days_6 AS \"14\", sum(\"h15\") / 0$days_6 AS \"15\", sum(\"h16\") / 0$days_6 AS \"16\", sum(\"h17\") / 0$days_6 AS \"17\", sum(\"h18\") / 0$days_6 AS \"18\", sum(\"h19\") / 0$days_6 AS \"19\", sum(\"h20\") / 0$days_6 AS \"20\", sum(\"h21\") / 0$days_6 AS \"21\", sum(\"h22\") / 0$days_6 AS \"22\", sum(\"h23\") / 0$days_6 AS \"23\", sum(\"all\") / 0$days_6 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"count\" * 1.0 AS \"all\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h00\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h01\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h02\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h03\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h04\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h05\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h06\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h07\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h08\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h09\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h10\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h11\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h12\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h13\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h14\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h15\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h16\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h17\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h18\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h19\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h20\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h21\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h22\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h23\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 6 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "table",
+          "query": "SELECT max(\"wd\") AS \"day\", sum(\"h00\") / 0$days_7 AS \"00\", sum(\"h01\") / 0$days_7 AS \"01\", sum(\"h02\") / 0$days_7 AS \"02\", sum(\"h03\") / 0$days_7 AS \"03\", sum(\"h04\") / 0$days_7 AS \"04\", sum(\"h05\") / 0$days_7 AS \"05\", sum(\"h06\") / 0$days_7 AS \"06\", sum(\"h07\") / 0$days_7 AS \"07\", sum(\"h08\") / 0$days_7 AS \"08\", sum(\"h09\") / 0$days_7 AS \"09\", sum(\"h10\") / 0$days_7 AS \"10\", sum(\"h11\") / 0$days_7 AS \"11\", sum(\"h12\") / 0$days_7 AS \"12\", sum(\"h13\") / 0$days_7 AS \"13\", sum(\"h14\") / 0$days_7 AS \"14\", sum(\"h15\") / 0$days_7 AS \"15\", sum(\"h16\") / 0$days_7 AS \"16\", sum(\"h17\") / 0$days_7 AS \"17\", sum(\"h18\") / 0$days_7 AS \"18\", sum(\"h19\") / 0$days_7 AS \"19\", sum(\"h20\") / 0$days_7 AS \"20\", sum(\"h21\") / 0$days_7 AS \"21\", sum(\"h22\") / 0$days_7 AS \"22\", sum(\"h23\") / 0$days_7 AS \"23\", sum(\"all\") / 0$days_7 AS \"per day\" FROM (SELECT \"local_weekday\" AS \"wd\", \"count\" * 1.0 AS \"all\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h00\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 0 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h01\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 1 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h02\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 2 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h03\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 3 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h04\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 4 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h05\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 5 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h06\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 6 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h07\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 7 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h08\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 8 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h09\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 9 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h10\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 10 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h11\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 11 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h12\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 12 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h13\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 13 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h14\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 14 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h15\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 15 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h16\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 16 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h17\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 17 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h18\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 18 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h19\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 19 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h20\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 20 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h21\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 21 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h22\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 22 GROUP BY *), (SELECT \"count\" * 1.0 AS \"h23\" FROM \"unlock\" WHERE \"user\" = '$user' AND \"local_weekday\" = 7 AND \"local_hour\" = 23 GROUP BY *) WHERE $timeFilter"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Hands-on, by hour of the day",
+      "id": 15,
+      "description": "Minutes per day in each hour (local time) in the hands-on groups' apps, over the time range: when the phone is in hand.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 41,
         "w": 12,
         "h": 8
       },
@@ -1289,7 +2088,7 @@
     {
       "type": "barchart",
       "title": "Watching & listening, by hour of the day",
-      "id": 14,
+      "id": 16,
       "description": "Minutes per day in each hour (local time) in video and audio apps, over the time range.",
       "datasource": {
         "type": "influxdb",
@@ -1297,7 +2096,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 23,
+        "y": 41,
         "w": 12,
         "h": 8
       },
@@ -1618,7 +2417,7 @@
     {
       "type": "timeseries",
       "title": "At night (22:00 to 06:00), per night",
-      "id": 15,
+      "id": 17,
       "description": "Hours in apps between 22:00 and 06:00 (local time), each night from noon to noon, stacked by group; the home screen left out. Next to the Sleep dashboard: the evenings the phone stays in hand.",
       "datasource": {
         "type": "influxdb",
@@ -1626,7 +2425,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 31,
+        "y": 49,
         "w": 24,
         "h": 8
       },
@@ -1830,12 +2629,265 @@
     },
     {
       "type": "row",
-      "title": "Apps and categories",
-      "id": 16,
+      "title": "How long each time",
+      "id": 18,
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 39,
+        "y": 57,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "type": "barchart",
+      "title": "Hands-on sessions per day, by length",
+      "id": 19,
+      "description": "Sessions per day in the hands-on groups' apps, by how long each lasted: a session is an app in the foreground, from opening it to leaving it. Many short ones: the phone checked, again and again.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 58,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "min": 0,
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8c8b84"
+          },
+          "custom": {
+            "fillOpacity": 90,
+            "lineWidth": 0,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "vertical",
+        "xField": "Field",
+        "showValue": "never",
+        "barWidth": 0.8,
+        "groupWidth": 0.7,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelSpacing": 0,
+        "stacking": "none"
+      },
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "mode": "seriesToRows",
+            "reducers": [
+              "lastNotNull"
+            ],
+            "includeTimeField": false
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") / 0$days AS \"under 10 s\" FROM (SELECT \"count\" AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"duration_s\" < 10 GROUP BY *), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' GROUP BY *) WHERE $timeFilter",
+          "alias": "under 10 s"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") / 0$days AS \"10 s to 1 min\" FROM (SELECT \"count\" AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"duration_s\" >= 10 AND \"duration_s\" < 60 GROUP BY *), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' GROUP BY *) WHERE $timeFilter",
+          "alias": "10 s to 1 min"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") / 0$days AS \"1 to 5 min\" FROM (SELECT \"count\" AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"duration_s\" >= 60 AND \"duration_s\" < 300 GROUP BY *), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' GROUP BY *) WHERE $timeFilter",
+          "alias": "1 to 5 min"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") / 0$days AS \"5 to 15 min\" FROM (SELECT \"count\" AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"duration_s\" >= 300 AND \"duration_s\" < 900 GROUP BY *), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' GROUP BY *) WHERE $timeFilter",
+          "alias": "5 to 15 min"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") / 0$days AS \"15 min and more\" FROM (SELECT \"count\" AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"duration_s\" >= 900 GROUP BY *), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' GROUP BY *) WHERE $timeFilter",
+          "alias": "15 min and more"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Hands-on minutes per day, by session length",
+      "id": 20,
+      "description": "Minutes per day in the hands-on groups' apps, by how long the session lasted: where the time goes, in quick looks or in long stretches.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "${digital}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 58,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "suffix: min",
+          "min": 0,
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8c8b84"
+          },
+          "custom": {
+            "fillOpacity": 90,
+            "lineWidth": 0,
+            "axisBorderShow": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "vertical",
+        "xField": "Field",
+        "showValue": "never",
+        "barWidth": 0.8,
+        "groupWidth": 0.7,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelSpacing": 0,
+        "stacking": "none"
+      },
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "mode": "seriesToRows",
+            "reducers": [
+              "lastNotNull"
+            ],
+            "includeTimeField": false
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") / 0$days AS \"under 10 s\" FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"duration_s\" < 10 GROUP BY *), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' GROUP BY *) WHERE $timeFilter",
+          "alias": "under 10 s"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") / 0$days AS \"10 s to 1 min\" FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"duration_s\" >= 10 AND \"duration_s\" < 60 GROUP BY *), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' GROUP BY *) WHERE $timeFilter",
+          "alias": "10 s to 1 min"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") / 0$days AS \"1 to 5 min\" FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"duration_s\" >= 60 AND \"duration_s\" < 300 GROUP BY *), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' GROUP BY *) WHERE $timeFilter",
+          "alias": "1 to 5 min"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") / 0$days AS \"5 to 15 min\" FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"duration_s\" >= 300 AND \"duration_s\" < 900 GROUP BY *), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' GROUP BY *) WHERE $timeFilter",
+          "alias": "5 to 15 min"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "${digital}"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"v\") / 0$days AS \"15 min and more\" FROM (SELECT \"duration_s\" / 60 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' AND \"category\" =~ /^${category:regex}$/ AND \"category\" =~ /^(social|communication|browsing|productivity|smart_home|health|shopping|finance|games|news|photos|system|other)$/ AND \"duration_s\" >= 900 GROUP BY *), (SELECT \"count\" * 0 AS \"v\" FROM \"app_session\" WHERE \"user\" = '$user' GROUP BY *) WHERE $timeFilter",
+          "alias": "15 min and more"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Apps and categories",
+      "id": 21,
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 66,
         "w": 24,
         "h": 1
       },
@@ -1844,7 +2896,7 @@
     {
       "type": "barchart",
       "title": "Time by category",
-      "id": 17,
+      "id": 22,
       "description": "Hours in the foreground over the time range, per category (Tributary's: app/connectors/app_usage_categories.py; yours in TRIBUTARY_APP_USAGE_CATEGORIES).",
       "datasource": {
         "type": "influxdb",
@@ -1852,7 +2904,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 67,
         "w": 8,
         "h": 12
       },
@@ -1927,7 +2979,7 @@
     {
       "type": "table",
       "title": "Apps",
-      "id": 18,
+      "id": 23,
       "description": "Every app used over the time range: its category, hours in the foreground, launches and minutes per launch. Sort by any column.",
       "datasource": {
         "type": "influxdb",
@@ -1935,7 +2987,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 40,
+        "y": 67,
         "w": 16,
         "h": 12
       },

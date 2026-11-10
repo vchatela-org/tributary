@@ -23,6 +23,13 @@ A value "per day" is a total over the time range divided by the days it holds
 data (screen_time has one point per day; the hidden variable $days): a range
 that starts before the first backup does not dilute it. Not with Grafana's
 expressions: a query feeding one never gets the ad hoc filters.
+
+The week heatmaps (weekday by hour) are tables with coloured cells: Grafana's
+heatmap panel wants time along its x axis, and InfluxQL groups by a tag, never
+by a field (local_hour and local_weekday are fields). So one query per weekday,
+its 24 hours each a subquery of the same measurement (subqueries of two
+measurements stay two series), divided by that weekday's days with data
+(hidden variables $days_1..$days_7, Monday to Sunday).
 """
 
 import json
@@ -70,6 +77,19 @@ AT_NIGHT = '("local_hour" >= 22 OR "local_hour" < 6)'
 # answers with 0, rather than failing on "/ " (041 is read as 41).
 DAYS = "0$days"
 UNLOCKS = "0$unlocks"
+WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")  # local_weekday 1..7 (ISO)
+# Session lengths (app_session: an app's time in the foreground, from opening it
+# to leaving it): the quick look, the reply, the real use, the long scroll.
+LENGTHS = (
+    ("under 10 s", '"duration_s" < 10'),
+    ("10 s to 1 min", '"duration_s" >= 10 AND "duration_s" < 60'),
+    ("1 to 5 min", '"duration_s" >= 60 AND "duration_s" < 300'),
+    ("5 to 15 min", '"duration_s" >= 300 AND "duration_s" < 900'),
+    ("15 min and more", '"duration_s" >= 900'),
+)
+# The heatmap's cells: one hue, light to dark (the reference palette's
+# sequential blue), absolute steps so a colour means the same on every week.
+BLUES = ("#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b")
 # Hours that stay hours: Grafana's `h` turns 30 hours into "1.3 days".
 HOURS = "suffix: h"
 
@@ -158,24 +178,23 @@ def group_colours(skip=()):
     return [colour(name, hex_) for name, _cats, hex_ in GROUPS if name not in skip]
 
 
-def by_hour(title, description, categories, hex_, p):
-    """Minutes per day in each hour of the day: each hour's total over the range,
-    divided by the days with data (expressions), one bar per hour. Each hour's
-    sum also reads the user's sessions times 0 from the same measurement, which
-    InfluxDB merges into the same series: an hour never used is a 0, not a
-    missing bar (fill() only fills a series that exists). Both subqueries keep
-    every tag (GROUP BY *): Grafana's ad hoc filters ($filters) land beside the
-    outer $timeFilter, and must find `app` or `category` there."""
+def binned(title, description, bins, value, unit, hex_, p, decimals=0):
+    """One bar per bin (an hour of the day, a session length), its total over the
+    range divided by the days with data. Each bin's sum also reads the user's
+    sessions times 0 from the same measurement, which InfluxDB merges into the
+    same series: an empty bin is a 0, not a missing bar (fill() only fills a
+    series that exists). Both subqueries keep every tag (GROUP BY *): Grafana's
+    ad hoc filters ($filters) land beside the outer $timeFilter, and must find
+    `app` or `category` there."""
     targets = []
-    for h in range(24):
-        used = among(categories) + f' AND "local_hour" = {h}'
-        targets.append(target(f'SELECT sum("v") / {DAYS} AS "{h:02d}h" FROM (SELECT "duration_s" / 60 AS "v" '
-                              f'FROM "app_session" WHERE {USER} AND {PICKED} AND {used} GROUP BY *), '
+    for label, condition in bins:
+        targets.append(target(f'SELECT sum("v") / {DAYS} AS "{label}" FROM (SELECT {value} AS "v" '
+                              f'FROM "app_session" WHERE {USER} AND {PICKED} AND {condition} GROUP BY *), '
                               f'(SELECT "count" * 0 AS "v" FROM "app_session" WHERE {USER} GROUP BY *) '
-                              f'WHERE $timeFilter', alias=f"{h:02d}h"))
+                              f'WHERE $timeFilter', alias=label))
     return {"type": "barchart", "title": title, "id": next(_ids), "description": description,
             "datasource": DIGITAL, "gridPos": p,
-            "fieldConfig": {"defaults": {"unit": "m", "min": 0, "decimals": 0,
+            "fieldConfig": {"defaults": {"unit": unit, "min": 0, "decimals": decimals,
                                          "color": {"mode": "fixed", "fixedColor": hex_},
                                          "custom": {"fillOpacity": 90, "lineWidth": 0, "axisBorderShow": False}},
                             "overrides": []},
@@ -187,6 +206,94 @@ def by_hour(title, description, categories, hex_, p):
             "transformations": [{"id": "reduce", "options": {"mode": "seriesToRows", "reducers": ["lastNotNull"],
                                                              "includeTimeField": False}}],
             "targets": refs(targets)}
+
+
+def by_hour(title, description, categories, hex_, p):
+    """Minutes per day in each hour of the day (local time)."""
+    return binned(title, description,
+                  [(f"{h:02d}h", among(categories) + f' AND "local_hour" = {h}') for h in range(24)],
+                  '"duration_s" / 60', "m", hex_, p)
+
+
+def by_length(title, description, value, unit, p, decimals=0):
+    """Hands-on sessions per day, binned by how long each lasted."""
+    return binned(title, description, [(label, among(HANDS_ON) + " AND " + cond) for label, cond in LENGTHS],
+                  value, unit, NEUTRAL, p, decimals=decimals)
+
+
+def week_by_hour(title, description, measurement, value, conditions, steps, total, p):
+    """A heatmap of the week: a row per weekday, a cell per hour (local time),
+    each the hour's total over the range divided by that weekday's days with data
+    ($days_N), then the row's total per day. The cells are coloured on absolute
+    steps (`steps`: the lower bound of each blue); an hour never used stays
+    empty. Every subquery reads `measurement`, keeping its tags (GROUP BY *) for
+    the ad hoc filters. `value` must be a float: over integers (unlock's
+    "count"), InfluxDB 1.11 keeps only the first of several subqueries naming
+    different fields, and every hour stays empty."""
+    where = " AND ".join((USER,) + tuple(conditions))
+    targets = []
+    for n, _day in enumerate(WEEKDAYS, start=1):
+        div = f"0$days_{n}"
+        subs = [f'(SELECT "local_weekday" AS "wd", {value} AS "all" FROM "{measurement}" WHERE {where} '
+                f'AND "local_weekday" = {n} GROUP BY *)']
+        select = ['max("wd") AS "day"']
+        for h in range(24):
+            subs.append(f'(SELECT {value} AS "h{h:02d}" FROM "{measurement}" WHERE {where} AND "local_weekday" = {n} '
+                        f'AND "local_hour" = {h} GROUP BY *)')
+            select.append(f'sum("h{h:02d}") / {div} AS "{h:02d}"')
+        select.append(f'sum("all") / {div}{total[0]} AS "{total[1]}"')
+        targets.append(target(f'SELECT {", ".join(select)} FROM {", ".join(subs)} WHERE $timeFilter', fmt="table"))
+    cells = {"type": "color-background", "mode": "basic"}
+    scale = [{"color": "transparent", "value": None}] + [
+        {"color": hex_, "value": v} for hex_, v in zip(BLUES, steps)]
+    return {
+        "type": "table", "title": title, "id": next(_ids), "description": description, "datasource": DIGITAL,
+        "gridPos": p,
+        "fieldConfig": {
+            # Under 0.5 a cell would read "0" in a coloured cell: "·", some use.
+            "defaults": {"unit": "none", "decimals": 0, "noValue": "",
+                         "mappings": [{"type": "range", "options": {"from": 0, "to": 0.5, "result": {"text": "·"}}}],
+                         "color": {"mode": "thresholds"},
+                         "thresholds": {"mode": "absolute", "steps": scale},
+                         "custom": {"align": "center", "cellOptions": cells, "minWidth": 34,
+                                    "inspect": False}},
+            "overrides": [
+                {"matcher": {"id": "byName", "options": "day"},
+                 "properties": [{"id": "displayName", "value": " "},
+                                {"id": "custom.cellOptions", "value": {"type": "auto"}},
+                                {"id": "custom.align", "value": "left"}, {"id": "custom.width", "value": 52},
+                                {"id": "mappings", "value": [{"type": "value", "options": {
+                                    str(n): {"text": day, "index": n - 1}
+                                    for n, day in enumerate(WEEKDAYS, start=1)}}]}]},
+                {"matcher": {"id": "byName", "options": total[1]},
+                 "properties": [{"id": "custom.cellOptions", "value": {"type": "auto"}}, {"id": "mappings", "value": []},
+                                {"id": "unit", "value": total[2]}, {"id": "decimals", "value": total[3]},
+                                {"id": "custom.align", "value": "right"}, {"id": "custom.width", "value": 80}]},
+            ]},
+        "options": {"showHeader": True, "cellHeight": "sm",
+                    "footer": {"show": False, "reducer": ["sum"], "fields": "", "countRows": False}},
+        "transformations": [
+            {"id": "merge", "options": {}},
+            {"id": "sortBy", "options": {"sort": [{"field": "day", "desc": False}]}},
+            {"id": "organize", "options": {"excludeByName": {"Time": True}}},
+        ],
+        "targets": refs(targets),
+    }
+
+
+def with_average(name, field, scale, hex_=GROUPS[0][2]):
+    """A day's bar and, over it, the 7-day moving average as a line (days with
+    data only: fill(none)), in the first group's blue."""
+    return [target(f'SELECT sum("{field}"){scale} AS "{name}" FROM "screen_time" WHERE {USER} AND $timeFilter {DAY}',
+                   alias=name),
+            target(f'SELECT moving_average(sum("{field}"), 7){scale} AS "7-day average" FROM "screen_time" '
+                   f'WHERE {USER} AND $timeFilter {DAY}', alias="7-day average")]
+
+
+AVERAGE_LINE = {"matcher": {"id": "byName", "options": "7-day average"},
+                "properties": [{"id": "custom.drawStyle", "value": "line"}, {"id": "custom.lineWidth", "value": 2},
+                               {"id": "custom.fillOpacity", "value": 0},
+                               {"id": "color", "value": {"mode": "fixed", "fixedColor": GROUPS[0][2]}}]}
 
 
 def build():
@@ -228,17 +335,33 @@ def build():
         by_group("foreground_s", "app_usage", DAY), HOURS, pos(0, y, 24, 9), overrides=group_colours(), decimals=1))
     y += 9
     panels.append(bars(
-        "Screen on per day", "How long the screen was on, per day (the phone's own figure).",
-        [target(f'SELECT sum("screen_on_s") / 3600 AS "Screen on" FROM "screen_time" WHERE {USER} AND $timeFilter '
-                f'{DAY}')], HOURS, pos(0, y, 12, 7), stack=False, decimals=1, legend=False))
+        "Screen on per day", "How long the screen was on, per day (the phone's own figure), and its 7-day moving "
+        "average: the trend under the day-to-day noise.",
+        with_average("Screen on", "screen_on_s", " / 3600"), HOURS, pos(0, y, 12, 7), overrides=[AVERAGE_LINE],
+        stack=False, decimals=1))
     panels.append(bars(
-        "Unlocks per day", "Times the phone was unlocked, per day.",
-        [target(f'SELECT sum("unlocks") AS "Unlocks" FROM "screen_time" WHERE {USER} AND $timeFilter {DAY}')],
-        "none", pos(12, y, 12, 7), stack=False, decimals=0, legend=False))
+        "Unlocks per day", "Times the phone was unlocked, per day, and the 7-day moving average.",
+        with_average("Unlocks", "unlocks", ""), "none", pos(12, y, 12, 7), overrides=[AVERAGE_LINE], stack=False,
+        decimals=0))
     y += 7
 
     panels.append(row("When in the day", y))
     y += 1
+    panels.append(week_by_hour(
+        "Hands-on, by weekday and hour",
+        "Minutes per day in the hands-on groups' apps, for each weekday (row) and hour (column, local time), over "
+        "the time range: each cell is that hour's total divided by the number of such weekdays with data. The "
+        "darker, the longer; an empty cell is an hour never used. On the right, the day's total. A session counts "
+        "in the hour it started.",
+        "app_session", '"duration_s" / 60', (PICKED, hands_on), (0.01, 2, 5, 10, 15, 20, 30),
+        (" / 60", "per day", HOURS, 1), pos(0, y, 24, 9)))
+    y += 9
+    panels.append(week_by_hour(
+        "Unlocks, by weekday and hour",
+        "Unlocks per day for each weekday (row) and hour (column, local time), over the time range: when the "
+        "phone gets picked up. On the right, the day's total.",
+        "unlock", '"count" * 1.0', (), (0.01, 1, 2, 3, 4, 6, 8), ("", "per day", "none", 0), pos(0, y, 24, 9)))
+    y += 9
     panels.append(by_hour("Hands-on, by hour of the day",
                           "Minutes per day in each hour (local time) in the hands-on groups' apps, over the time "
                           "range: when the phone is in hand.", HANDS_ON, NEUTRAL, pos(0, y, 12, 8)))
@@ -252,6 +375,20 @@ def build():
         "home screen left out. Next to the Sleep dashboard: the evenings the phone stays in hand.",
         by_group("duration_s", "app_session", NIGHT, (AT_NIGHT,), skip=("Home screen",)), HOURS,
         pos(0, y, 24, 8), overrides=group_colours(skip=("Home screen",)), decimals=1))
+    y += 8
+
+    panels.append(row("How long each time", y))
+    y += 1
+    panels.append(by_length(
+        "Hands-on sessions per day, by length",
+        "Sessions per day in the hands-on groups' apps, by how long each lasted: a session is an app in the "
+        "foreground, from opening it to leaving it. Many short ones: the phone checked, again and again.",
+        '"count"', "none", pos(0, y, 12, 8)))
+    panels.append(by_length(
+        "Hands-on minutes per day, by session length",
+        "Minutes per day in the hands-on groups' apps, by how long the session lasted: where the time goes, in "
+        "quick looks or in long stretches.",
+        '"duration_s" / 60', "suffix: min", pos(12, y, 12, 8)))
     y += 8
 
     panels.append(row("Apps and categories", y))
@@ -348,6 +485,18 @@ def variables():
          "definition": f'SELECT sum("unlocks") FROM "screen_time" WHERE {USER} AND $timeFilter',
          "query": f'SELECT sum("unlocks") FROM "screen_time" WHERE {USER} AND $timeFilter',
          "refresh": 2, "sort": 0, "hide": 2, "current": {}, "options": [], "multi": False, "includeAll": False},
+    ] + [
+        # Each weekday's days with data: what a cell of the week heatmaps is
+        # divided by. A day with data is a day with an app session (any app: an
+        # ad hoc filter never reaches a variable).
+        {"type": "query", "name": f"days_{n}", "label": f"{day} with data", "datasource": DIGITAL,
+         "description": f"The {day} of the time range that hold data: what a {day} cell is divided by.",
+         "definition": (q := f'SELECT count("d") FROM (SELECT count("count") AS "d" FROM "app_session" WHERE {USER} '
+                             f'AND "local_weekday" = {n} AND $timeFilter GROUP BY time(1d) fill(none) tz(\'$tz\'))'),
+         "query": q, "refresh": 2, "sort": 0, "hide": 2, "current": {}, "options": [], "multi": False,
+         "includeAll": False}
+        for n, day in enumerate(WEEKDAYS, start=1)
+    ] + [
         # Grafana adds each filter to every query, beside its $timeFilter: `app !=
         # <an app>` leaves an app out of every panel (a reminder that keeps the
         # screen on, the home screen...), `app = <an app>` looks at one. Empty:
