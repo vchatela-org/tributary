@@ -120,7 +120,7 @@ def test_a_check_counts_the_points_the_file_adds(db, steps, influx, tmp_path):
     """The first check of a file: nothing is in InfluxDB yet, so every point is new."""
     _path, run = check(db, steps, tmp_path, body=b"2025-01-01,8000\n2025-01-02,9000\n")
     assert run.status == "ok" and run.points == 2
-    assert "2 new and 0 already in InfluxDB" in run.message
+    assert "2 new, 0 changed and 0 unchanged" in run.message
 
 
 def test_a_reimport_counts_the_points_it_already_has(db, steps, influx, tmp_path):
@@ -130,7 +130,7 @@ def test_a_reimport_counts_the_points_it_already_has(db, steps, influx, tmp_path
     runner.promote(db, steps)
     _path, again = check(db, steps, tmp_path, body=b"2025-01-01,8000\n2025-01-02,9000\n", name="again.csv")
     assert again.points == 2
-    assert "0 new and 2 already in InfluxDB" in again.message
+    assert "0 new, 0 changed and 2 unchanged" in again.message
 
 
 def test_a_check_splits_new_points_from_the_ones_already_stored(db, steps, influx, tmp_path):
@@ -139,7 +139,28 @@ def test_a_check_splits_new_points_from_the_ones_already_stored(db, steps, influ
     runner.promote(db, steps)
     _path, later = check(db, steps, tmp_path, body=b"2025-01-01,8000\n2025-01-02,9000\n", name="later.csv")
     assert later.points == 2
-    assert "1 new and 1 already in InfluxDB" in later.message
+    assert "1 new, 0 changed and 1 unchanged" in later.message
+
+
+def test_a_check_counts_a_point_the_file_changes(db, steps, influx, tmp_path):
+    """A reimport whose row was corrected: the point is neither new nor
+    unchanged."""
+    _path, _first = check(db, steps, tmp_path, body=b"2025-01-01,8000\n2025-01-02,9000\n")
+    runner.promote(db, steps)
+    _path, corrected = check(db, steps, tmp_path, body=b"2025-01-01,8500\n2025-01-02,9000\n",
+                             name="corrected.csv")
+    assert corrected.points == 2
+    assert "0 new, 1 changed and 1 unchanged" in corrected.message
+
+
+def test_a_check_leaves_out_a_stored_field_the_file_does_not_write(db, steps, influx, tmp_path):
+    """Another input of the same source may have added a field: the file not
+    writing it does not make the point changed."""
+    influx.databases.add("ActivityStats")
+    influxdb.write("ActivityStats", ['steps,device=watch,source=steps steps=8000i,note="kept" 1735689600'])
+    _path, run = check(db, steps, tmp_path)
+    assert run.points == 1
+    assert "0 new, 0 changed and 1 unchanged" in run.message
 
 
 def test_a_check_does_not_take_another_source_s_points_for_its_own(db, steps, influx, tmp_path):
@@ -149,7 +170,7 @@ def test_a_check_does_not_take_another_source_s_points_for_its_own(db, steps, in
     influxdb.write("ActivityStats", ["steps,device=watch,source=other steps=1i 1735689600"])
     _path, run = check(db, steps, tmp_path)
     assert run.points == 1
-    assert "1 new and 0 already in InfluxDB" in run.message
+    assert "1 new, 0 changed and 0 unchanged" in run.message
 
 
 def test_a_check_still_runs_when_influxdb_cannot_be_read(db, steps, influx, tmp_path, monkeypatch):
