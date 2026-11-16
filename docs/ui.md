@@ -82,11 +82,18 @@ files, failures and running imports are shown next to the monthly state. Status
 and actions update in place without replacing a file picker.
 
 A successful, non-check upload completes the source for the current calendar
-month in `TRIBUTARY_TZ`, even when it writes zero points. Checks, failed imports,
-watched-folder runs and API syncs do not; in particular, Whoop's daily API run
-never completes its manual export. A later failure remains visible without
-erasing an earlier success in the month. **Done** confirms when an export was
-successfully imported, not the range of dates inside that export.
+month in `TRIBUTARY_TZ`, even when it writes zero points. If a selected source
+has nothing new to export, **No data to import** clears only that source for the
+month. This acknowledgment is separate from run history: it creates no import,
+changes no measurement, and can be reversed with **Undo no data**. Old
+acknowledgments remain stored but do not complete later months; a real import
+always takes precedence.
+
+Checks, failed imports, watched-folder runs and API syncs do not complete an
+item; in particular, Whoop's daily API run never completes its manual export. A
+later failure remains visible without erasing an earlier success or no-data
+acknowledgment in the month. **Done** confirms when an export was successfully
+imported, not the range of dates inside that export.
 
 ## Run history
 

@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from app import connectors, preferences, runner, scheduler, views
 from app.connectors.base import Connector, ConnectorError, ConnectorSettings
 from app.main import app
-from app.models import StagedUpload, SyncRun
+from app.models import MonthlyImportAcknowledgment, StagedUpload, SyncRun
 from app.points import Measurement, Point
 
 NOW = datetime(2026, 11, 16, 12, 0)  # naive UTC, like the database
@@ -280,3 +280,122 @@ def test_inline_check_import_and_later_failure(client, steps, influx, db, no_thr
     content = main_content(client.get("/imports").text)
     assert "Done this month" in content and "Check failed" in content
     assert "not a steps export" in content and "0 remaining" in content
+
+
+def test_no_data_acknowledgment_and_undo_do_not_create_an_import(client, db):
+    key = "mytherapy"
+    response = client.post(f"/imports/{key}/no-data", headers={"referer": "http://testserver/imports"},
+                           follow_redirects=False)
+    assert response.status_code == 303 and response.headers["location"] == "/imports"
+
+    month = views.monthly_import_period()["key"]
+    rows = db.query(MonthlyImportAcknowledgment).all()
+    assert [(row.connector, row.month) for row in rows] == [(key, month)]
+    assert rows[0].created_at is not None
+    assert db.query(SyncRun).count() == 0 and scheduler._requests.empty()
+
+    checklist = views.import_checklist(db)
+    current = item(checklist, key)
+    assert current["state"] == "no_data" and current["done"]
+    assert current["last_import"] is None and current["acknowledgment"] is not None
+    assert key not in {entry["key"] for entry in checklist["remaining"]}
+    assert key in {entry["key"] for entry in checklist["completed"]}
+    assert all(item(checklist, other)["state"] == "never"
+               for other in DEFAULTS - {key})
+
+    # A repeated click is idempotent: one source/month acknowledgment only.
+    client.post(f"/imports/{key}/no-data")
+    assert db.query(MonthlyImportAcknowledgment).count() == 1
+
+    response = client.post(f"/imports/{key}/no-data/undo", headers={"referer": "http://testserver/imports"},
+                           follow_redirects=False)
+    assert response.status_code == 303 and response.headers["location"] == "/imports"
+    assert db.query(MonthlyImportAcknowledgment).count() == 0
+    assert item(views.import_checklist(db), key)["state"] == "never"
+    assert db.query(SyncRun).count() == 0 and scheduler._requests.empty()
+
+
+def test_no_data_actions_agree_in_the_page_and_polled_fragment(client, db):
+    key = "myfitnesspal"
+    acknowledge = f'action="/imports/{key}/no-data"'
+    undo = f'action="/imports/{key}/no-data/undo"'
+
+    for path in ("/imports", "/partials/imports"):
+        page = client.get(path).text
+        assert acknowledge in page and "No data to import" in page
+        assert undo not in page
+
+    client.post(f"/imports/{key}/no-data")
+    for path in ("/imports", "/partials/imports"):
+        page = client.get(path).text
+        assert undo in page and "Undo no data" in page
+        assert "No data this month" in page and "No file or measurement was changed" in page
+        if path == "/partials/imports":
+            assert 'type="file"' not in page
+
+    client.post(f"/imports/{key}/no-data/undo")
+    for path in ("/imports", "/partials/imports"):
+        page = client.get(path).text
+        assert acknowledge in page and undo not in page
+
+
+def test_no_data_acknowledgment_is_per_connector_and_local_month(db):
+    db.add(MonthlyImportAcknowledgment(connector="mytherapy", month="2026-11", created_at=NOW))
+    db.add(MonthlyImportAcknowledgment(connector="myfitnesspal", month="2026-12", created_at=NOW))
+    db.commit()
+
+    november = views.import_checklist(db, datetime(2026, 11, 1, 0, 30))
+    assert item(november, "mytherapy")["state"] == "no_data"
+    assert item(november, "myfitnesspal")["state"] == "never"
+    # The November row does not reach backward into the previous local month.
+    october = views.import_checklist(db, datetime(2026, 10, 31, 22, 30))
+    assert item(october, "mytherapy")["state"] == "never"
+
+    december = views.import_checklist(db, datetime(2026, 12, 1, 0, 30))
+    assert item(december, "mytherapy")["state"] == "never"
+    assert item(december, "myfitnesspal")["state"] == "no_data"
+    # 23:30 UTC on 31 December is already January 2027 in Europe/Paris.
+    january = views.import_checklist(db, datetime(2026, 12, 31, 23, 30))
+    assert item(january, "myfitnesspal")["state"] == "never"
+    assert db.query(MonthlyImportAcknowledgment).count() == 2
+
+
+def test_real_import_is_separate_from_no_data_acknowledgment(client, db):
+    key = "mytherapy"
+    month = views.monthly_import_period()["key"]
+    db.add(MonthlyImportAcknowledgment(connector=key, month=month))
+    db.commit()
+    assert item(views.import_checklist(db), key)["state"] == "no_data"
+
+    imported = record(db, key, points=0)
+    current = item(views.import_checklist(db), key)
+    assert current["state"] == "done" and current["last_import"].id == imported.id
+    assert current["acknowledgment"] is not None
+
+    client.post(f"/imports/{key}/no-data/undo")
+    current = item(views.import_checklist(db), key)
+    assert current["state"] == "done" and current["last_import"].id == imported.id
+    assert current["acknowledgment"] is None
+
+    # A failed check does not revoke an acknowledgment-only completion either.
+    db.add(MonthlyImportAcknowledgment(connector="myfitnesspal", month=month))
+    record(db, "myfitnesspal", dry_run=True, status="error", message="synthetic bad check")
+    current = item(views.import_checklist(db), "myfitnesspal")
+    assert current["state"] == "no_data" and current["done"]
+    assert current["activity"]["label"] == "Check failed"
+
+
+def test_no_data_write_validation_and_origin_protection(client, db):
+    assert client.post("/imports/unknown/no-data").status_code == 404
+    for key in ("todoist", "medisafe"):
+        response = client.post(f"/imports/{key}/no-data", headers={"referer": "http://testserver/imports"},
+                               follow_redirects=False)
+        assert response.status_code == 303 and "notice=" in response.headers["location"]
+    assert db.query(MonthlyImportAcknowledgment).count() == 0
+
+    assert client.post("/imports/mytherapy/no-data",
+                       headers={"sec-fetch-site": "cross-site"}).status_code == 403
+    assert db.query(MonthlyImportAcknowledgment).count() == 0
+    assert client.post("/imports/mytherapy/no-data", headers={"sec-fetch-site": "same-origin"},
+                       follow_redirects=False).status_code == 303
+    assert db.query(MonthlyImportAcknowledgment).count() == 1

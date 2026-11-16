@@ -58,14 +58,16 @@ def db():
 @pytest.fixture(autouse=True)
 def _clean_state():
     """Each test starts with no run, no cursor, no schedule set in the UI, no
-    checked upload and no preference, nothing queued, and no compatible tool's
-    freshness remembered (a fake InfluxDB's port may be another test's again)."""
+    checked upload and no preference, nothing queued, no no-data acknowledgment,
+    and no compatible tool's freshness remembered (a fake InfluxDB's port may be another test's again)."""
     from app import freshness
     from app.database import SessionLocal
-    from app.models import ConnectorSchedule, Cursor, OAuthState, OAuthToken, Preference, StagedUpload, SyncRun
+    from app.models import (ConnectorSchedule, Cursor, MonthlyImportAcknowledgment, OAuthState, OAuthToken,
+                            Preference, StagedUpload, SyncRun)
 
     with SessionLocal() as session:
-        for table in (SyncRun, Cursor, ConnectorSchedule, StagedUpload, Preference, OAuthToken, OAuthState):
+        for table in (SyncRun, Cursor, ConnectorSchedule, StagedUpload, MonthlyImportAcknowledgment,
+                      Preference, OAuthToken, OAuthState):
             session.query(table).delete()
         session.commit()
     freshness.clear()

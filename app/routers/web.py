@@ -18,7 +18,7 @@ from app import connectors, crud, freshness, influxdb, oauth, preferences, sched
 from app.categories import CATEGORIES, EXTERNAL_TOOLS
 from app.config import settings
 from app.database import SessionLocal, get_db
-from app.models import ConnectorSchedule, utcnow
+from app.models import ConnectorSchedule, MonthlyImportAcknowledgment, utcnow
 from app.routers.common import (connector_or_404, discard_staged, queue_promote, queue_run, queue_upload,
                                 safe_back, same_origin)
 from app.templating import templates
@@ -217,6 +217,25 @@ def _write(request: Request, work, default: str = "/") -> RedirectResponse:
     return _back(request, default)
 
 
+def _change_no_data(db: Session, key: str, undo: bool) -> None:
+    """Acknowledge one selected source for the current local month, or undo it.
+    No run, staged file or measurement is involved in either operation."""
+    connector = connector_or_404(key)
+    if not connector.accepts_files:
+        raise HTTPException(status_code=400, detail=f"{connector.label} takes no file")
+    selected = preferences.monthly_import_connectors(db, _file_connector_keys())
+    if key not in selected:
+        raise HTTPException(status_code=409, detail=f"{connector.label} is not in the monthly checklist")
+    period_key = views.monthly_import_period()["key"]
+    row = db.get(MonthlyImportAcknowledgment, (key, period_key))
+    if undo:
+        if row is not None:
+            db.delete(row)
+    elif row is None:
+        db.add(MonthlyImportAcknowledgment(connector=key, month=period_key))
+    db.commit()
+
+
 @router.post("/connectors/{key}/run", dependencies=[Depends(same_origin)])
 def run_now(request: Request, key: str, dry_run: bool = Form(False), full: bool = Form(False)):
     """The "Run now" / "Dry run" / "Full resync" buttons: queue, back to the page."""
@@ -243,6 +262,18 @@ def import_checked(request: Request, key: str):
 def discard_checked(request: Request, key: str):
     """Drop a checked upload; the file goes with it."""
     return _write(request, lambda: discard_staged(connector_or_404(key)))
+
+
+@router.post("/imports/{key}/no-data", dependencies=[Depends(same_origin)])
+def acknowledge_no_data(request: Request, key: str, db: Session = Depends(get_db)):
+    """Clear one source for this month without pretending a file was imported."""
+    return _write(request, lambda: _change_no_data(db, key, undo=False), "/imports")
+
+
+@router.post("/imports/{key}/no-data/undo", dependencies=[Depends(same_origin)])
+def undo_no_data(request: Request, key: str, db: Session = Depends(get_db)):
+    """Undo only the current month's no-data acknowledgment for this source."""
+    return _write(request, lambda: _change_no_data(db, key, undo=True), "/imports")
 
 
 @router.post("/connectors/{key}/schedule", dependencies=[Depends(same_origin)])
