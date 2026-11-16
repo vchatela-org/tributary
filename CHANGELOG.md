@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.32.0](https://github.com/vchatela-org/tributary/compare/v0.31.0...v0.32.0) (2026-11-16)
+
+
+### Features
+
+* **dashboards:** week heatmaps and session lengths on the Phone dashboard ([407e287](https://github.com/vchatela-org/tributary/commit/407e28773e95f3ee788d9afcf80c5f880e5d5afd))
+* **dashboards:** week heatmaps and session lengths on the Phone dashboard ([#126](https://github.com/vchatela-org/tributary/issues/126)) ([e478e68](https://github.com/vchatela-org/tributary/commit/e478e687a9d5289d2a6b24218784919920b3eb96))
+* **import:** count the points a check changes, not just new ones ([f2aa194](https://github.com/vchatela-org/tributary/commit/f2aa1943ae78f26c3d5c18f0942d83009982a1cd))
+* **import:** count the points a check changes, not just new ones ([#136](https://github.com/vchatela-org/tributary/issues/136)) ([9d9d511](https://github.com/vchatela-org/tributary/commit/9d9d51162447fbf749ef1a9a836352b27bdb0069))
+* **import:** report how many points a file check would add ([27619ae](https://github.com/vchatela-org/tributary/commit/27619aed47098ca477d8b1196dd74cccfbeee641))
+* **import:** report how many points a file check would add ([#135](https://github.com/vchatela-org/tributary/issues/135)) ([b0eb31f](https://github.com/vchatela-org/tributary/commit/b0eb31fddc26875cf7737c8efa8023b22f7f675f))
+* **ui:** add monthly import checklist ([dd955d2](https://github.com/vchatela-org/tributary/commit/dd955d2e4563f9c44909daefabf2140e0e61a0bb))
+* **ui:** add monthly import checklist ([#137](https://github.com/vchatela-org/tributary/issues/137)) ([475b255](https://github.com/vchatela-org/tributary/commit/475b25565c4354f386721ab40ca24192f3a36b18))
+
 ## [0.31.0](https://github.com/vchatela-org/tributary/compare/v0.30.0...v0.31.0) (2026-11-10)
 
 
