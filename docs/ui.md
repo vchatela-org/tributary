@@ -2,7 +2,7 @@
 
 Tributary's UI runs and checks the sync; it does not chart the data (that is
 Grafana's job, see the [README](../README.md#graphs-in-grafana)). A sidebar on
-every page leads to the overview, the run history, settings and each source;
+every page leads to the overview, monthly imports, the run history, settings and each source;
 with `TRIBUTARY_GRAFANA_URL` set, *Dashboards* opens Grafana's dashboard
 browser, filtered to the dashboards shipped in
 [grafana/dashboards](../grafana/dashboards/) (the link leaves Tributary, so it
@@ -68,6 +68,26 @@ so this says how much it actually adds or corrects.
 
 ![The same source in dark mode](screenshots/connector-import-dark.png)
 
+## Monthly imports
+
+**Imports** gathers the file exports you choose into one monthly checklist. On a
+fresh install it tracks App Usage, MyTherapy, MyFitnessPal and Whoop; the
+**Monthly imports** panel in [Settings](#settings) can remove one or add another
+file source such as Stryd. Overview visibility is unrelated: a hidden source can
+still have a monthly import.
+
+Each source has its file picker and the same **Check file** → **Import for real**
+workflow as its own page, returning to the checklist after each action. Checked
+files, failures and running imports are shown next to the monthly state. Status
+and actions update in place without replacing a file picker.
+
+A successful, non-check upload completes the source for the current calendar
+month in `TRIBUTARY_TZ`, even when it writes zero points. Checks, failed imports,
+watched-folder runs and API syncs do not; in particular, Whoop's daily API run
+never completes its manual export. A later failure remains visible without
+erasing an earlier success in the month. **Done** confirms when an export was
+successfully imported, not the range of dates inside that export.
+
 ## Run history
 
 Every run is kept, with its trigger, result, point count and message; a check's
@@ -81,8 +101,10 @@ failure, and updates a run in progress without reloading itself.
 **Settings** chooses which sources the overview shows, so a few of them are not
 buried under the whole catalogue. It is display only: a hidden source is still
 scheduled, still runs, and its series keep filling. Everything is shown on a
-fresh install, and everything can be brought back from the same page. Below,
-the compatible tools by category, with garmin-grafana's freshness line.
+fresh install, and everything can be brought back from the same page. A separate
+**Monthly imports** panel chooses the file sources on the checklist without
+changing overview visibility or schedules. Below, the compatible tools by
+category, with garmin-grafana's freshness line.
 
 ![Settings: which sources the overview shows](screenshots/settings-light.png)
 
