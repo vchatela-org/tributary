@@ -35,7 +35,7 @@ import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, NamedTuple, Optional, Tuple
 from zoneinfo import ZoneInfo
 
 # Tags every point may carry: the tracker (a connector's `source`) and the
@@ -88,6 +88,16 @@ class Point:
     fields: Dict[str, Any] = field(default_factory=dict)
     # A date without a time of day (time_precision=day, no local hour).
     day_precision: bool = False
+
+
+class PointKey(NamedTuple):
+    """What InfluxDB keys a written point by, besides its database: the
+    measurement, its tags (sorted), and the second. `encode` can collect these
+    as it writes its lines, so a caller may ask InfluxDB which of them it
+    already holds without reading the line protocol back."""
+    measurement: str
+    tags: Tuple[Tuple[str, str], ...]
+    epoch: int
 
 
 def epoch_seconds(value: datetime) -> int:
@@ -156,9 +166,10 @@ def _usable(value: Any) -> bool:
 
 
 def encode(points: Iterable[Point], source: str, user: Optional[str] = None,
-           tz: str = "Europe/Paris") -> Dict[str, List[str]]:
+           tz: str = "Europe/Paris", keys: Optional[List[PointKey]] = None) -> Dict[str, List[str]]:
     """{database: lines}: the points checked against their declarations,
-    merged per key (measurement + tags + second), oldest first."""
+    merged per key (measurement + tags + second), oldest first. `keys`, when
+    given, receives each line's PointKey, in the order the lines are written."""
     groups: Dict[Tuple, Dict[str, Any]] = {}
     for point in points:
         m = point.measurement
@@ -205,5 +216,7 @@ def encode(points: Iterable[Point], source: str, user: Optional[str] = None,
         fields.update(acc["local"])
         out.setdefault(m.database, []).append(format_line(m.name, acc["tags"], fields, m.field_types, acc["epoch"],
                                                           m.text_max))
+        if keys is not None:
+            keys.append(PointKey(m.name, tuple(sorted(acc["tags"].items())), acc["epoch"]))
     return out
 
