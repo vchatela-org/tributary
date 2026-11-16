@@ -60,9 +60,9 @@ line protocol, and the file is kept so *Import for real* does not ask for it
 again. It lives on the data volume for a day and is deleted once imported. A
 file the check no longer stands for (it was replaced, or a setting changed) is
 refused and asked to be checked again. The check also compares the file with
-what InfluxDB already holds and says how many of its points are **new**: a
-backup reimported whole mostly restates the history, so this says how much it
-actually adds.
+what InfluxDB already holds and says how many of its points are **new,
+changed or unchanged**: a backup reimported whole mostly restates the history,
+so this says how much it actually adds or corrects.
 
 ![Importing an export: choose, check, then import for real](screenshots/connector-import-light.png)
 

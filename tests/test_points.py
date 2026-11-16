@@ -64,6 +64,22 @@ def test_common_tags_local_fields_and_order():
     assert parse(second)[3] == epoch(2025, 3, 2, 9, 0)
 
 
+def test_encode_can_report_what_each_line_writes():
+    """A check compares its points with what InfluxDB holds: it needs the
+    values InfluxDB would store (a text cut, local fields included)."""
+    written = []
+    encode([Point(READING_SESSION, at(2025, 3, 1, 20, 0), {"kind": "audiobook", "device": "Phone"},
+                  {"minutes": 10.0, "sessions": 1, "title": "x" * 1000})],
+           source="audiobookshelf", user="someone", tz="Europe/Paris", written=written)
+    point, = written
+    assert point.key.measurement == "reading_session"
+    assert point.key.tags == (("device", "Phone"), ("kind", "audiobook"), ("source", "audiobookshelf"),
+                              ("time_precision", "second"), ("user", "someone"))
+    assert point.key.epoch == epoch(2025, 3, 1, 20, 0)
+    assert point.fields == {"minutes": 10.0, "sessions": 1, "title": "x" * points.TEXT_MAX,
+                            "local_hour": 21, "local_weekday": 6}
+
+
 def test_same_key_same_second_is_summed_never_overwritten():
     session = dict(tags={"kind": "audiobook", "device": "Phone"})
     lines = encode([

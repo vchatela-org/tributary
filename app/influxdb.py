@@ -14,7 +14,7 @@ import http.client
 import json
 import re
 from datetime import datetime, timezone
-from typing import Dict, FrozenSet, List, Optional, Set, Tuple
+from typing import Any, Dict, FrozenSet, List, Optional, Tuple
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
@@ -103,13 +103,14 @@ def create_missing_databases(names: List[str]) -> List[str]:
     return created
 
 
-def point_keys(database: str, measurement: str, start: int, end: int,
-               source: Optional[str] = None) -> Set[Tuple[FrozenSet[Tuple[str, str]], int]]:
-    """(tags, second) of the points of one measurement in [start, end] that
-    `source` wrote (every source when None): what InfluxDB keys each point by,
-    besides its database and measurement. Read `GROUP BY *` so every series
-    carries its own tags whole, and with `epoch=s` so the second is the one
-    `encode` writes. No field value leaves this function."""
+def stored_points(database: str, measurement: str, start: int, end: int,
+                  source: Optional[str] = None
+                  ) -> Dict[Tuple[FrozenSet[Tuple[str, str]], int], Dict[str, Any]]:
+    """(tags, second) -> {field: value} of the points of one measurement in
+    [start, end] that `source` wrote (every source when None): what InfluxDB
+    keys each point by and the values it holds. Read `GROUP BY *` so every
+    series carries its own tags whole, and with `epoch=s` so the second is the
+    one `encode` writes. The values are for a comparison, never shown."""
     conditions = []
     if source is not None:
         conditions.append(f'"source" = {quote(source)}')
@@ -117,7 +118,7 @@ def point_keys(database: str, measurement: str, start: int, end: int,
     conditions.append(f"time <= {time_literal(datetime.fromtimestamp(end, timezone.utc))}")
     payload = query(f"SELECT * FROM {_identifier(measurement)} WHERE {' AND '.join(conditions)} GROUP BY *",
                     database, epoch="s")
-    keys = set()
+    points: Dict[Tuple[FrozenSet[Tuple[str, str]], int], Dict[str, Any]] = {}
     for result in payload.get("results") or []:
         # A partial answer would count the points it left out as new: refuse it
         # rather than report a wrong count (the server's max-row-limit).
@@ -127,10 +128,13 @@ def point_keys(database: str, measurement: str, start: int, end: int,
         for series in result.get("series") or []:
             tags = frozenset((name, value) for name, value in (series.get("tags") or {}).items()
                              if value not in (None, ""))
+            columns = series.get("columns") or []
             for row in series.get("values") or []:
-                if row and isinstance(row[0], int) and not isinstance(row[0], bool):
-                    keys.add((tags, row[0]))
-    return keys
+                if not row or not isinstance(row[0], int) or isinstance(row[0], bool):
+                    continue
+                points[(tags, row[0])] = {name: value for name, value in zip(columns[1:], row[1:])
+                                          if value is not None}
+    return points
 
 
 def write(database: str, lines: List[str]) -> Tuple[int, Optional[str]]:

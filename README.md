@@ -29,8 +29,8 @@ Light or dark follows your system; the other pages are in [docs/ui.md](docs/ui.m
 
 - **Check before writing.** *Dry run* shows the exact line protocol and writes
   nothing; an export is checked first, then imported. A check says how many of
-  the points are new and how many InfluxDB already holds, so a reimported
-  backup shows what it actually adds.
+  the points are new, changed or unchanged, so a reimported backup shows what
+  it actually adds or corrects.
 - **Safe to repeat.** A point is keyed by measurement, tags and time, so a
   rerun rewrites the same points. An API source only adds; an export replaces
   that source's own series (or only the days it covers), never another tool's.
