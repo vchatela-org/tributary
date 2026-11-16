@@ -129,3 +129,19 @@ def test_drop_source_refuses_half_a_span_or_a_naive_time(influx):
 def test_partial_write_parsing(influx, body, expected):
     influx.fail["/write"] = (400, body)
     assert influxdb.write("MediaStats", ["m f=1i 1"]) == expected
+
+
+def test_point_keys_are_each_stored_points_tags_and_second(influx):
+    """What a check compares with: every point's key in a time range, read per
+    series (tags whole) and per source, with no field value in the answer."""
+    influxdb.write("BodyStats", [
+        'exercise,category=run,source=mfp duration_s=60i 1767225600',
+        'exercise,category=run,source=whoop duration_s=90i 1767225600',
+        'exercise,category=run,source=mfp duration_s=120i 1767312000',
+    ])
+    assert influxdb.point_keys("BodyStats", "exercise", 1767225600, 1767225600, source="mfp") == {
+        (frozenset({("category", "run"), ("source", "mfp")}), 1767225600)}
+    assert influxdb.point_keys("BodyStats", "exercise", 1767225600, 1767312000) == {
+        (frozenset({("category", "run"), ("source", "mfp")}), 1767225600),
+        (frozenset({("category", "run"), ("source", "whoop")}), 1767225600),
+        (frozenset({("category", "run"), ("source", "mfp")}), 1767312000)}

@@ -14,7 +14,7 @@ import http.client
 import json
 import re
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, FrozenSet, List, Optional, Set, Tuple
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
@@ -81,21 +81,56 @@ def query(statement: str, database: Optional[str] = None, timeout: float = TIMEO
     return payload
 
 
+def existing_databases() -> List[str]:
+    """The databases InfluxDB holds. A read of one it doesn't have yet is an
+    error, not an empty answer: a caller looking for what is already there
+    skips it."""
+    payload = query("SHOW DATABASES")
+    return [row[0] for result in payload.get("results") or [] for series in result.get("series") or []
+            for row in series.get("values") or []]
+
+
 def create_missing_databases(names: List[str]) -> List[str]:
     """Create the databases that don't exist yet, with year-long shards:
     InfluxDB's default for a database kept forever is one shard per week,
     and a few years of history made 600+ mostly tiny shards, each costing
     memory and file handles for good. An existing database is left exactly
     as it is."""
-    payload = query("SHOW DATABASES")
-    existing = {
-        row[0] for result in payload.get("results") or [] for series in result.get("series") or []
-        for row in series.get("values") or []
-    }
+    existing = set(existing_databases())
     created = [name for name in names if name not in existing]
     for name in created:
         query(f'CREATE DATABASE "{name}" WITH SHARD DURATION {SHARD_DURATION}')
     return created
+
+
+def point_keys(database: str, measurement: str, start: int, end: int,
+               source: Optional[str] = None) -> Set[Tuple[FrozenSet[Tuple[str, str]], int]]:
+    """(tags, second) of the points of one measurement in [start, end] that
+    `source` wrote (every source when None): what InfluxDB keys each point by,
+    besides its database and measurement. Read `GROUP BY *` so every series
+    carries its own tags whole, and with `epoch=s` so the second is the one
+    `encode` writes. No field value leaves this function."""
+    conditions = []
+    if source is not None:
+        conditions.append(f'"source" = {quote(source)}')
+    conditions.append(f"time >= {time_literal(datetime.fromtimestamp(start, timezone.utc))}")
+    conditions.append(f"time <= {time_literal(datetime.fromtimestamp(end, timezone.utc))}")
+    payload = query(f"SELECT * FROM {_identifier(measurement)} WHERE {' AND '.join(conditions)} GROUP BY *",
+                    database, epoch="s")
+    keys = set()
+    for result in payload.get("results") or []:
+        # A partial answer would count the points it left out as new: refuse it
+        # rather than report a wrong count (the server's max-row-limit).
+        if result.get("partial"):
+            raise InfluxError(f"InfluxDB answered the read of {measurement} partially: too many points "
+                              "to compare in one response")
+        for series in result.get("series") or []:
+            tags = frozenset((name, value) for name, value in (series.get("tags") or {}).items()
+                             if value not in (None, ""))
+            for row in series.get("values") or []:
+                if row and isinstance(row[0], int) and not isinstance(row[0], bool):
+                    keys.add((tags, row[0]))
+    return keys
 
 
 def write(database: str, lines: List[str]) -> Tuple[int, Optional[str]]:

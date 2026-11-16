@@ -27,7 +27,7 @@ from app.config import settings
 from app.connectors.base import Connector, ConnectorError, FileImport, Span
 from app.influxdb import InfluxError
 from app.models import Cursor, StagedUpload, SyncRun, utcnow
-from app.points import Point, encode
+from app.points import Point, PointKey, encode
 
 logger = logging.getLogger(__name__)
 
@@ -417,6 +417,40 @@ def _by_database(counts: Dict[str, int]) -> str:
     return ", ".join(f"{database} {n}" for database, n in sorted(counts.items()))
 
 
+def _new_point_counts(connector: Connector, keys: List[PointKey]) -> Optional[Tuple[int, int]]:
+    """(new, already in InfluxDB) among the points a check would write: what
+    the file adds, and what it only restates. Read before anything is dropped,
+    so a reimport's existing points are counted as such. None when InfluxDB
+    cannot tell (it is not configured, or unreadable): the check goes on
+    without the count, as it always could."""
+    if not influxdb.is_configured() or not keys:
+        return None
+    declared = {m.name: m for m in connector.measurements}
+    by_measurement: Dict[str, List[PointKey]] = {}
+    for key in keys:
+        by_measurement.setdefault(key.measurement, []).append(key)
+    try:
+        databases = set(influxdb.existing_databases())
+        new = existing = 0
+        for name, measured in by_measurement.items():
+            measurement = declared[name]
+            if measurement.database not in databases:
+                new += len(measured)  # nothing is there yet
+                continue
+            held = influxdb.point_keys(measurement.database, name,
+                                       min(key.epoch for key in measured), max(key.epoch for key in measured),
+                                       source=connector.source if measurement.tagged_source else None)
+            for key in measured:
+                if (frozenset(key.tags), key.epoch) in held:
+                    existing += 1
+                else:
+                    new += 1
+        return new, existing
+    except InfluxError as exc:
+        logger.warning("%s: could not count the new points (%s)", connector.label, exc)
+        return None
+
+
 def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: bool = False, full: bool = False,
         file: Optional[str] = None, filename: Optional[str] = None,
         promoted_from: Optional[int] = None) -> SyncRun:
@@ -442,7 +476,8 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
             raise ConnectorError("InfluxDB is not configured: set TRIBUTARY_INFLUXDB_URL (a dry run works without).")
         state = load_cursor(db, connector.key)
         points, summary, new_state, rebuild, errors = collect(connector, state, full, file, filename)
-        lines = encode(points, connector.source, settings.influxdb_user, settings.tz)
+        keys: List[PointKey] = []
+        lines = encode(points, connector.source, settings.influxdb_user, settings.tz, keys=keys)
         if stage is not None and not dry_run:
             _verify_points(connector, lines, stage)
         total = sum(len(v) for v in lines.values())
@@ -454,9 +489,16 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
             record.points = total
             record.stats_json = json.dumps({database: len(v) for database, v in lines.items()})
             if total or rebuild is not None:
+                counted = ""
+                if file and total:
+                    counts = _new_point_counts(connector, keys)
+                    if counts is not None:
+                        counted = f", {counts[0]} new and {counts[1]} already in InfluxDB"
+                    elif influxdb.is_configured():
+                        counted = ", new points not counted (InfluxDB could not be read)"
                 record.message = (f"Dry run. {what}{total} point(s) would be written"
                                   + (f" ({_by_database({d: len(v) for d, v in lines.items()})})" if total else "")
-                                  + _dropped(rebuild, connector) + ".")
+                                  + counted + _dropped(rebuild, connector) + ".")
             else:
                 record.message = "Dry run. Nothing new." if not summary else f"Dry run. {what}nothing to write."
             record.message += failed
