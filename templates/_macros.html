@@ -8,6 +8,7 @@
 {% set STATE_LOOK = {
   "ok": ("good", "bi-check-circle-fill"),
   "done": ("good", "bi-check-circle-fill"),
+  "no_data": ("mute", "bi-dash-circle-fill"),
   "due": ("warning", "bi-file-earmark-arrow-up"),
   "failing": ("critical", "bi-x-circle-fill"),
   "checked": ("warning", "bi-exclamation-circle-fill"),
@@ -159,8 +160,8 @@
   <h1>Monthly imports</h1>
   <p class="tb-sub mb-1"><strong>{{ remaining | length }} remaining</strong> ·
     {{ completed | length }} completed in {{ month }}</p>
-  <p class="tb-hint mb-0">A successful file import completes an item; API syncs and checks do not.
-    Months follow {{ tz }}. Done confirms the import, not the dates covered by the export.</p>
+  <p class="tb-hint mb-0">A successful file import or an explicit no-data acknowledgment completes an item;
+    API syncs and checks do not. Months follow {{ tz }}. An import timestamp says when, not which dates the export covered.</p>
 </div>
 <a class="btn btn-sm btn-ghost" href="/settings#imports"><i class="bi bi-sliders me-1"></i>Choose sources</a>
 {%- endmacro %}
@@ -174,6 +175,17 @@
   {% else %}
     <a class="btn btn-sm btn-outline-primary" href="/connectors/{{ c.key }}#import"
        data-expand="{{ c.key }}"><i class="bi bi-file-earmark-arrow-up me-1"></i>Import a file</a>
+    {% if c.state == "no_data" %}
+    <form method="post" action="/imports/{{ c.key }}/no-data/undo">
+      <button class="btn btn-sm btn-ghost" type="submit"><i class="bi bi-arrow-counterclockwise me-1"></i>Undo no data</button>
+    </form>
+    {% elif not c.done %}
+    <form method="post" action="/imports/{{ c.key }}/no-data">
+      <button class="btn btn-sm btn-ghost" type="submit"
+              title="Clear only this source for this month; no file or measurement changes">
+        <i class="bi bi-dash-circle me-1"></i>No data to import</button>
+    </form>
+    {% endif %}
   {% endif %}
 </div>
 {%- endmacro %}
@@ -193,6 +205,10 @@
         point{{ "" if c.last_import.points == 1 else "s" }}{% endif %}.
     {% else %}
       No successful file import yet.
+    {% endif %}
+    {% if c.state == "no_data" and c.acknowledgment %}
+      <span class="d-block" title="Marked {{ c.acknowledgment.created_at | localtime }}">No export is needed
+        this month. No file or measurement was changed.</span>
     {% endif %}
     {% if c.staged %}
       <span class="d-block"><b>{{ c.staged.filename }}</b> is checked and ready to import —

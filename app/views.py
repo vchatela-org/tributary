@@ -15,7 +15,7 @@ from app import crud, preferences, scheduler
 from app.categories import CATEGORIES, EXTERNAL_TOOLS, hue_for
 from app.config import settings
 from app.connectors.base import Connector
-from app.models import StagedUpload, SyncRun, utcnow
+from app.models import MonthlyImportAcknowledgment, StagedUpload, SyncRun, utcnow
 
 # The states a connector card can be in, and how they read. Ordered by what the
 # user needs to see first; the first match wins.
@@ -190,6 +190,7 @@ MONTHLY_IMPORT_STATES = {
     "never": "Never imported",
     "due": "To import",
     "done": "Done this month",
+    "no_data": "No data this month",
 }
 
 
@@ -207,13 +208,31 @@ def _import_activity(latest: Optional[SyncRun], staged: Optional[StagedUpload],
     return None
 
 
+def monthly_import_period(now: Optional[datetime] = None) -> Dict[str, Any]:
+    """The current local month as a storage key and naive-UTC run boundaries."""
+    moment = now or utcnow()
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    zone = ZoneInfo(settings.tz)
+    local = moment.astimezone(zone)
+    month_start = datetime(local.year, local.month, 1, tzinfo=zone)
+    next_month = datetime(local.year + (local.month == 12), local.month % 12 + 1, 1, tzinfo=zone)
+    return {
+        "key": local.strftime("%Y-%m"),
+        "label": local.strftime("%B %Y"),
+        "start": month_start.astimezone(timezone.utc).replace(tzinfo=None),
+        "end": next_month.astimezone(timezone.utc).replace(tzinfo=None),
+    }
+
+
 def import_checklist(db: Session, now: Optional[datetime] = None) -> Dict[str, Any]:
     """The selected file imports and their state in the current local month.
 
-    Completion comes only from a successful, non-dry upload. Activity is a
-    separate display dimension: a failed re-import can need attention without
-    erasing the successful import that already completed this month's task.
+    Completion comes either from a successful, non-dry upload or from the
+    user's source-specific no-data acknowledgment. Activity remains separate:
+    a failed re-import can need attention without erasing either completion.
     """
+    period = monthly_import_period(now)
     file_connectors = [connector for connector in all_ordered() if connector.accepts_files]
     selected = preferences.monthly_import_connectors(db, [c.key for c in file_connectors])
     enabled = [connector for connector in file_connectors if connector.key in selected]
@@ -223,25 +242,23 @@ def import_checklist(db: Session, now: Optional[datetime] = None) -> Dict[str, A
     last_imports = crud.latest_upload_runs(db, keys, successful_only=True)
     staged = {row.connector: row for row in
               db.query(StagedUpload).filter(StagedUpload.connector.in_(keys)).all()} if keys else {}
+    acknowledgments = {row.connector: row for row in db.query(MonthlyImportAcknowledgment)
+                       .filter(MonthlyImportAcknowledgment.connector.in_(keys),
+                               MonthlyImportAcknowledgment.month == period["key"]).all()} if keys else {}
     running = {run.connector: run for run in scheduler.running(db)
                if run.connector in selected and run.trigger == "upload"}
 
-    moment = now or utcnow()
-    if moment.tzinfo is None:
-        moment = moment.replace(tzinfo=timezone.utc)
-    zone = ZoneInfo(settings.tz)
-    local = moment.astimezone(zone)
-    month_start = datetime(local.year, local.month, 1, tzinfo=zone)
-    next_month = datetime(local.year + (local.month == 12), local.month % 12 + 1, 1, tzinfo=zone)
-    month_start_utc = month_start.astimezone(timezone.utc).replace(tzinfo=None)
-    next_month_utc = next_month.astimezone(timezone.utc).replace(tzinfo=None)
+    month_start_utc, next_month_utc = period["start"], period["end"]
 
     items = []
     for connector in enabled:
         last_import = last_imports.get(connector.key)
         completed_at = (last_import.finished_at or last_import.started_at) if last_import else None
-        done = completed_at is not None and month_start_utc <= completed_at < next_month_utc
-        state = "done" if done else ("never" if last_import is None else "due")
+        imported = completed_at is not None and month_start_utc <= completed_at < next_month_utc
+        acknowledgment = acknowledgments.get(connector.key)
+        done = imported or acknowledgment is not None
+        state = "done" if imported else ("no_data" if acknowledgment is not None
+                                         else ("never" if last_import is None else "due"))
         checked = staged.get(connector.key)
         items.append({
             "connector": connector,
@@ -256,6 +273,7 @@ def import_checklist(db: Session, now: Optional[datetime] = None) -> Dict[str, A
             "state_label": MONTHLY_IMPORT_STATES[state],
             "done": done,
             "last_import": last_import,
+            "acknowledgment": acknowledgment,
             "activity": _import_activity(latest_uploads.get(connector.key), checked, running.get(connector.key)),
             "staged": checked,
             "staged_expires": checked.created_at + timedelta(hours=settings.staged_upload_ttl_hours)
@@ -265,5 +283,5 @@ def import_checklist(db: Session, now: Optional[datetime] = None) -> Dict[str, A
         "items": items,
         "remaining": [item for item in items if not item["done"]],
         "completed": [item for item in items if item["done"]],
-        "month": local.strftime("%B %Y"),
+        "month": period["label"],
     }

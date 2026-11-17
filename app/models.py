@@ -90,6 +90,17 @@ class StagedUpload(Base):
     created_at = Column(DateTime, nullable=False, default=utcnow)
 
 
+class MonthlyImportAcknowledgment(Base):
+    """The user's assertion that one source needs no export in one local month.
+    This is not an import and never creates a SyncRun or changes measurements."""
+    __tablename__ = "monthly_import_acknowledgments"
+
+    connector = Column(String(50), primary_key=True)
+    # YYYY-MM in TRIBUTARY_TZ; the composite key makes repeat clicks idempotent.
+    month = Column(String(7), primary_key=True)
+    created_at = Column(DateTime, nullable=False, default=utcnow)
+
+
 class Preference(Base):
     """One UI preference of this install, as JSON. Never a runtime setting.
     Overview visibility changes no runs; monthly-import membership changes no
