@@ -83,7 +83,7 @@ def test_a_dry_run_of_an_import_drops_nothing(connector, influx, db, tmp_path):
     run = runner.run(db, connector, dry_run=True, file=str(path), filename="export.csv", trigger="upload")
     assert run.status == "ok" and run.points == 1
     assert run.message == ("Dry run. Imported export.csv: 1 point(s) would be written (BodyStats 1), "
-                           "after dropping its own series.")
+                           "1 new, 0 changed and 0 unchanged, after dropping its own series.")
     assert "medication,med=Alpha" in run.preview
     assert influx.written_lines() == []
     assert not [query for _db, query in influx.queries if query.startswith("DROP")]
