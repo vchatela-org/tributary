@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.33.0](https://github.com/vchatela-org/tributary/compare/v0.32.1...v0.33.0) (2026-11-17)
+
+
+### Features
+
+* **imports:** allow marking a source with no data ([#138](https://github.com/vchatela-org/tributary/issues/138)) ([91d45eb](https://github.com/vchatela-org/tributary/commit/91d45ebbb6b192ef3674de997f5b570977e11bba))
+
 ## [0.32.1](https://github.com/vchatela-org/tributary/compare/v0.32.0...v0.32.1) (2026-11-17)
 
 
