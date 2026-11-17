@@ -5,14 +5,17 @@ Everything the overview needs about one connector: the state to show (running,
 queued, checked, failing, never run, not configured, OK), when it last ran and
 what it wrote, when it runs next, and what it accepts.
 """
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
 from app import crud, preferences, scheduler
 from app.categories import CATEGORIES, EXTERNAL_TOOLS, hue_for
+from app.config import settings
 from app.connectors.base import Connector
-from app.models import StagedUpload, SyncRun
+from app.models import StagedUpload, SyncRun, utcnow
 
 # The states a connector card can be in, and how they read. Ordered by what the
 # user needs to see first; the first match wins.
@@ -181,3 +184,86 @@ def counters(sections_: List[Dict[str, Any]]) -> Dict[str, int]:
             elif c["state"] == "ok":
                 out["ok"] += 1
     return out
+
+
+MONTHLY_IMPORT_STATES = {
+    "never": "Never imported",
+    "due": "To import",
+    "done": "Done this month",
+}
+
+
+def _import_activity(latest: Optional[SyncRun], staged: Optional[StagedUpload],
+                     running: Optional[SyncRun]) -> Optional[Dict[str, Any]]:
+    """Current file activity, kept separate from whether the month is done."""
+    if running is not None:
+        return {"state": "running", "label": "Checking file" if running.dry_run else "Importing",
+                "run": running}
+    if latest is not None and latest.status == "error":
+        return {"state": "failing", "label": "Check failed" if latest.dry_run else "Import failed",
+                "run": latest}
+    if staged is not None:
+        return {"state": "checked", "label": "Checked, not imported", "run": None}
+    return None
+
+
+def import_checklist(db: Session, now: Optional[datetime] = None) -> Dict[str, Any]:
+    """The selected file imports and their state in the current local month.
+
+    Completion comes only from a successful, non-dry upload. Activity is a
+    separate display dimension: a failed re-import can need attention without
+    erasing the successful import that already completed this month's task.
+    """
+    file_connectors = [connector for connector in all_ordered() if connector.accepts_files]
+    selected = preferences.monthly_import_connectors(db, [c.key for c in file_connectors])
+    enabled = [connector for connector in file_connectors if connector.key in selected]
+    keys = [connector.key for connector in enabled]
+
+    latest_uploads = crud.latest_upload_runs(db, keys)
+    last_imports = crud.latest_upload_runs(db, keys, successful_only=True)
+    staged = {row.connector: row for row in
+              db.query(StagedUpload).filter(StagedUpload.connector.in_(keys)).all()} if keys else {}
+    running = {run.connector: run for run in scheduler.running(db)
+               if run.connector in selected and run.trigger == "upload"}
+
+    moment = now or utcnow()
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    zone = ZoneInfo(settings.tz)
+    local = moment.astimezone(zone)
+    month_start = datetime(local.year, local.month, 1, tzinfo=zone)
+    next_month = datetime(local.year + (local.month == 12), local.month % 12 + 1, 1, tzinfo=zone)
+    month_start_utc = month_start.astimezone(timezone.utc).replace(tzinfo=None)
+    next_month_utc = next_month.astimezone(timezone.utc).replace(tzinfo=None)
+
+    items = []
+    for connector in enabled:
+        last_import = last_imports.get(connector.key)
+        completed_at = (last_import.finished_at or last_import.started_at) if last_import else None
+        done = completed_at is not None and month_start_utc <= completed_at < next_month_utc
+        state = "done" if done else ("never" if last_import is None else "due")
+        checked = staged.get(connector.key)
+        items.append({
+            "connector": connector,
+            "key": connector.key,
+            "label": connector.label,
+            "description": connector.description,
+            "icon": connector.icon,
+            "category": connector.category,
+            "hue": hue_for(connector.category),
+            "file_types": connector.file_types,
+            "state": state,
+            "state_label": MONTHLY_IMPORT_STATES[state],
+            "done": done,
+            "last_import": last_import,
+            "activity": _import_activity(latest_uploads.get(connector.key), checked, running.get(connector.key)),
+            "staged": checked,
+            "staged_expires": checked.created_at + timedelta(hours=settings.staged_upload_ttl_hours)
+            if checked is not None else None,
+        })
+    return {
+        "items": items,
+        "remaining": [item for item in items if not item["done"]],
+        "completed": [item for item in items if item["done"]],
+        "month": local.strftime("%B %Y"),
+    }

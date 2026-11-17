@@ -1,0 +1,7 @@
+{# Top-level regions only: app.js replaces their contents in the full page.
+   No file picker belongs here, so a poll can never clear a selected file. #}
+{% import "_macros.html" as m %}
+<div data-region="imports-summary">{{ m.monthly_import_summary(month, remaining, completed) }}</div>
+{% for c in items %}
+<div data-region="import:{{ c.key }}">{{ m.monthly_import_status(c) }}</div>
+{% endfor %}
