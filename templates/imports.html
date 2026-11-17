@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Monthly imports{% endblock %}
+{% block poll %}{% if items %}/partials/imports{% endif %}{% endblock %}
+
+{% macro import_group(title, rows, icon, show_empty=False) -%}
+<section class="tb-group">
+  <header class="tb-group-head"><i class="bi {{ icon }}"></i><h2>{{ title }}</h2>
+    <span class="tb-count">{{ rows | length }}</span></header>
+  {% if rows %}
+  <ul class="tb-list">
+    {% for c in rows %}{{ m.monthly_import_row(c) }}{% endfor %}
+  </ul>
+  {% elif show_empty %}
+  <div class="tb-group-empty"><i class="bi bi-check-circle me-1"></i>Everything selected is imported this month.</div>
+  {% endif %}
+</section>
+{%- endmacro %}
+
+{% block content %}
+<div class="tb-pagehead" data-region="imports-summary">{{ m.monthly_import_summary(month, remaining, completed) }}</div>
+
+{% if not items %}
+<section class="tb-panel tb-empty">
+  <i class="bi bi-file-earmark-arrow-up"></i>
+  <p class="mb-2">No sources are in the monthly checklist.</p>
+  <a class="btn btn-sm btn-primary" href="/settings#imports">Choose file imports</a>
+</section>
+{% else %}
+  {{ import_group("To import", remaining, "bi-file-earmark-arrow-up", show_empty=True) }}
+  {% if completed %}{{ import_group("Done this month", completed, "bi-check-circle") }}{% endif %}
+{% endif %}
+{% endblock %}

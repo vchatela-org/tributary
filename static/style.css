@@ -484,9 +484,14 @@ pre.tb-proto-lg { max-height: 70vh; }
   .tb-head > [data-region] { grid-column: 1 / -1; }
 }
 @media (max-width: 575.98px) {
+  .tb-topbar { gap: .65rem; }
   .tb-topbar .tb-brand { font-size: 0; gap: 0; }
   .tb-src-more { padding-left: 1.05rem; }
   .tb-runs .tb-msg { display: none; }
   .tb-group-foot { display: block; }
   .tb-foot-label { display: block; }
+}
+@media (max-width: 380px) {
+  .tb-topbar { gap: .4rem; }
+  .tb-topbar .tb-brand { display: none; }
 }

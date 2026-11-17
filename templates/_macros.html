@@ -7,6 +7,8 @@
    a tone always comes with its icon and its label, never colour alone. #}
 {% set STATE_LOOK = {
   "ok": ("good", "bi-check-circle-fill"),
+  "done": ("good", "bi-check-circle-fill"),
+  "due": ("warning", "bi-file-earmark-arrow-up"),
   "failing": ("critical", "bi-x-circle-fill"),
   "checked": ("warning", "bi-exclamation-circle-fill"),
   "running": ("live", "bi-arrow-repeat"),
@@ -47,9 +49,33 @@
 {%- else %}manual only{% endif %}
 {%- endmacro %}
 
-{# The run buttons. Every one is a POST back to the page it was pressed on.
-   `page`: the source's own page, which adds Full resync and points "Import a
-   file" at its own import panel rather than unfolding a row. #}
+{# The file picker is deliberately outside every polled region. Shared by the
+   overview and the monthly checklist so a live update never clears a choice. #}
+{% macro file_picker(c) -%}
+<form class="tb-upload" method="post" action="/connectors/{{ c.key }}/check" enctype="multipart/form-data">
+  <label class="tb-lab" for="file-{{ c.key }}">Check an export — Tributary <b>checks it first</b> and
+    writes nothing</label>
+  <div class="d-flex flex-wrap align-items-center gap-2">
+    <input class="form-control form-control-sm" style="max-width: 22rem;" id="file-{{ c.key }}"
+           type="file" name="file" accept="{{ c.file_types | join(',') }}" required />
+    <button class="btn btn-sm btn-primary" type="submit">
+      <i class="bi bi-clipboard-check me-1"></i>Check file</button>
+    <span class="small text-body-secondary">{{ c.file_types | join(" or ") }} · up to {{ max_upload_mb }} MB ·
+      kept {{ staged_ttl_hours | int }} h for the import</span>
+  </div>
+</form>
+{%- endmacro %}
+
+{% macro checked_import_actions(c) -%}
+<form method="post" action="/connectors/{{ c.key }}/import">
+  <button class="btn btn-sm btn-primary" type="submit">
+    <i class="bi bi-box-arrow-in-down me-1"></i>Import for real</button>
+</form>
+<form method="post" action="/connectors/{{ c.key }}/discard">
+  <button class="btn btn-sm btn-ghost" type="submit">Discard</button>
+</form>
+{%- endmacro %}
+
 {% macro actions(c, page=False) -%}
 <div class="tb-actions">
   {% if c.state in ("running", "queued") %}
@@ -57,13 +83,7 @@
   {% elif c.state == "checked" and page %}
     {# The page's import panel holds these, right below: not twice. #}
   {% elif c.state == "checked" %}
-    <form method="post" action="/connectors/{{ c.key }}/import">
-      <button class="btn btn-sm btn-primary" type="submit">
-        <i class="bi bi-box-arrow-in-down me-1"></i>Import for real</button>
-    </form>
-    <form method="post" action="/connectors/{{ c.key }}/discard">
-      <button class="btn btn-sm btn-ghost" type="submit">Discard</button>
-    </form>
+    {{ checked_import_actions(c) }}
   {% elif c.configured %}
     {# An API or a watched folder: it can read its source on demand, or show
        what it would write without writing anything. #}
@@ -132,6 +152,78 @@
 </div>
 {{ pill(c.state, c.state_label) }}
 {{ actions(c) }}
+{%- endmacro %}
+
+{% macro monthly_import_summary(month, remaining, completed) -%}
+<div>
+  <h1>Monthly imports</h1>
+  <p class="tb-sub mb-1"><strong>{{ remaining | length }} remaining</strong> ·
+    {{ completed | length }} completed in {{ month }}</p>
+  <p class="tb-hint mb-0">A successful file import completes an item; API syncs and checks do not.
+    Months follow {{ tz }}. Done confirms the import, not the dates covered by the export.</p>
+</div>
+<a class="btn btn-sm btn-ghost" href="/settings#imports"><i class="bi bi-sliders me-1"></i>Choose sources</a>
+{%- endmacro %}
+
+{% macro monthly_import_actions(c) -%}
+<div class="tb-actions">
+  {% if c.activity and c.activity.state == "running" %}
+    {# The live pill says what is running; do not offer a duplicate import. #}
+  {% elif c.staged %}
+    {{ checked_import_actions(c) }}
+  {% else %}
+    <a class="btn btn-sm btn-outline-primary" href="/connectors/{{ c.key }}#import"
+       data-expand="{{ c.key }}"><i class="bi bi-file-earmark-arrow-up me-1"></i>Import a file</a>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{# This region contains no file input: app.js can replace it while an import
+   runs. The picker lives in monthly_import_row, outside the region. #}
+{% macro monthly_import_status(c) -%}
+<span class="tb-ico"><i class="bi {{ c.icon }}"></i></span>
+<div class="tb-src-id">
+  <div class="tb-src-name"><a href="/connectors/{{ c.key }}">{{ c.label }}</a>
+    <span class="tb-src-when">Monthly file import</span></div>
+  <div class="tb-src-meta">
+    {% if c.last_import %}
+      Last imported <a href="/runs/{{ c.last_import.id }}">{{
+        (c.last_import.finished_at or c.last_import.started_at) | localtime }}</a>
+      {%- if c.last_import.points is not none %} · {{ "{:,}".format(c.last_import.points) }}
+        point{{ "" if c.last_import.points == 1 else "s" }}{% endif %}.
+    {% else %}
+      No successful file import yet.
+    {% endif %}
+    {% if c.staged %}
+      <span class="d-block"><b>{{ c.staged.filename }}</b> is checked and ready to import —
+        <a href="/runs/{{ c.staged.dry_run_id }}">see the check</a>. Kept until
+        {{ c.staged_expires | localtime }}.</span>
+    {% endif %}
+    {% if c.activity and c.activity.state == "failing" and c.activity.run %}
+      <span class="tb-src-err d-block">{{ c.activity.run.message }}
+        <a href="/runs/{{ c.activity.run.id }}">Run details</a>.</span>
+    {% endif %}
+  </div>
+</div>
+{{ pill(c.state, c.state_label) }}
+{% if c.activity %}{{ pill(c.activity.state, c.activity.label) }}{% endif %}
+{{ monthly_import_actions(c) }}
+{%- endmacro %}
+
+{% macro monthly_import_row(c) -%}
+<li class="tb-src tb-hue-{{ c.hue }}" id="import-{{ c.key }}">
+  <div class="tb-src-row">
+    <div class="tb-src-main" data-region="import:{{ c.key }}">{{ monthly_import_status(c) }}</div>
+    <button class="tb-toggle" type="button" aria-expanded="false" aria-controls="more-{{ c.key }}"
+            aria-label="File import for {{ c.label }}" title="Import a file"><i class="bi bi-chevron-down"></i></button>
+  </div>
+  <div class="tb-src-more" id="more-{{ c.key }}">
+    <p class="tb-hint">{{ c.description }}</p>
+    {{ file_picker(c) }}
+    <a class="tb-more-link" href="/connectors/{{ c.key }}#import">Source details, runs and import history
+      <i class="bi bi-arrow-right"></i></a>
+  </div>
+</li>
 {%- endmacro %}
 
 {# What the source accepts and when it runs: the facts behind a row (which

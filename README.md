@@ -28,7 +28,12 @@ flowchart LR
 Light or dark follows your system; the other pages are in [docs/ui.md](docs/ui.md).</sub>
 
 - **Check before writing.** *Dry run* shows the exact line protocol and writes
-  nothing; an export is checked first, then imported.
+  nothing; an export is checked first, then imported. A check says how many of
+  the points are new, changed or unchanged, so a reimported backup shows what
+  it actually adds or corrects.
+- **A monthly import checklist.** *Imports* shows which selected exports still
+  need importing this month and completes them from successful uploads, never
+  manual checkboxes or an API sync. Choose the sources independently in Settings.
 - **Safe to repeat.** A point is keyed by measurement, tags and time, so a
   rerun rewrites the same points. An API source only adds; an export replaces
   that source's own series (or only the days it covers), never another tool's.
@@ -137,8 +142,9 @@ This builds Tributary and starts it with InfluxDB 1.x and Grafana:
 
 - Tributary: <http://127.0.0.1:8000>. Each configured source runs on its
   schedule; *Run now* and *Dry run* show what it does before that. An export
-  source is imported from its page: the file is checked first, then imported.
-  Its sidebar's *Dashboards* opens Grafana's, filtered to the ones below
+  source is imported from its page or the monthly *Imports* checklist: the file
+  is checked first, then imported. Choose which sources that checklist tracks in
+  Settings. Its sidebar's *Dashboards* opens Grafana's, filtered to the ones below
   (`TRIBUTARY_GRAFANA_URL`; the compose file sets it).
 - Grafana: <http://127.0.0.1:3000> (first login `admin` / `admin`), with the
   datasource and the dashboards of [grafana/](grafana/) in a *Tributary*
@@ -155,8 +161,8 @@ authenticating reverse proxy in front (Authentik, Authelia, oauth2-proxy...):
 
 ## Documentation
 
-- [The web UI](docs/ui.md): the overview, a source's page, importing an
-  export, the run history, settings, and the HTTP API.
+- [The web UI](docs/ui.md): the overview, monthly imports, a source's page,
+  importing an export, the run history, settings, and the HTTP API.
 - [Scheduling](docs/scheduling.md): cron per source, where a value comes from,
   what a missed run does.
 - [Deployment](docs/deployment.md): every setting, Docker Compose, Kubernetes,

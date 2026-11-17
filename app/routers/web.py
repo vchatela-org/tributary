@@ -28,6 +28,10 @@ router = APIRouter(include_in_schema=False)
 RUNS_PER_PAGE = 50
 
 
+def _file_connector_keys() -> List[str]:
+    return [connector.key for connector in connectors.all_connectors() if connector.accepts_files]
+
+
 def _overview(db: Session) -> dict:
     """Everything the overview shows, shared by the page and the polled
     fragment so the two cannot drift apart."""
@@ -92,6 +96,11 @@ def index(request: Request, show: Optional[str] = None, db: Session = Depends(ge
     })
 
 
+@router.get("/imports", response_class=HTMLResponse)
+def imports_page(request: Request, db: Session = Depends(get_db)):
+    return templates.TemplateResponse(request, "imports.html", views.import_checklist(db))
+
+
 @router.get("/connectors/{key}", response_class=HTMLResponse)
 def connector_page(request: Request, key: str, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "connector.html",
@@ -134,6 +143,7 @@ def settings_page(request: Request, db: Session = Depends(get_db)):
     hidden = preferences.hidden_connectors(db)
     return templates.TemplateResponse(request, "settings.html", {
         "cards": [views.card(db, c, hidden=c.key in hidden) for c in connectors.all_connectors()],
+        "monthly_imports": preferences.monthly_import_connectors(db, _file_connector_keys()),
         "categories": CATEGORIES,
         "tools": EXTERNAL_TOOLS,
         "tools_outside": sorted({t.label for tools in EXTERNAL_TOOLS.values() for t in tools}),
@@ -152,6 +162,12 @@ def status_partial(request: Request, db: Session = Depends(get_db)):
     static/app.js; never the whole page, and never a region holding a file
     input."""
     return templates.TemplateResponse(request, "_status.html", _overview(db))
+
+
+@router.get("/partials/imports", response_class=HTMLResponse)
+def imports_partial(request: Request, db: Session = Depends(get_db)):
+    """Only summary/status regions: file pickers stay in the full page."""
+    return templates.TemplateResponse(request, "_imports.html", views.import_checklist(db))
 
 
 @router.get("/partials/runs", response_class=HTMLResponse)
@@ -280,5 +296,18 @@ def save_settings(request: Request, visible: List[str] = Form(default=[]), reset
     if reset:
         visible = known
     preferences.set_hidden_connectors(db, [key for key in known if key not in set(visible)], known)
+    db.commit()
+    return _back(request, "/settings")
+
+
+@router.post("/settings/imports", dependencies=[Depends(same_origin)])
+def save_monthly_imports(request: Request, monthly: List[str] = Form(default=[]),
+                         reset: bool = Form(False), db: Session = Depends(get_db)):
+    """Choose the file sources on the monthly checklist, independently of the
+    overview's visibility checkboxes."""
+    allowed = _file_connector_keys()
+    if reset:
+        monthly = list(preferences.DEFAULT_MONTHLY_IMPORT_CONNECTORS)
+    preferences.set_monthly_import_connectors(db, monthly, allowed)
     db.commit()
     return _back(request, "/settings")

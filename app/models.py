@@ -91,9 +91,9 @@ class StagedUpload(Base):
 
 
 class Preference(Base):
-    """One UI preference of this install, as JSON. Never a runtime setting: a
-    hidden connector keeps running and keeps filling its series, it is only
-    left out of the overview (app/views.py, the settings page)."""
+    """One UI preference of this install, as JSON. Never a runtime setting.
+    Overview visibility changes no runs; monthly-import membership changes no
+    schedules. They are independent display/checklist choices (app/views.py)."""
     __tablename__ = "preferences"
 
     key = Column(String(60), primary_key=True)
