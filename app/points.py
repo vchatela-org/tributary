@@ -35,7 +35,7 @@ import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, NamedTuple, Optional, Tuple
 from zoneinfo import ZoneInfo
 
 # Tags every point may carry: the tracker (a connector's `source`) and the
@@ -90,6 +90,25 @@ class Point:
     day_precision: bool = False
 
 
+class PointKey(NamedTuple):
+    """What InfluxDB keys a written point by, besides its database: the
+    measurement, its tags (sorted), and the second. `encode` can collect these
+    as it writes its lines, so a caller may ask InfluxDB which of them it
+    already holds without reading the line protocol back."""
+    measurement: str
+    tags: Tuple[Tuple[str, str], ...]
+    epoch: int
+
+
+class WrittenPoint(NamedTuple):
+    """A line `encode` wrote: the key InfluxDB gives it, and the field values
+    it carries, as InfluxDB stores them. A caller can then tell a point that
+    is new from one that restates stored values and from one that changes
+    them."""
+    key: PointKey
+    fields: Dict[str, Any]
+
+
 def epoch_seconds(value: datetime) -> int:
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
@@ -118,6 +137,19 @@ def _format_field(name: str, value: Any, kind: type, text_max: Optional[int] = T
         text = str(value)[:text_max].replace("\r", " ").replace("\n", " ").replace("\\", "\\\\").replace('"', '\\"')
         return f'{_escape_key(name)}="{text}"'
     raise ValueError(f"unsupported field type {kind!r} for {name}")
+
+
+def _stored_value(value: Any, kind: type, text_max: Optional[int] = TEXT_MAX) -> Any:
+    """The value InfluxDB holds after `_format_field` writes it: a text cut to
+    `text_max` with its line breaks flattened, numbers and booleans as their
+    declared type. What a check compares a stored point with."""
+    if kind is str:
+        return str(value)[:text_max].replace("\r", " ").replace("\n", " ")
+    if kind is bool:
+        return bool(value)
+    if kind is int:
+        return int(value)
+    return float(value)
 
 
 def format_line(measurement: str, tags: Mapping[str, Optional[str]], fields: Mapping[str, Any],
@@ -156,9 +188,12 @@ def _usable(value: Any) -> bool:
 
 
 def encode(points: Iterable[Point], source: str, user: Optional[str] = None,
-           tz: str = "Europe/Paris") -> Dict[str, List[str]]:
+           tz: str = "Europe/Paris",
+           written: Optional[List[WrittenPoint]] = None) -> Dict[str, List[str]]:
     """{database: lines}: the points checked against their declarations,
-    merged per key (measurement + tags + second), oldest first."""
+    merged per key (measurement + tags + second), oldest first. `written`,
+    when given, receives each line's WrittenPoint, in the order the lines are
+    written."""
     groups: Dict[Tuple, Dict[str, Any]] = {}
     for point in points:
         m = point.measurement
@@ -205,5 +240,9 @@ def encode(points: Iterable[Point], source: str, user: Optional[str] = None,
         fields.update(acc["local"])
         out.setdefault(m.database, []).append(format_line(m.name, acc["tags"], fields, m.field_types, acc["epoch"],
                                                           m.text_max))
+        if written is not None:
+            written.append(WrittenPoint(
+                PointKey(m.name, tuple(sorted(acc["tags"].items())), acc["epoch"]),
+                {name: _stored_value(value, m.field_types[name], m.text_max) for name, value in fields.items()}))
     return out
 

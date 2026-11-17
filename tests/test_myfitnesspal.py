@@ -232,6 +232,7 @@ def test_a_dry_run_of_an_import_drops_nothing(connector, influx, db, tmp_path):
     assert run.status == "ok" and run.points == 1
     # Only the weigh-ins have a span (the other files are empty): only they are named.
     assert run.message == ("Dry run. Imported export.zip: 1 point(s) would be written (BodyStats 1), "
+                           "1 new, 0 changed and 0 unchanged, "
                            "after dropping its own body_composition from 2026-03-01 to 2026-03-01.")
     assert "body_composition,source=myfitnesspal" in run.preview
     assert influx.written_lines() == []

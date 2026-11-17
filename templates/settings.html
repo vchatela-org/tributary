@@ -53,6 +53,31 @@
   </form>
 </section>
 
+<section class="tb-panel" id="imports">
+  <h2>Monthly imports</h2>
+  <p class="tb-hint">Choose the file exports on the <a href="/imports">monthly checklist</a>. A successful import
+    completes an item for the current month; checks and API syncs do not. Hiding a source from the overview does
+    not remove it here.</p>
+  <form method="post" action="/settings/imports">
+    {% for c in cards | selectattr("accepts_files") | list %}
+    <div class="tb-pick tb-hue-{{ c.hue }}">
+      <span class="tb-ico"><i class="bi {{ c.icon }}"></i></span>
+      <div class="form-check flex-grow-1 mb-0">
+        <input class="form-check-input" type="checkbox" name="monthly" value="{{ c.key }}"
+               id="monthly-{{ c.key }}" {% if c.key in monthly_imports %}checked{% endif %} />
+        <label class="form-check-label" for="monthly-{{ c.key }}">{{ c.label }}</label>
+        <p>{{ c.description }}{% if c.hidden %} <em>Hidden from the overview only.</em>{% endif %}</p>
+      </div>
+      <a class="btn btn-sm btn-ghost" href="/connectors/{{ c.key }}#import">Open</a>
+    </div>
+    {% endfor %}
+    <div class="tb-actions mt-3">
+      <button class="btn btn-sm btn-primary" type="submit">Save monthly checklist</button>
+      <button class="btn btn-sm btn-ghost" type="submit" name="reset" value="true">Reset to defaults</button>
+    </div>
+  </form>
+</section>
+
 <section class="tb-panel">
   <h2>Compatible tools</h2>
   <p class="tb-hint">Maintained tools that write into the same databases and line up with Tributary's points.

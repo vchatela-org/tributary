@@ -144,13 +144,50 @@ class FakeInflux:
                         and start <= k[3] < end]:
                 del self.points[key]
         elif statement.startswith(("SELECT last(", "SELECT * FROM")):
-            result.update(self._newest(database, statement, epoch))
+            if statement.endswith(" GROUP BY *"):
+                result.update(self._keys(database, statement))
+            else:
+                result.update(self._newest(database, statement, epoch))
         else:
             result.update(self._select(database, statement))
         return result
 
     def _exists(self, database: Optional[str]) -> bool:
         return database in self.databases or any(k[0] == database for k in self.points)
+
+    def _keys(self, database: Optional[str], statement: str) -> Dict:
+        """One measurement's points in a time range, each series' tags whole
+        (`GROUP BY *`), times as epoch seconds: the read a check makes to tell
+        what a file would add from what InfluxDB already holds."""
+        literal = r"'((?:[^'\\]|\\.)*)'"  # an InfluxQL string, escapes included
+        match = re.match(rf'SELECT \* FROM "(?:[^"\\]|\\.)+" WHERE (?:"source" = {literal} AND )?'
+                         rf"time >= '(.+)' AND time <= '(.+)' GROUP BY \*$", statement)
+        if match is None:
+            raise AssertionError(f"the fake does not answer {statement!r}")
+        measurement = re.match(r'SELECT \* FROM "((?:[^"\\]|\\.)+)"', statement).group(1)
+        source, start, end = match.groups()
+        source = _unescape(source) if source is not None else None
+        if not self._exists(database):
+            return {"error": f"database not found: {database}"}
+        start, end = _epoch(start), _epoch(end)
+        series: Dict[Tuple, Dict[int, Dict[str, str]]] = {}
+        for (db, m, tags, ts), fields in self.points.items():
+            if db != database or m != measurement or not start <= ts <= end:
+                continue
+            if source is not None and dict(tags).get("source") != source:
+                continue
+            series.setdefault(tags, {})[ts] = fields
+        out = []
+        for tags, rows in sorted(series.items()):
+            names = sorted({name for fields in rows.values() for name in fields})
+            out.append({
+                "name": measurement,
+                "tags": dict(tags),
+                "columns": ["time", *names],
+                "values": [[ts, *[_field_value(rows[ts][n]) if n in rows[ts] else None for n in names]]
+                           for ts in sorted(rows)],
+            })
+        return {"series": out} if out else {}
 
     def _newest(self, database: Optional[str], statement: str, epoch: Optional[str]) -> Dict:
         """The reads of a compatible tool's freshness line: a measurement's
