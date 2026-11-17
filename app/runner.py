@@ -27,7 +27,7 @@ from app.config import settings
 from app.connectors.base import Connector, ConnectorError, FileImport, Span
 from app.influxdb import InfluxError
 from app.models import Cursor, StagedUpload, SyncRun, utcnow
-from app.points import Point, encode
+from app.points import Point, WrittenPoint, encode
 
 logger = logging.getLogger(__name__)
 
@@ -417,6 +417,47 @@ def _by_database(counts: Dict[str, int]) -> str:
     return ", ".join(f"{database} {n}" for database, n in sorted(counts.items()))
 
 
+def _point_counts(connector: Connector, written: List[WrittenPoint]) -> Optional[Tuple[int, int, int]]:
+    """(new, changed, unchanged) among the points a check would write: what
+    the file adds, what it changes in what InfluxDB holds, and what it only
+    restates. Read before anything is dropped, so a reimport's stored points
+    are counted as such. A point is changed when a field the file writes is
+    missing from the stored point or differs from it; fields the file does not
+    write are left out (another input of this source may have added them).
+    None when InfluxDB cannot tell (it is not configured, or unreadable): the
+    check goes on without the count, as it always could."""
+    if not influxdb.is_configured() or not written:
+        return None
+    declared = {m.name: m for m in connector.measurements}
+    by_measurement: Dict[str, List[WrittenPoint]] = {}
+    for point in written:
+        by_measurement.setdefault(point.key.measurement, []).append(point)
+    try:
+        databases = set(influxdb.existing_databases())
+        new = changed = unchanged = 0
+        for measurement_name, measured in by_measurement.items():
+            measurement = declared[measurement_name]
+            if measurement.database not in databases:
+                new += len(measured)  # nothing is there yet
+                continue
+            stored = influxdb.stored_points(
+                measurement.database, measurement_name,
+                min(point.key.epoch for point in measured), max(point.key.epoch for point in measured),
+                source=connector.source if measurement.tagged_source else None)
+            for point in measured:
+                fields = stored.get((frozenset(point.key.tags), point.key.epoch))
+                if fields is None:
+                    new += 1
+                elif any(name not in fields or fields[name] != value for name, value in point.fields.items()):
+                    changed += 1
+                else:
+                    unchanged += 1
+        return new, changed, unchanged
+    except InfluxError as exc:
+        logger.warning("%s: could not compare with InfluxDB (%s)", connector.label, exc)
+        return None
+
+
 def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: bool = False, full: bool = False,
         file: Optional[str] = None, filename: Optional[str] = None,
         promoted_from: Optional[int] = None) -> SyncRun:
@@ -442,7 +483,8 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
             raise ConnectorError("InfluxDB is not configured: set TRIBUTARY_INFLUXDB_URL (a dry run works without).")
         state = load_cursor(db, connector.key)
         points, summary, new_state, rebuild, errors = collect(connector, state, full, file, filename)
-        lines = encode(points, connector.source, settings.influxdb_user, settings.tz)
+        written: List[WrittenPoint] = []
+        lines = encode(points, connector.source, settings.influxdb_user, settings.tz, written=written)
         if stage is not None and not dry_run:
             _verify_points(connector, lines, stage)
         total = sum(len(v) for v in lines.values())
@@ -454,9 +496,16 @@ def run(db: Session, connector: Connector, trigger: str = "schedule", dry_run: b
             record.points = total
             record.stats_json = json.dumps({database: len(v) for database, v in lines.items()})
             if total or rebuild is not None:
+                counted = ""
+                if file and total:
+                    counts = _point_counts(connector, written)
+                    if counts is not None:
+                        counted = f", {counts[0]} new, {counts[1]} changed and {counts[2]} unchanged"
+                    elif influxdb.is_configured():
+                        counted = ", new points not counted (InfluxDB could not be read)"
                 record.message = (f"Dry run. {what}{total} point(s) would be written"
                                   + (f" ({_by_database({d: len(v) for d, v in lines.items()})})" if total else "")
-                                  + _dropped(rebuild, connector) + ".")
+                                  + counted + _dropped(rebuild, connector) + ".")
             else:
                 record.message = "Dry run. Nothing new." if not summary else f"Dry run. {what}nothing to write."
             record.message += failed
