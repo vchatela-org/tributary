@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.32.1](https://github.com/vchatela-org/tributary/compare/v0.32.0...v0.32.1) (2026-11-17)
+
+
+### Dependencies
+
+* bump chainguard/python from `6b7c43c` to `2ba88df` ([#128](https://github.com/vchatela-org/tributary/issues/128)) ([d4bfe31](https://github.com/vchatela-org/tributary/commit/d4bfe316d8e36c48023b33f4242b77928a5f4100))
+* bump fastapi from 0.162.0 to 0.162.7 ([#131](https://github.com/vchatela-org/tributary/issues/131)) ([74e105f](https://github.com/vchatela-org/tributary/commit/74e105f6d7c1ec3170b6c3d91094784bee0816bd))
+* bump pydantic-settings from 2.16.2 to 2.16.3 ([#133](https://github.com/vchatela-org/tributary/issues/133)) ([97e83ce](https://github.com/vchatela-org/tributary/commit/97e83ce6cd8c65945e1c32eb950c53abbf4a94f2))
+
 ## [0.32.0](https://github.com/vchatela-org/tributary/compare/v0.31.0...v0.32.0) (2026-11-16)
 
 
