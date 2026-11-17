@@ -65,20 +65,7 @@
       <div class="tb-src-more" id="more-{{ c.key }}">
         <p class="tb-hint">{{ c.description }}</p>
         {{ m.facts(c) }}
-        {% if c.accepts_files %}
-        <form class="tb-upload" method="post" action="/connectors/{{ c.key }}/check" enctype="multipart/form-data">
-          <label class="tb-lab" for="file-{{ c.key }}">Check an export — Tributary <b>checks it first</b> and
-            writes nothing</label>
-          <div class="d-flex flex-wrap align-items-center gap-2">
-            <input class="form-control form-control-sm" style="max-width: 22rem;" id="file-{{ c.key }}"
-                   type="file" name="file" accept="{{ c.file_types | join(',') }}" required />
-            <button class="btn btn-sm btn-primary" type="submit">
-              <i class="bi bi-clipboard-check me-1"></i>Check file</button>
-            <span class="small text-body-secondary">{{ c.file_types | join(" or ") }} · up to {{ max_upload_mb }} MB ·
-              kept {{ staged_ttl_hours | int }} h for the import</span>
-          </div>
-        </form>
-        {% endif %}
+        {% if c.accepts_files %}{{ m.file_picker(c) }}{% endif %}
         <a class="tb-more-link" href="/connectors/{{ c.key }}">Schedule, runs and what it writes
           <i class="bi bi-arrow-right"></i></a>
       </div>
