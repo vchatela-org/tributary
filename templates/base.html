@@ -45,6 +45,8 @@
   <a class="tb-brand" href="/"><span class="tb-brand-mark"><i class="bi bi-water"></i></span>Tributary</a>
   <nav>
     <a class="tb-side-link {% if path == '/' %}active{% endif %}" href="/"><i class="bi bi-grid"></i>Integrations</a>
+    <a class="tb-side-link {% if path.startswith('/imports') %}active{% endif %}" href="/imports"><i
+        class="bi bi-file-earmark-arrow-up"></i>Imports</a>
     <a class="tb-side-link {% if path.startswith('/runs') %}active{% endif %}" href="/runs"><i
         class="bi bi-clock-history"></i>Run history</a>
     <a class="tb-side-link {% if path.startswith('/settings') %}active{% endif %}" href="/settings"><i
@@ -76,6 +78,7 @@
   <nav class="tb-topbar">
     <a class="tb-brand" href="/"><span class="tb-brand-mark"><i class="bi bi-water"></i></span>Tributary</a>
     <a class="nav-link {% if path == '/' %}active{% endif %}" href="/">Integrations</a>
+    <a class="nav-link {% if path.startswith('/imports') %}active{% endif %}" href="/imports">Imports</a>
     <a class="nav-link {% if path.startswith('/runs') %}active{% endif %}" href="/runs">Runs</a>
     <a class="nav-link {% if path.startswith('/settings') %}active{% endif %}" href="/settings">Settings</a>
     {% if grafana %}
