@@ -1,5 +1,7 @@
-"""When a compatible tool's data last arrived: the one read Tributary makes of
-another tool's data, and it reads timestamps only.
+"""When a compatible tool's data last arrived: a read of another tool's data
+that takes its timestamps only (the WHOOP models connector, off unless enabled,
+is the one part of Tributary that reads another tool's values:
+app/connectors/whoop_model.py).
 
 A tool Tributary does not run (app/categories.py) may name a probe here. Its
 card then carries one line, wherever the tool is listed:

@@ -108,6 +108,12 @@ Rules every panel follows:
    other tile, on every dashboard, is in the text colour; guidelines are
    dashed lines on the trends.
 
+6. **A wake-up is the one clock time a dashboard may ship with.** The sleep
+   planner's *Wake-up at* (`wake`) is a list of clock times in seconds after
+   midnight (`07:00 : 25200`), preset to 07:00: a time of day, nobody's data.
+   A deployment saves its own in its copy, as for a picker. A test checks the
+   list and the preset.
+
 ## Series written by other tools
 
 Tributary's own series are in [the schema](schema.md). Beside them, the
