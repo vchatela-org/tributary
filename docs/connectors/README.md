@@ -31,6 +31,7 @@ and, for an API, how often it runs by default (change it in the UI).
 |---|---|---|---|
 | [**Whoop**](whoop.md), built on kryoseu's [Whoops](https://github.com/kryoseu/whoops) | `whoop` | API (OAuth, connected on its page), daily; and its export file, imported in the UI | `SleepStats`: `sleep_session`, `journal`; `BodyStats`: `daily_activity`, `exercise` |
 | [**Sleep as Android**](sleep_as_android.md) | `sleep_as_android` | backup file, imported in the UI | `SleepStats`: `sleep_session`, `sleep_stage`, `sleep_vitals` |
+| [**WHOOP models**](whoop_model.md) | `whoop_model` | derived: reads the nights and heart rate other writers put in InfluxDB, four times a day | `SleepStats`: `whoop_model`, `whoop_model_tonight` |
 
 garmin-grafana, a [compatible tool](../compatible-tools.md), covers Garmin's
 sleep.

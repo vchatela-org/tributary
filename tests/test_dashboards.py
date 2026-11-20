@@ -149,6 +149,13 @@ def test_nothing_is_saved_in_the_variables(dashboard):
             assert not v.get("filters") and not v.get("baseFilters"), (dashboard["uid"], v["name"])
             continue
         current = v.get("current") or {}
+        if v["type"] == "custom" and v["name"] == "wake":
+            # the sleep planner's wake-up: clock times, nobody's own (docs/dashboards-design.md)
+            items = [item.strip() for item in v["query"].split(",")]
+            assert all(re.fullmatch(r"(\d\d):(\d\d) : (\d+)", i) for i in items), (dashboard["uid"], items)
+            assert all(int(i[:2]) * 3600 + int(i[3:5]) * 60 == int(i.split(" : ")[1]) for i in items), items
+            assert current.get("text") == "07:00" and not v.get("options"), (dashboard["uid"], current)
+            continue
         if v["type"] == "custom":
             # a source picker: the dashboard's own lists of sources, plus a source
             # that has no tag to list it by (garmin-grafana's)
@@ -199,7 +206,8 @@ FILTERS = {"source", "user", "kind", "category", "sport", "activityType", "isMai
 
 
 def test_a_single_source_reads_the_picker_of_its_value(dashboard):
-    single = {v["name"] for v in _variables(dashboard) if v["type"] == "custom" and not v.get("multi")}
+    single = {v["name"] for v in _variables(dashboard) if v["type"] == "custom" and not v.get("multi")
+              and v["name"] != "wake"}
     assert single <= set(PICKERS), (dashboard["uid"], single - set(PICKERS))
     for panel, target in _queries(dashboard):
         q = target["query"].replace(GARMIN_NIGHT, "")
@@ -432,6 +440,17 @@ def test_phone_is_what_its_builder_writes():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.build() == _load(PHONE), "run python3 scripts/build-phone-dashboard.py"
+
+
+SLEEP_PLANNER = ROOT / "grafana" / "dashboards" / "sleep-planner.json"
+
+
+def test_sleep_planner_is_what_its_builder_writes():
+    """scripts/build-sleep-planner-dashboard.py writes every query; the JSON is its output."""
+    spec = importlib.util.spec_from_file_location("planner", ROOT / "scripts" / "build-sleep-planner-dashboard.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.build() == _load(SLEEP_PLANNER), "run python3 scripts/build-sleep-planner-dashboard.py"
 
 
 def test_ad_hoc_filters_find_their_tags_beside_every_time_filter(dashboard):

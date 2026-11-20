@@ -267,6 +267,27 @@ never a no. It is correlation, not cause: a factor and an answer can share a
 third reason, and few days make the difference noise. Variables: time zone,
 user, source, question, recovery from, HRV from, sleep from.
 
+## Sleep planner & WHOOP models
+
+`SleepStats..whoop_model` and `..whoop_model_tonight`, written by the
+[WHOOP models](connectors/whoop_model.md) connector: WHOOP's own models,
+recomputed from each device you wear (a WHOOP strap, a Fitbit, a Garmin), next
+to the WHOOP app's values (`sleep_session`, `daily_activity`) when a strap
+writes them.
+- **Tonight:** for the wake-up picked in *Wake-up at*, when to go to bed, per
+  device: *Peak* (100 % of the need) and *Perform* (85 %), at the strain so far
+  and at strain 8, 12 and 16 (today's strain is not known before the day
+  ends). Bedtime = wake-up − target × need ÷ the 14-night median efficiency −
+  time to fall asleep. Beside it, the need at strain 12, the debt carried from
+  last night, the strain so far, and whether the device had synced the whole
+  night.
+- **The scores:** recovery, day strain, sleep need, the debt carried, sleep
+  performance and consistency, one line per device in its source's colour,
+  and the app's own value dashed in grey.
+
+The models are reverse-engineered: close to the app, not the app (how close:
+the connector's page). Variables: time zone, user, devices, wake-up at.
+
 ## Strength training
 
 garmin-grafana's `GarminStats`: `StrengthExerciseSet`, `StrengthHRZones` (a

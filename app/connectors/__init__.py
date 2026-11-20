@@ -36,6 +36,7 @@ def _register_builtin() -> None:
     from app.connectors.stryd import StrydConnector
     from app.connectors.todoist import TodoistConnector
     from app.connectors.whoop import WhoopConnector
+    from app.connectors.whoop_model import WhoopModelConnector
 
     register(AudiobookshelfConnector())
     register(RenphoConnector())
@@ -48,6 +49,7 @@ def _register_builtin() -> None:
     register(WhoopConnector())
     register(SleepAsAndroidConnector())
     register(StrydConnector())
+    register(WhoopModelConnector())
 
 
 _register_builtin()

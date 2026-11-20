@@ -39,6 +39,10 @@ in Settings, under *Compatible tools*:
   garmin-grafana writes when it sees a new upload from the watch.
 - **Only the times are read.** The values that come back with them (a heart
   rate, the device's name) are dropped unread: never kept, logged or shown.
+  The one exception is a connector you switch on yourself:
+  [WHOOP models](connectors/whoop_model.md) reads garmin-grafana's and
+  fitbit-grafana's nights and heart rate to rebuild WHOOP's scores from them,
+  and writes only its own `whoop_model` series.
 - Times are in `TRIBUTARY_TZ`, like the rest of the UI. When the newest data is
   older than `TRIBUTARY_GARMIN_GRAFANA_STALE_HOURS`, the line is marked
   *Over 24 h old* with the warning sign: a warning, never an error, since
