@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.34.0](https://github.com/vchatela-org/tributary/compare/v0.33.0...v0.34.0) (2026-11-20)
+
+
+### Features
+
+* **whoop_model:** WHOOP's sleep planner and scores rebuilt from any device ([9daafca](https://github.com/vchatela-org/tributary/commit/9daafca479c8701ea91e48f33ca95962d8a6b32e))
+* **whoop_model:** WHOOP's sleep planner and scores rebuilt from any device ([#141](https://github.com/vchatela-org/tributary/issues/141)) ([517cc30](https://github.com/vchatela-org/tributary/commit/517cc30776f8e79ada12f53f360d2e01818521ea))
+
 ## [0.33.0](https://github.com/vchatela-org/tributary/compare/v0.32.1...v0.33.0) (2026-11-17)
 
 
