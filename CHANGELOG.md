@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.35.0](https://github.com/vchatela-org/tributary/compare/v0.34.0...v0.35.0) (2026-11-20)
+
+
+### Features
+
+* **sleep-planner:** goal picker, clock bedtimes, share of need for a bedtime, data freshness ([5022b40](https://github.com/vchatela-org/tributary/commit/5022b40bf0e72593995ca4be9ccd6c83d2f929cb))
+* **sleep-planner:** goal picker, clock bedtimes, share of need for a bedtime, data freshness ([#143](https://github.com/vchatela-org/tributary/issues/143)) ([6f919db](https://github.com/vchatela-org/tributary/commit/6f919db87d44908501c30f743d0631f20fc741e5))
+
 ## [0.34.0](https://github.com/vchatela-org/tributary/compare/v0.33.0...v0.34.0) (2026-11-20)
 
 
