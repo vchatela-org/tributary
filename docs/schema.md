@@ -205,7 +205,7 @@ goes with it. No *local time*: a sleep carries its own local minutes
 | `sleep_vitals` | `source`, `user` | `hr_bpm` (float), `spo2_pct` (float), `sdnn_ms` (float) | Tributary: `sleep_as_android` (its export) |
 | `journal` | `source`, `user`, `question` | `answered_yes` (int), `count` (int), `recovery_score` (float), `hrv_rmssd_ms` (float), `asleep_s` (int), `strain` (float) | Tributary: `whoop` (from its export) |
 | `whoop_model` | `source`, `user`, `input` (`whoop`, `fitbit`, `garmin`) | `need_s` (float), `need_base_s` (float), `need_strain_s` (float), `need_debt_s` (float), `asleep_s` (float), `in_bed_s` (float), `efficiency` (float), `latency_s` (float), `sleep_score` (float), `consistency` (float), `recovery` (float), `strain_prev` (float), `day_strain` (float), `day_complete` (int) | Tributary: `whoop_model` (derived) |
-| `whoop_model_tonight` | `source`, `user`, `input` | `debt_s` (float), `base_s` (float), `efficiency` (float), `latency_s` (float), `need_s_strain8` (float), `need_s_strain12` (float), `need_s_strain16` (float), `strain_so_far` (float), `need_s_so_far` (float), `partial` (int) | Tributary: `whoop_model` (derived) |
+| `whoop_model_tonight` | `source`, `user`, `input` | `debt_s` (float), `base_s` (float), `efficiency` (float), `latency_s` (float), `need_s_strain8` (float), `need_s_strain12` (float), `need_s_strain16` (float), `strain_so_far` (float), `need_s_so_far` (float), `partial` (int), `run_s` (int), `night_start_s` (int), `night_end_s` (int), `synced_s` (int), `wake_day_s` (int), `night_asleep_s` (float), `usual_asleep_s` (float), `cut_short` (int) | Tributary: `whoop_model` (derived) |
 
 - `sleep_session`: one point per sleep, at its **end** (the wake), so a
   night lands on the morning it ended, as Garmin's `SleepSummary` does.
@@ -276,8 +276,15 @@ goes with it. No *local time*: a sleep carries its own local minutes
   carried (`debt_s`), the baseline (`base_s`), the 14-night median
   `efficiency` and `latency_s`, the need at strain 8, 12 and 16 and at the
   strain so far (`need_s_strain8`... `need_s_so_far`, `strain_so_far`), and
-  `partial` 1 when the device had not synced the whole night yet. Bedtime =
-  wake-up − target × need ÷ efficiency − latency, computed by the dashboard.
+  `partial` 1 when the device had not synced the whole night yet. How fresh
+  it is, in epoch seconds: when the model ran (`run_s`), the last night's
+  bounds (`night_start_s`, `night_end_s`), the device's last heart-rate sample
+  (`synced_s`, not for `whoop`) and the local midnight of the coming wake-up's
+  day (`wake_day_s`); the last night's sleep (`night_asleep_s`) against the
+  median of the 14 before (`usual_asleep_s`), and `cut_short` 1 when it has
+  less than 60 % of it or ends 3 h or more before the usual wake-up (its source
+  had not finished it). Bedtime = wake-up − target × need ÷ efficiency −
+  latency, computed by the dashboard.
 
 ### `TodoistStats`
 
