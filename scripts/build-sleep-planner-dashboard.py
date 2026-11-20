@@ -8,12 +8,16 @@ Every query is written here: edit this file, run
 `python3 scripts/build-sleep-planner-dashboard.py`, commit both files
 (tests/test_dashboards.py checks they agree).
 
-Tonight: the bedtime for the wake-up picked in $wake (seconds after midnight),
-`(86400 + $wake − target × need × 100 / efficiency − latency) % 86400`,
-written as a clock time by value mappings to 5 minutes (Grafana's `clocks`
-unit writes 00:14 as "14m:44s"), once per device ($input, a repeated panel),
-at strain 8, 12, 16 and the strain so far: today's strain is not known before
-the day ends.
+Tonight: the bedtime for the goal in $goal (Peak 1, Perform 0.85, Get by 0.7)
+and the wake-up in $wake (seconds after midnight), as an instant:
+`wake_day_s + $wake − goal × need × 100 / efficiency − latency`, in ms, which
+Grafana writes as a clock time (`time:HH:mm`, in the dashboard's time zone);
+once per device ($input, a repeated panel), at the strain so far and at 8, 12,
+16: today's strain is not known before the day ends. The other way round, for
+the bedtime in $bed (seconds after the midnight before the night), the share
+of the need slept: `($wake + 86400 − $bed − latency) × efficiency / need`.
+Then how fresh the night under it is (whoop_model_tonight's `run_s`,
+`night_*`, `synced_s`, `partial`, `cut_short`).
 
 The rebuilt scores: one series per device (`input`), solid, in its source
 colour, and the app's own value per source dashed in grey ("whoop app"). Every
@@ -38,6 +42,15 @@ LATEST = "time > now() - 7d"
 COLOURS = {"whoop": "#9085e9", "fitbit": "#d55181", "garmin": "#d95926"}
 APP = "#8c8b84"  # the app's own value, a neutral
 WAKE = [f"{h:02d}:{m:02d}" for h in range(4, 11) for m in (0, 15, 30, 45)]
+# Bedtimes from 20:00 to 02:00; one after midnight counts from the midnight before
+# (00:30 is 86400 + 1800), so wake-up + 86400 − bedtime is the time in bed.
+BED = [f"{h % 24:02d}:{m:02d}" for h in range(20, 27) for m in (0, 15, 30, 45)][:-3]
+GOALS = [("Peak (100 %)", "1"), ("Perform (85 %)", "0.85"), ("Get by (70 %)", "0.7")]
+
+
+def clock_s(t, after_midnight_is_tomorrow=False):
+    h, m = int(t[:2]), int(t[3:])
+    return h * 3600 + m * 60 + (86400 if after_midnight_is_tomorrow and h < 12 else 0)
 
 _ids = count(1)
 
@@ -85,35 +98,133 @@ def stat(title, description, targets, unit, p, decimals=None, repeat=None, mappi
     return panel
 
 
-def clock_mappings():
-    """Seconds after midnight as a clock time, to 5 minutes: Grafana's `clocks`
-    unit writes a time between midnight and 1 am as minutes and seconds."""
-    return [{"type": "range", "options": {"from": m * 60, "to": m * 60 + 299.999,
-                                          "result": {"text": f"{m // 60:02d}:{m % 60:02d}", "index": i}}}
-            for i, m in enumerate(range(0, 1440, 5))]
+# docs/dashboards-design.md, rule 7: how much of the need a bedtime gives, on
+# Healthspan's diverging scale (short of the goal in orange, met in green).
+O2, O1, G1, G2 = "#f8bc5e", "#b8803f", "#22a07b", "#5ff2c0"
+SCENARIOS = [("strain so far", "need_s_so_far")] + [(f"strain {s}", f"need_s_strain{s}") for s in (8, 12, 16)]
+PLAN = f'FROM "whoop_model_tonight" WHERE {USER} AND "input" = \'$input\' AND {LATEST}'
+# The bedtime as an instant (epoch ms): the coming wake-up's day, plus the
+# wake-up, less the time in bed the goal needs. Written as a clock time.
+CLOCK = "time:HH:mm"
+NEED_COLOUR = [{"color": O2, "value": None}, {"color": O1, "value": 70}, {"color": G1, "value": 85},
+               {"color": G2, "value": 100}]
 
 
-def bedtime(field, target_share):
-    return (f"(86400 + $wake - {target_share} * last(\"{field}\") * 100 / last(\"efficiency\") "
-            f"- last(\"latency_s\")) % 86400")
+def bedtime(field):
+    return (f'(last("wake_day_s") + $wake - $goal * last("{field}") * 100 / last("efficiency") '
+            f'- last("latency_s")) * 1000')
 
 
-def planner(title, share, p):
-    scenarios = [("strain so far", "need_s_so_far")] + [(f"strain {s}", f"need_s_strain{s}") for s in (8, 12, 16)]
-    select = ", ".join(f'{bedtime(field, share)} AS "{label}"' for label, field in scenarios)
-    q = f'SELECT {select} FROM "whoop_model_tonight" WHERE {USER} AND "input" = \'$input\' AND {LATEST}'
-    return stat(f"{title}: $input", "When to go to bed for the wake-up picked above: wake-up − "
-                 f"{'' if share == '1' else share + ' × '}sleep need ÷ the 14-night median efficiency − time to fall "
-                 "asleep. Today's strain adds to the need and is not known before the day ends: the bedtime at the "
-                 "strain so far, and at 8, 12 and 16.", [target(q, alias="$col")], "none", p, repeat="input",
-                 mappings=clock_mappings())
+# Asleep for an in-bed time from $bed to $wake: (in bed − time to fall asleep) × efficiency.
+IN_BED = '($wake + 86400 - $bed - last("latency_s"))'
 
 
-def per_input(title, description, field, unit, p, scale=""):
+def share_of_need(field):
+    return f'{IN_BED} * last("efficiency") / last("{field}")'
+
+
+def bed_by(p):
+    q = f'SELECT {bedtime("need_s_so_far")} AS "in bed by" {PLAN}'
+    panel = stat("$input · in bed by", "When to be in bed for the goal and the wake-up picked above, if the day ends "
+                 "at the strain so far: wake-up − goal × sleep need ÷ the 14-night median efficiency − time to fall "
+                 "asleep. The need is the baseline, what today's strain adds and the debt carried from last night.",
+                 [target(q, alias="$col")], CLOCK, p, repeat="input")
+    panel["options"].update({"textMode": "value", "justifyMode": "center"})
+    return panel
+
+
+def if_the_day_ends(p):
+    select = ", ".join(f'{bedtime(field)} AS "{label}"' for label, field in SCENARIOS[1:])
+    panel = stat("$input · if the day ends at strain", "Today's strain adds to tonight's need and is not known "
+                 "before the day ends: the same bedtime if it ends at strain 8, 12 or 16.",
+                 [target(f"SELECT {select} {PLAN}", alias="$col")], CLOCK, p, repeat="input")
+    panel["options"].update({"textMode": "value_and_name", "justifyMode": "center", "orientation": "vertical"})
+    return panel
+
+
+def bed_at(p):
+    select = ", ".join(f'{share_of_need(field)} AS "{label}"' for label, field in SCENARIOS)
+    defaults = {"unit": "percent", "decimals": 0, "min": 0, "max": 120, "color": {"mode": "thresholds"},
+                "thresholds": {"mode": "absolute", "steps": NEED_COLOUR}}
+    return {"type": "bargauge", "title": "$input · share of the need slept", "id": next(_ids),
+            "description": "The other way round: in bed at the time picked above, up at the wake-up, how much of "
+                           "tonight's need you would sleep: (in bed − time to fall asleep) × efficiency ÷ need, at the "
+                           "strain so far and at 8, 12, 16. Orange below 70 % (Get by) and 85 % (Perform), green from "
+                           "85 %, bright green from 100 % (Peak).",
+            "datasource": SLEEP, "gridPos": p, "repeat": "input", "repeatDirection": "h", "maxPerRow": 3,
+            "fieldConfig": {"defaults": defaults, "overrides": []},
+            "options": {"displayMode": "basic", "orientation": "horizontal", "valueMode": "text",
+                        "showUnfilled": True, "namePlacement": "left", "sizing": "auto", "minVizHeight": 16,
+                        "maxVizHeight": 28, "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": False}},
+            "targets": refs([target(f"SELECT {select} {PLAN}", alias="$col")])}
+
+
+def sleep_you_get(p):
+    q = (f'SELECT {IN_BED} * last("efficiency") / 100 / 3600 AS "asleep", '
+         f'last("need_s_so_far") / 3600 AS "need" {PLAN}')
+    panel = stat("$input · in bed at ${bed:text}", "The sleep you would get in bed from the time picked to the "
+                 "wake-up, against tonight's need at the strain so far.", [target(q, alias="$col")], "suffix: h", p,
+                 decimals=1, repeat="input")
+    panel["options"].update({"justifyMode": "center"})
+    return panel
+
+
+STATUS = [{"type": "value", "options": {
+    "0": {"text": "complete", "color": "transparent", "index": 0},
+    "1": {"text": "still syncing", "color": O2, "index": 1},
+    "2": {"text": "looks cut short", "color": O2, "index": 2},
+    "3": {"text": "cut short, still syncing", "color": O2, "index": 3}}}]
+
+
+def freshness(p):
+    q = (f'SELECT last("run_s") * 1000 AS "model ran", last("night_start_s") * 1000 AS "fell asleep", '
+         f'last("night_end_s") * 1000 AS "woke up", last("night_asleep_s") / 3600 AS "slept", '
+         f'last("usual_asleep_s") / 3600 AS "usually", last("partial") + 2 * last("cut_short") AS "last night", '
+         f'last("synced_s") * 1000 AS "device last synced" FROM "whoop_model_tonight" WHERE {USER} AND {INPUT} '
+         f'AND {LATEST} GROUP BY "input"')
+    t = target(q)
+    t["resultFormat"] = "table"
+
+    def override(name, *props):
+        return {"matcher": {"id": "byName", "options": name},
+                "properties": [{"id": k, "value": v} for k, v in props]}
+    overrides = [
+        override("model ran", ("unit", "dateTimeFromNow")),
+        override("device last synced", ("unit", "dateTimeFromNow")),
+        override("fell asleep", ("unit", "time:ddd HH:mm")),
+        override("woke up", ("unit", "time:ddd HH:mm")),
+        override("slept", ("unit", "suffix: h"), ("decimals", 1), ("custom.width", 80)),
+        override("usually", ("unit", "suffix: h"), ("decimals", 1), ("custom.width", 80)),
+        override("last night", ("mappings", STATUS),
+                 ("custom.cellOptions", {"type": "color-background", "mode": "basic"})),
+        override("input", ("displayName", "device"), ("custom.width", 90)),
+    ]
+    return {"type": "table", "title": "Is the data fresh?", "id": next(_ids),
+            "description": "What the bedtimes above stand on, per device: when the WHOOP models connector last ran "
+                           "(\"Run now\" on its page after a late workout or a sync), the last night it read, its "
+                           "sleep against the usual (the median of the 14 nights before), and when the device's heart "
+                           "rate was last seen. *Still syncing*: the heart rate stops before the night's end. *Looks "
+                           "cut short*: under 60 % of the usual sleep, or ending 3 h or more before the usual wake-up: "
+                           "the source had not finished the night (a Fitbit night is finished by Google Health hours "
+                           "after the wake-up). Either way the debt is too high and the bedtime too early, until the "
+                           "source rewrites the night and the connector runs again.",
+            "datasource": SLEEP, "gridPos": p,
+            "fieldConfig": {"defaults": {"custom": {"align": "auto", "cellOptions": {"type": "auto"}, "minWidth": 70},
+                                         "color": {"mode": "fixed", "fixedColor": "text"}, "mappings": [],
+                                         "thresholds": {"mode": "absolute", "steps": [{"color": "text", "value": None}]}},
+                            "overrides": overrides},
+            "options": {"showHeader": True, "cellHeight": "md", "footer": {"show": False}},
+            "transformations": [{"id": "merge", "options": {}},
+                                {"id": "organize", "options": {"excludeByName": {"Time": True}, "indexByName": {
+                                    "input": 0, "last night": 1, "fell asleep": 2, "woke up": 3, "slept": 4,
+                                    "usually": 5, "model ran": 6, "device last synced": 7}}}],
+            "targets": refs([t])}
+
+
+def per_input(title, description, select, unit, p, decimals=1):
     """A tile per device: the latest planner value."""
-    q = (f'SELECT last("{field}"){scale} FROM "whoop_model_tonight" WHERE {USER} AND {INPUT} AND {LATEST} '
-         f'GROUP BY "input"')
-    return stat(title, description, [target(q, alias="$tag_input")], unit, p, decimals=1)
+    q = f'SELECT {select} FROM "whoop_model_tonight" WHERE {USER} AND {INPUT} AND {LATEST} GROUP BY "input"'
+    return stat(title, description, [target(q, alias="$tag_input")], unit, p, decimals=decimals)
 
 
 def timeseries(title, description, targets, unit, p, decimals=0, datasource=MIXED):
@@ -159,27 +270,41 @@ def build():
     _ids = count(1)
     panels = [text(ABOUT, pos(0, 0, 24, 4))]
     y = 4
-    panels.append(row("Tonight: when to go to bed", y))
+    panels.append(row("Tonight: when to go to bed for ${goal:text}, up at ${wake:text}", y))
     y += 1
-    panels.append(planner("Peak (100 %)", "1", pos(0, y, 8, 6)))
-    y += 6
-    panels.append(planner("Perform (85 %)", "0.85", pos(0, y, 8, 6)))
-    y += 6
-    panels.append(per_input("Sleep need tonight at strain 12", "Baseline + what a day at strain 12 adds + the debt "
-                            "carried from last night.", "need_s_strain12", "suffix: h", pos(0, y, 6, 5),
-                            scale=" / 3600"))
-    panels.append(per_input("Debt carried from last night", "Half of last night's shortfall (need − sleep); 9/14 "
-                            "after a night scored above 87.", "debt_s", "suffix: min", pos(6, y, 6, 5), scale=" / 60"))
-    panels.append(per_input("Strain so far", "Today's cycle, from last night's sleep onset: WHOOP's own for a strap, "
-                            "from the heart rate otherwise.", "strain_so_far", "none", pos(12, y, 6, 5)))
-    synced = {"type": "value", "options": {"0": {"text": "whole night", "index": 0},
-                                           "1": {"text": "not synced yet", "index": 1}}}
-    panels.append(stat("Last night", "Whether the device had synced the whole of last night when the model last "
-                       "ran: a partial night has too little sleep, and its debt is too high until the next run.",
-                       [target(f'SELECT last("partial") FROM "whoop_model_tonight" WHERE {USER} AND {INPUT} '
-                               f'AND {LATEST} GROUP BY "input"', alias="$tag_input")], "none", pos(18, y, 6, 5),
-                       mappings=[synced]))
+    panels.append(bed_by(pos(0, y, 8, 5)))
     y += 5
+    panels.append(if_the_day_ends(pos(0, y, 8, 4)))
+    y += 4
+    panels.append(row("If I go to bed at ${bed:text}", y))
+    y += 1
+    panels.append(bed_at(pos(0, y, 8, 5)))
+    y += 5
+    panels.append(sleep_you_get(pos(0, y, 8, 3)))
+    y += 3
+    panels.append(row("Is the data fresh?", y))
+    y += 1
+    panels.append(freshness(pos(0, y, 24, 6)))
+    y += 6
+    panels.append(row("Tonight's numbers", y))
+    y += 1
+    tiles = [
+        ("Sleep need tonight", "Baseline + what the strain so far adds + the debt carried from last night.",
+         'last("need_s_so_far") / 3600', "suffix: h", 1),
+        ("Debt carried from last night", "Half of last night's shortfall (need − sleep); 9/14 after a night scored "
+         "above 87.", 'last("debt_s") / 60', "suffix: min", 0),
+        ("Strain so far", "Today's cycle, from last night's sleep onset: WHOOP's own for a strap, from the heart rate "
+         "otherwise.", 'last("strain_so_far")', "none", 1),
+        ("Sleep need at strain 12", "Baseline + what a day at strain 12 adds + the debt.",
+         'last("need_s_strain12") / 3600', "suffix: h", 1),
+        ("Efficiency", "Time asleep ÷ time in bed, the median of the last 14 nights.", 'last("efficiency")',
+         "percent", 0),
+        ("Time to fall asleep", "The median of the last 14 nights.", 'last("latency_s") / 60', "suffix: min", 0),
+    ]
+    for i, (title, description, select, unit, decimals) in enumerate(tiles):
+        panels.append(per_input(title, description, select, unit, pos(8 * (i % 3), y + 4 * (i // 3), 8, 4),
+                                decimals=decimals))
+    y += 8
     panels.append(row("WHOOP's scores, rebuilt from each device", y))
     y += 1
     charts = [
@@ -228,6 +353,22 @@ def build():
 
 def variables():
     return [
+        {"type": "custom", "name": "goal", "label": "Goal",
+         "description": "WHOOP's sleep planner goals: the share of tonight's need to sleep.",
+         "query": ", ".join(f"{text} : {value}" for text, value in GOALS),
+         "hide": 0, "current": {"text": GOALS[0][0], "value": GOALS[0][1]}, "options": [], "multi": False,
+         "includeAll": False},
+        {"type": "custom", "name": "wake", "label": "Wake-up at",
+         "description": "The wake-up the bedtimes are for (seconds after midnight).",
+         "query": ", ".join(f"{t} : {clock_s(t)}" for t in WAKE),
+         "hide": 0, "current": {"text": "07:00", "value": "25200"}, "options": [], "multi": False,
+         "includeAll": False},
+        {"type": "custom", "name": "bed", "label": "In bed at",
+         "description": "A bedtime to try: the share of the need it gives (seconds after the midnight before the "
+                        "night: 00:30 is 88200).",
+         "query": ", ".join(f"{t} : {clock_s(t, True)}" for t in BED),
+         "hide": 0, "current": {"text": "23:00", "value": "82800"}, "options": [], "multi": False,
+         "includeAll": False},
         {"type": "datasource", "name": "sleep", "label": "InfluxDB SleepStats", "query": "influxdb",
          "regex": "/SleepStats/i", "hide": 0, "refresh": 1, "current": {}, "options": [], "includeAll": False,
          "multi": False},
@@ -248,11 +389,6 @@ def variables():
          "query": f'SHOW TAG VALUES FROM "whoop_model" WITH KEY = "input" WHERE {USER}',
          "refresh": 1, "sort": 1, "hide": 0, "current": {"text": "All", "value": "$__all"}, "options": [],
          "multi": True, "includeAll": True},
-        {"type": "custom", "name": "wake", "label": "Wake-up at",
-         "description": "The wake-up the bedtimes are for (seconds after midnight).",
-         "query": ", ".join(f"{t} : {int(t[:2]) * 3600 + int(t[3:]) * 60}" for t in WAKE),
-         "hide": 0, "current": {"text": "07:00", "value": "25200"}, "options": [], "multi": False,
-         "includeAll": False},
     ]
 
 

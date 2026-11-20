@@ -92,6 +92,31 @@ def test_tonight_needs_the_last_nights_debt_and_the_usual_efficiency():
     assert plan.debt == pytest.approx(wm.debt_s(C, rows[-1].need, 6 * 3600, rows[-1].score))
 
 
+def test_a_night_with_too_little_sleep_or_an_early_end_looks_cut_short():
+    usual = [night(d, asleep_h=7.5, in_bed_h=8.0) for d in range(2, 9)]   # 23:00 to 07:00
+    assert not wm.cut_short(night(9, asleep_h=7.0, in_bed_h=8.0), usual, PARIS)
+    # Google Health's Fitbit night ending at 01:42: little sleep, a wake-up hours early.
+    assert wm.cut_short(night(9, asleep_h=2.5, in_bed_h=2.7), usual, PARIS)
+    # Enough sleep but ending more than 3 h before the usual wake-up (an early night is fine).
+    assert wm.cut_short(night(9, asleep_h=4.6, in_bed_h=4.8, start_hour=22), usual, PARIS)
+    assert not wm.cut_short(night(9, asleep_h=7.0, in_bed_h=7.5, start_hour=21), usual, PARIS)
+    # Fewer than 3 nights before: nothing to compare with.
+    assert not wm.cut_short(night(9, asleep_h=1.0), usual[:2], PARIS)
+    assert wm.usual_asleep(usual) == 7.5 * 3600 and wm.usual_asleep(usual[:2]) is None
+
+
+def test_the_wake_up_day_is_the_one_after_the_last_night_or_after_today():
+    def at(y, m, d, h, mi=0):
+        return int(datetime(y, m, d, h, mi, tzinfo=PARIS).timestamp())
+    midnight_21 = at(2026, 11, 21, 0)
+    # Last night synced (it ended this morning): tonight's wake-up is tomorrow.
+    assert wm.wake_day_s(date(2026, 11, 20), at(2026, 11, 20, 7, 50), PARIS) == midnight_21
+    # Not synced yet (the last night is the one before): still tomorrow.
+    assert wm.wake_day_s(date(2026, 11, 19), at(2026, 11, 20, 11, 50), PARIS) == midnight_21
+    # Past midnight, before sleeping: the wake-up is this morning's.
+    assert wm.wake_day_s(date(2026, 11, 20), at(2026, 11, 21, 0, 30), PARIS) == midnight_21
+
+
 def test_constants_override_only_known_keys():
     assert wm.constants({"debt_r": 0.4})["debt_r"] == 0.4
     with pytest.raises(ConnectorError):
@@ -181,6 +206,13 @@ def test_a_run_writes_a_night_per_input_and_one_plan(model):
     fitbit = sorted((p for p in nights if p.tags["input"] == "fitbit"), key=lambda p: p.time)
     assert all("day_strain" in p.fields for p in fitbit)
     assert fitbit[-1].fields["day_complete"] == 0 and fitbit[0].fields["day_complete"] == 1
+    # The planner's point says how fresh it is.
+    for plan in plans:
+        f = plan.fields
+        assert f["night_end_s"] == int(plan.time.timestamp()) and f["night_start_s"] < f["night_end_s"]
+        assert f["run_s"] >= f["night_end_s"] and f["cut_short"] == 0
+        assert f["wake_day_s"] > f["night_end_s"] and f["usual_asleep_s"] > 0
+        assert ("synced_s" in f) == (plan.tags["input"] == "fitbit")
     # The schema accepts every point.
     lines = encode(result.points, "whoop_model", "someone")["SleepStats"]
     assert any(line.startswith("whoop_model,input=fitbit,source=whoop_model,user=someone ") for line in lines)

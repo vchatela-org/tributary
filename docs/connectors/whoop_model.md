@@ -65,7 +65,7 @@ app's value, over those nights.
 | **Sleep consistency** | `k1 ×` the mean overlap (intersection over union, %) of the night's sleep window with each of the 4 nights before, moved onto the same day, `+ k0`. | 3.2 (r 0.90) |
 | **Recovery** | `100·σ(h·(ln HRV − the mean ln HRV of the 30 nights before) + p·performance + c)`, from the 8th night with an HRV. Resting heart rate and breathing rate add nothing once HRV is in. | 5.8 (r 0.90) |
 | **Day strain** | WHOOP's own for a strap. From a heart rate: `a·ln(1 + L/b)`, L = Banister's TRIMP over the cycle (sleep onset to the next one), Σ x·0.64·e^(1.92x) per minute, x = (HR − resting HR) ÷ (max HR − resting HR), resting HR the device's 30-day mean; at most 21. a, b fitted on a Fitbit's minute heart rate against WHOOP's strain over a month. | 1.5 on a Fitbit (r 0.91), 0.92 r on a Garmin |
-| **Bedtime** | wake-up − target × need ÷ efficiency − time to fall asleep, target 100 % (*Peak*) or 85 % (*Perform*), efficiency the 14-night median. Computed by the dashboard from `whoop_model_tonight`. | |
+| **Bedtime** | wake-up − target × need ÷ efficiency − time to fall asleep, target 100 % (*Peak*), 85 % (*Perform*) or 70 % (*Get by*), efficiency the 14-night median. Computed by the dashboard from `whoop_model_tonight`; the other way round, a bedtime gives the share of the need slept: (wake-up − bedtime − time to fall asleep) × efficiency ÷ need. | |
 
 The constants (`DEFAULTS`) are WHOOP's algorithm as fitted, not a person's:
 the baseline and the max heart rate, which are, come from your settings or
@@ -84,14 +84,22 @@ and a higher performance, unless its bias is set.
 | Measurement | One point per | Time | Tags | Fields |
 |---|---|---|---|---|
 | `whoop_model` | night and device | the night's end (the wake-up) | `input` (`whoop`, `fitbit`, `garmin`) | `need_s`, `need_base_s`, `need_strain_s`, `need_debt_s`, `asleep_s`, `in_bed_s`, `efficiency`, `latency_s`, `sleep_score`, `consistency`, `recovery`, `strain_prev`, `day_strain` (float), `day_complete` (int) |
-| `whoop_model_tonight` | device | the end of its last night | `input` | `debt_s`, `base_s`, `efficiency`, `latency_s`, `need_s_strain8`, `need_s_strain12`, `need_s_strain16`, `strain_so_far`, `need_s_so_far` (float), `partial` (int) |
+| `whoop_model_tonight` | device | the end of its last night | `input` | `debt_s`, `base_s`, `efficiency`, `latency_s`, `need_s_strain8`, `need_s_strain12`, `need_s_strain16`, `strain_so_far`, `need_s_so_far`, `night_asleep_s`, `usual_asleep_s` (float), `partial`, `cut_short`, `run_s`, `night_start_s`, `night_end_s`, `synced_s`, `wake_day_s` (int) |
 
 Fields are described in [the schema](../schema.md). A night is a device's
 main sleep; it is keyed by the local date it ends on, and two nights are
 consecutive when they end on consecutive days less than 36 hours apart.
 `partial` is 1 when the device's heart rate stops before the end of its last
 night: it had not synced yet, so that night is short and its debt too high
-until the next run.
+until the next run. `cut_short` is 1 when the last night has less than 60 %
+of the usual sleep (the median of the 14 nights before) or ends 3 h or more
+before the usual wake-up: the device synced, but its source had not finished
+the night (Google Health has held a Fitbit night ending at 01:42 until noon,
+while the heart rate kept syncing). Both clear at the first run after the
+source rewrites the night. `run_s`, `night_start_s`, `night_end_s` and
+`synced_s` (the device's last heart-rate sample) let the dashboard show how
+old each of them is; `wake_day_s` is the local midnight of the coming
+wake-up's day, from which it writes the bedtime as a clock time.
 
 ## Cursor and reruns
 

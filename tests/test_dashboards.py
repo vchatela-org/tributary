@@ -149,12 +149,23 @@ def test_nothing_is_saved_in_the_variables(dashboard):
             assert not v.get("filters") and not v.get("baseFilters"), (dashboard["uid"], v["name"])
             continue
         current = v.get("current") or {}
-        if v["type"] == "custom" and v["name"] == "wake":
-            # the sleep planner's wake-up: clock times, nobody's own (docs/dashboards-design.md)
+        if v["type"] == "custom" and v["name"] in ("wake", "bed"):
+            # the sleep planner's wake-up and bedtime: clock times, nobody's own
+            # (docs/dashboards-design.md, rule 6); a bedtime after midnight counts
+            # from the midnight before (00:30 : 88200)
             items = [item.strip() for item in v["query"].split(",")]
             assert all(re.fullmatch(r"(\d\d):(\d\d) : (\d+)", i) for i in items), (dashboard["uid"], items)
-            assert all(int(i[:2]) * 3600 + int(i[3:5]) * 60 == int(i.split(" : ")[1]) for i in items), items
-            assert current.get("text") == "07:00" and not v.get("options"), (dashboard["uid"], current)
+            for i in items:
+                h, m, seconds = int(i[:2]), int(i[3:5]), int(i.split(" : ")[1])
+                tomorrow = 86400 if v["name"] == "bed" and h < 12 else 0
+                assert h * 3600 + m * 60 + tomorrow == seconds, (dashboard["uid"], i)
+            preset = {"wake": "07:00", "bed": "23:00"}[v["name"]]
+            assert current.get("text") == preset and not v.get("options"), (dashboard["uid"], current)
+            continue
+        if v["type"] == "custom" and v["name"] == "goal":
+            # WHOOP's planner goals, the same for everyone
+            assert v["query"] == "Peak (100 %) : 1, Perform (85 %) : 0.85, Get by (70 %) : 0.7", v["query"]
+            assert current.get("value") == "1" and not v.get("options"), (dashboard["uid"], current)
             continue
         if v["type"] == "custom":
             # a source picker: the dashboard's own lists of sources, plus a source
@@ -201,13 +212,15 @@ PICKERS = {
                      | {f"hrTimeInZone_{n}" for n in range(6)},
     "weight_from": BODY | {"weight", "bodyFat"},
 }
+# The sleep planner's own pickers: a goal and clock times, not sources (rule 6).
+PLANNER = {"goal", "wake", "bed"}
 # The tags a single-source query may filter on besides its picker's.
 FILTERS = {"source", "user", "kind", "category", "sport", "activityType", "isMainSleep", "ActivityName"}
 
 
 def test_a_single_source_reads_the_picker_of_its_value(dashboard):
     single = {v["name"] for v in _variables(dashboard) if v["type"] == "custom" and not v.get("multi")
-              and v["name"] != "wake"}
+              and v["name"] not in PLANNER}
     assert single <= set(PICKERS), (dashboard["uid"], single - set(PICKERS))
     for panel, target in _queries(dashboard):
         q = target["query"].replace(GARMIN_NIGHT, "")
@@ -451,6 +464,23 @@ def test_sleep_planner_is_what_its_builder_writes():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.build() == _load(SLEEP_PLANNER), "run python3 scripts/build-sleep-planner-dashboard.py"
+
+
+def test_the_planner_colours_the_share_of_the_need_on_healthspan_s_scale():
+    """docs/dashboards-design.md, rule 7: the share of the need a bedtime gives
+    is the one other bar in colour, on Healthspan's scale, never a source's, and
+    its value is printed in the text colour."""
+    healthspan = _healthspan_builder()
+    scale = {healthspan.O2, healthspan.O1, healthspan.G1, healthspan.G2}
+    bars = [p for p in _panels(_load(SLEEP_PLANNER)["panels"]) if p["type"] == "bargauge"]
+    assert bars
+    for bar in bars:
+        steps = bar["fieldConfig"]["defaults"]["thresholds"]["steps"]
+        assert {s["color"] for s in steps} == scale and [s["value"] for s in steps] == [None, 70, 85, 100]
+        assert bar["options"]["valueMode"] == "text", bar["title"]
+    for p in _panels(_load(SLEEP_PLANNER)["panels"]):
+        if p["type"] == "stat":
+            assert p["fieldConfig"]["defaults"]["color"] == {"mode": "fixed", "fixedColor": "text"}, p["title"]
 
 
 def test_ad_hoc_filters_find_their_tags_beside_every_time_filter(dashboard):

@@ -274,19 +274,29 @@ user, source, question, recovery from, HRV from, sleep from.
 recomputed from each device you wear (a WHOOP strap, a Fitbit, a Garmin), next
 to the WHOOP app's values (`sleep_session`, `daily_activity`) when a strap
 writes them.
-- **Tonight:** for the wake-up picked in *Wake-up at*, when to go to bed, per
-  device: *Peak* (100 % of the need) and *Perform* (85 %), at the strain so far
-  and at strain 8, 12 and 16 (today's strain is not known before the day
-  ends). Bedtime = wake-up − target × need ÷ the 14-night median efficiency −
-  time to fall asleep. Beside it, the need at strain 12, the debt carried from
-  last night, the strain so far, and whether the device had synced the whole
-  night.
+- **Tonight:** for the goal picked in *Goal* (*Peak*, 100 % of the need;
+  *Perform*, 85 %; *Get by*, 70 %) and the wake-up in *Wake-up at*, the clock
+  time to be in bed by, per device, at the strain so far, and below it at
+  strain 8, 12 and 16 (today's strain is not known before the day ends).
+  Bedtime = wake-up − goal × need ÷ the 14-night median efficiency − time to
+  fall asleep.
+- **If I go to bed at:** the other way round, for the bedtime in *In bed at*:
+  the share of tonight's need you would sleep, per device and strain, in
+  orange below 70 % and 85 % and in green from 85 % and 100 %, and the hours
+  asleep against the need.
+- **Is the data fresh?** Per device, the night the bedtimes stand on (from,
+  to, its sleep against the usual), whether it is complete, still syncing or
+  looks cut short (its source had not finished it: the debt is then too high),
+  when the connector last ran and when the device last synced.
+- **Tonight's numbers:** the need, the debt carried from last night, the
+  strain so far, the need at strain 12, the efficiency and the time to fall
+  asleep.
 - **The scores:** recovery, day strain, sleep need, the debt carried, sleep
   performance and consistency, one line per device in its source's colour,
   and the app's own value dashed in grey.
 
 The models are reverse-engineered: close to the app, not the app (how close:
-the connector's page). Variables: time zone, user, devices, wake-up at.
+the connector's page). Variables: goal, wake-up at, in bed at, time zone, user, devices.
 
 ## Strength training
 

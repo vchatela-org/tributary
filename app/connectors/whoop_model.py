@@ -45,8 +45,12 @@ Mapping (SleepStats, tag `input` = the device the night comes from):
                        the planner needs for the coming night -- the debt
                        carried, the 14-night median efficiency and time to fall
                        asleep, the need at strain 8, 12, 16 and at the strain so
-                       far, and `partial` 1 when the device had not synced the
-                       whole night yet.
+                       far; and how fresh that is: when the model ran, the last
+                       night's bounds and sleep against the usual, the device's
+                       last heart-rate sample, the local midnight of the coming
+                       wake-up's day, `partial` 1 when the device had not synced
+                       the whole night yet and `cut_short` 1 when the night looks
+                       cut short (a source that had not finished processing it).
 
 Cursor: {input: the end of the last night written, epoch seconds}. A run
 recomputes from there minus TRIBUTARY_WHOOP_MODEL_LOOKBACK_DAYS (late syncs,
@@ -107,6 +111,13 @@ BASELINE_NEED_H = 7.5
 # Max heart rate when neither the settings nor WHOOP's days give one.
 HR_MAX = 190.0
 PLAN_STRAINS = (8, 12, 16)
+# A last night looks cut short (its source had not finished it: Google Health
+# has held a Fitbit night ending at 01:42 until noon) when it has less than this
+# share of the usual sleep, or ends this many minutes before the usual wake-up;
+# "usual" = the median of the 14 nights before, once there are 3.
+CUT_SHORT_SLEEP = 0.6
+CUT_SHORT_WAKE_MIN = 180
+USUAL_MIN_NIGHTS = 3
 
 MODEL = Measurement(
     database="SleepStats", name="whoop_model", tags=("input",),
@@ -120,7 +131,9 @@ TONIGHT = Measurement(
     database="SleepStats", name="whoop_model_tonight", tags=("input",),
     fields={"debt_s": float, "base_s": float, "efficiency": float, "latency_s": float,
             "need_s_strain8": float, "need_s_strain12": float, "need_s_strain16": float,
-            "strain_so_far": float, "need_s_so_far": float, "partial": int},
+            "strain_so_far": float, "need_s_so_far": float, "partial": int,
+            "run_s": int, "night_start_s": int, "night_end_s": int, "synced_s": int, "wake_day_s": int,
+            "night_asleep_s": float, "usual_asleep_s": float, "cut_short": int},
     last_wins=True,
 )
 
@@ -307,6 +320,35 @@ def tonight(rows: List[Row], c: Dict[str, Any], strain_so_far: Optional[float]) 
                    efficiency=median(effs) if effs else 90.0,
                    latency=median(r.night.latency for r in recent),
                    strain_so_far=strain_so_far)
+
+
+def _wake_minute(n: Night, tz: ZoneInfo) -> int:
+    """The night's end as minutes after the noon before it (no wrap at midnight)."""
+    local = datetime.fromtimestamp(n.end, tz)
+    return (local.hour * 60 + local.minute - 720) % 1440
+
+
+def usual_asleep(before: List[Night]) -> Optional[float]:
+    return median(n.asleep for n in before) if len(before) >= USUAL_MIN_NIGHTS else None
+
+
+def cut_short(last: Night, before: List[Night], tz: ZoneInfo) -> bool:
+    """Whether the last night looks cut short against the nights before it."""
+    usual = usual_asleep(before)
+    if usual is None:
+        return False
+    if last.asleep < CUT_SHORT_SLEEP * usual:
+        return True
+    return median(_wake_minute(n, tz) for n in before) - _wake_minute(last, tz) > CUT_SHORT_WAKE_MIN
+
+
+def wake_day_s(key: date, now: int, tz: ZoneInfo) -> int:
+    """Local midnight of the coming wake-up's day: the day after the last night,
+    or after today once the morning is past (the last night not synced yet); a
+    run between midnight and 6 am plans the night it is in."""
+    run_day = datetime.fromtimestamp(now - 6 * 3600, tz).date()
+    day = max(key, run_day) + timedelta(days=1)
+    return int(datetime.combine(day, datetime.min.time(), tz).timestamp())
 
 
 # ────────────────────────────────────────────────
@@ -549,7 +591,7 @@ class WhoopModelConnector(Connector):
     # -- the run ------------------------------------------------------------------
 
     def points_for(self, name: str, device: Device, c: Dict[str, Any], base_s: float, write_from: int,
-                   write_until: int, plan: bool) -> List[Point]:
+                   write_until: int, plan: bool, now: Optional[int] = None) -> List[Point]:
         """The points of the nights ending in [write_from, write_until), and,
         with `plan`, the planner's point of the last night."""
         rows = apply(device.nights, device.strain, c, base_s)
@@ -577,6 +619,17 @@ class WhoopModelConnector(Connector):
             if plan.strain_so_far is not None:
                 fields["strain_so_far"] = plan.strain_so_far
                 fields["need_s_so_far"] = base_s + need_strain_s(c, plan.strain_so_far) + plan.debt
+            # How fresh it is: the dashboard shows these beside the bedtime.
+            now = int(datetime.now(timezone.utc).timestamp()) if now is None else now
+            before = [r.night for r in rows[-1 - 14:-1]]
+            fields.update({"run_s": now, "night_start_s": last.start, "night_end_s": last.end,
+                           "wake_day_s": wake_day_s(last.key, now, self.tz), "night_asleep_s": last.asleep,
+                           "cut_short": 1 if cut_short(last, before, self.tz) else 0})
+            if device.synced is not None:
+                fields["synced_s"] = device.synced
+            usual = usual_asleep(before)
+            if usual is not None:
+                fields["usual_asleep_s"] = usual
             points.append(Point(TONIGHT, datetime.fromtimestamp(last.end, timezone.utc), {"input": name}, fields))
         return points
 
@@ -609,7 +662,7 @@ class WhoopModelConnector(Connector):
             while t <= now:
                 u = min(now + 1, t + WINDOW_DAYS * DAY)
                 device = self.read(name, t - WARMUP_DAYS * DAY, u + 2 * DAY, now, hr_max)
-                window = self.points_for(name, device, c, base_s, t, u, plan=u > now)
+                window = self.points_for(name, device, c, base_s, t, u, plan=u > now, now=now)
                 points.extend(window)
                 count += sum(1 for p in window if p.measurement is MODEL)
                 ends = [n.end for n in device.nights if n.end < u]

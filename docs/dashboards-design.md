@@ -108,11 +108,21 @@ Rules every panel follows:
    other tile, on every dashboard, is in the text colour; guidelines are
    dashed lines on the trends.
 
-6. **A wake-up is the one clock time a dashboard may ship with.** The sleep
-   planner's *Wake-up at* (`wake`) is a list of clock times in seconds after
-   midnight (`07:00 : 25200`), preset to 07:00: a time of day, nobody's data.
-   A deployment saves its own in its copy, as for a picker. A test checks the
-   list and the preset.
+6. **A wake-up and a bedtime are the clock times a dashboard may ship with.**
+   The sleep planner's *Wake-up at* (`wake`) is a list of clock times in
+   seconds after midnight (`07:00 : 25200`), preset to 07:00; its *In bed at*
+   (`bed`), 20:00 to 02:00, counts a time after midnight from the midnight
+   before (`00:30 : 88200`), preset to 23:00; its *Goal* (`goal`) is WHOOP's
+   three (*Peak* 100 %, *Perform* 85 %, *Get by* 70 %), preset to *Peak*.
+   Times of day and WHOOP's own goals, nobody's data. A deployment saves its
+   own in its copy, as for a picker. A test checks the lists and the presets.
+7. **The share of the need slept is on Healthspan's scale.** The sleep
+   planner's bars (how much of tonight's need a bedtime gives) use rule 5's
+   oranges below the goals (`#f8bc5e` under 70 %, `#b8803f` under 85 %) and its
+   greens from them (`#22a07b`, `#5ff2c0` from 100 %): better or worse, never
+   a source. The value is printed in the text colour. The freshness table
+   fills a warning cell (a night still syncing or cut short) with the bright
+   orange, where Grafana writes in dark ink.
 
 ## Series written by other tools
 
