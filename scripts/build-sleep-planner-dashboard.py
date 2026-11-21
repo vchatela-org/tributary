@@ -17,7 +17,10 @@ once per device ($input, a repeated panel), at the strain so far and at 8, 12,
 the bedtime in $bed (seconds after the midnight before the night), the share
 of the need slept: `($wake + 86400 − $bed − latency) × efficiency / need`.
 Then how fresh the night under it is (whoop_model_tonight's `run_s`,
-`night_*`, `synced_s`, `partial`, `cut_short`).
+`night_*`, `synced_s`, `partial`, `cut_short`), with a "Refresh now" link to
+Tributary's refresh page (app/refresh.py) at the address in $tributary: a
+hidden textbox, empty here, that a deployment sets to the Tributary its
+readers reach (docs/dashboards.md).
 
 The rebuilt scores: one series per device (`input`), solid, in its source
 colour, and the app's own value per source dashed in grey ("whoop app"). Every
@@ -201,7 +204,7 @@ def freshness(p):
     ]
     return {"type": "table", "title": "Is the data fresh?", "id": next(_ids),
             "description": "What the bedtimes above stand on, per device: when the WHOOP models connector last ran "
-                           "(\"Run now\" on its page after a late workout or a sync), the last night it read, its "
+                           "(*Refresh now*, above, after a late workout or a sync), the last night it read, its "
                            "sleep against the usual (the median of the 14 nights before), and when the device's heart "
                            "rate was last seen. *Still syncing*: the heart rate stops before the night's end. *Looks "
                            "cut short*: under 60 % of the usual sleep, or ending 3 h or more before the usual wake-up: "
@@ -219,6 +222,14 @@ def freshness(p):
                                     "input": 0, "last night": 1, "fell asleep": 2, "woke up": 3, "slept": 4,
                                     "usually": 5, "model ran": 6, "device last synced": 7}}}],
             "targets": refs([t])}
+
+
+# Tributary's refresh page for the WHOOP models connector (app/refresh.py), at
+# the address the deployment puts in $tributary.
+REFRESH_URL = "${tributary}/connectors/whoop_model/refresh"
+REFRESH = f"""**[↻ Refresh now]({REFRESH_URL})**: fetch the latest data (the tools with a refresh hook are asked to
+fetch, the Whoop connector runs), then rerun the WHOOP models. Open the device's phone app first, so it has synced.
+The link needs the dashboard's `tributary` variable: the address of Tributary."""
 
 
 def per_input(title, description, select, unit, p, decimals=1):
@@ -284,6 +295,8 @@ def build():
     y += 3
     panels.append(row("Is the data fresh?", y))
     y += 1
+    panels.append(text(REFRESH, pos(0, y, 24, 2)))
+    y += 2
     panels.append(freshness(pos(0, y, 24, 6)))
     y += 6
     panels.append(row("Tonight's numbers", y))
@@ -344,6 +357,10 @@ def build():
             {"type": "link", "title": title, "url": url, "icon": "dashboard", "asDropdown": False,
              "includeVars": False, "keepTime": True, "targetBlank": False, "tooltip": "", "tags": []}
             for title, url in (("Sleep", "/d/tributary-sleep"), ("Healthspan", "/d/tributary-healthspan"))
+        ] + [
+            {"type": "link", "title": "Refresh now", "url": REFRESH_URL, "icon": "external link",
+             "asDropdown": False, "includeVars": False, "keepTime": False, "targetBlank": False,
+             "tooltip": "Fetch the latest data, then rerun the WHOOP models (Tributary)", "tags": []},
         ],
         "annotations": {"list": []},
         "templating": {"list": variables()},
@@ -379,6 +396,9 @@ def variables():
          "description": "IANA time zone the nights are cut in (TRIBUTARY_TZ).", "query": "Europe/Paris",
          "current": {"text": "Europe/Paris", "value": "Europe/Paris"},
          "options": [{"selected": True, "text": "Europe/Paris", "value": "Europe/Paris"}], "hide": 0},
+        {"type": "textbox", "name": "tributary", "label": "Tributary",
+         "description": "The address of Tributary (https://tributary.example.com), for the Refresh now link. Empty "
+                        "until a deployment sets it.", "query": "", "current": {}, "hide": 2},
         {"type": "query", "name": "user", "label": "User", "description": "The person.", "datasource": SLEEP,
          "definition": 'SHOW TAG VALUES FROM "whoop_model" WITH KEY = "user"',
          "query": 'SHOW TAG VALUES FROM "whoop_model" WITH KEY = "user"', "refresh": 1, "sort": 1, "hide": 0,

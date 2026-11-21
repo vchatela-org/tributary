@@ -1,0 +1,4 @@
+{# Disabled while a refresh runs: pressing it again would only join it. #}
+{% set busy = chain is not none and chain.running %}
+<button class="btn btn-primary tb-refresh-go" type="submit" form="refresh-form" {% if busy %}disabled{% endif %}>
+  <i class="bi bi-arrow-repeat me-1"></i>{{ "Refreshing…" if busy else "Refresh and recompute" }}</button>

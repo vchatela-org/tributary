@@ -32,6 +32,10 @@ os.environ.update({
     "TRIBUTARY_WHOOP_CLIENT_SECRET": "",
     "TRIBUTARY_WHOOP_REDIRECT_URI": "",
     "TRIBUTARY_WHOOP_MODEL_ENABLED": "false",
+    "TRIBUTARY_GARMIN_GRAFANA_REFRESH_URL": "",
+    "TRIBUTARY_GARMIN_GRAFANA_REFRESH_TOKEN": "",
+    "TRIBUTARY_FITBIT_GRAFANA_REFRESH_URL": "",
+    "TRIBUTARY_FITBIT_GRAFANA_REFRESH_TOKEN": "",
     "TRIBUTARY_SECRET_KEY": "",
     "TRIBUTARY_SECRET_KEY_FILE": "",
     "TRIBUTARY_SECRET_KEY_PREVIOUS": "",
@@ -61,7 +65,7 @@ def _clean_state():
     """Each test starts with no run, no cursor, no schedule set in the UI, no
     checked upload and no preference, nothing queued, no no-data acknowledgment,
     and no compatible tool's freshness remembered (a fake InfluxDB's port may be another test's again)."""
-    from app import freshness
+    from app import freshness, refresh
     from app.database import SessionLocal
     from app.models import (ConnectorSchedule, Cursor, MonthlyImportAcknowledgment, OAuthState, OAuthToken,
                             Preference, StagedUpload, SyncRun)
@@ -72,6 +76,7 @@ def _clean_state():
             session.query(table).delete()
         session.commit()
     freshness.clear()
+    refresh.reset()
     yield
     # A test that saved a schedule starts the thread (app/scheduler.reschedule);
     # stop it, so it cannot consume the next test's queue.

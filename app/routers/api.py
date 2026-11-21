@@ -9,13 +9,13 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
-from app import connectors, crud, preferences, scheduler, schedule
+from app import connectors, crud, preferences, refresh, scheduler, schedule
 from app.__version__ import __version__
 from app.config import settings
 from app.database import get_db
 from app.models import ConnectorSchedule, StagedUpload, utcnow
 from app.routers.common import (connector_or_404, discard_staged, queue_promote, queue_run, queue_upload,
-                                same_origin)
+                                refreshable_or_404, same_origin, start_refresh)
 from app.schemas import (ConnectorOut, MeasurementOut, PreferencesIn, PresetOut, RunDetail, RunOut,
                          ScheduleIn, ScheduleOut, StagedOut)
 
@@ -193,6 +193,24 @@ def request_run(key: str, dry_run: bool = False, full: bool = False):
     connector = connector_or_404(key)
     queue_run(connector, dry_run=dry_run, full=full)
     return {"status": "queued", "connector": key, "dry_run": dry_run, "full": full}
+
+
+@router.post("/connectors/{key}/refresh", status_code=202, dependencies=[Depends(same_origin)])
+def request_refresh(key: str):
+    """Refresh what a derived connector reads, then run it: ask each compatible
+    tool with a refresh hook to fetch now, run the Tributary connectors it
+    reads, then it (app/refresh.py). Joins the refresh already running, if any.
+    404 for a connector that reads no other source."""
+    connector = refreshable_or_404(key)
+    return refresh.as_dict(connector, start_refresh(connector))
+
+
+@router.get("/connectors/{key}/refresh")
+def get_refresh(key: str):
+    """The current or last refresh, step by step; `idle` with the steps a
+    refresh would take when none ran since the start."""
+    connector = refreshable_or_404(key)
+    return refresh.as_dict(connector, refresh.status(connector.key))
 
 
 @router.post("/connectors/{key}/upload", status_code=202, dependencies=[Depends(same_origin)])

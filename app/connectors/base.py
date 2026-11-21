@@ -32,6 +32,9 @@ and implements one or both inputs:
 A source that grants access in a browser (OAuth 2.0: WHOOP) also implements
 app/oauth.py's `oauth_*` hooks: its tokens are the core's, encrypted, and its
 page gets Connect / Disconnect.
+A derived source, one that reads what other writers put in InfluxDB (the WHOOP
+models), names them in `refresh_inputs()`: its page then gets "Refresh inputs
+and run", which asks those writers for their latest data first (app/refresh.py).
 """
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
@@ -127,6 +130,9 @@ class Connector:
     # Access granted in a browser (app/oauth.py): its page gets Connect,
     # Reconnect and Disconnect, and /connectors/<key>/callback answers.
     uses_oauth: ClassVar[bool] = False
+    # The dashboard that draws it, (title, Grafana uid): where its refresh page
+    # sends the reader back to, when TRIBUTARY_GRAFANA_URL is set.
+    dashboard: ClassVar[Optional[Tuple[str, str]]] = None
 
     def __init__(self) -> None:
         self.settings = self.settings_class()
@@ -170,6 +176,14 @@ class Connector:
         say it (an OAuth source must also be connected on its page). None:
         the UI lists `required_env`."""
         return None
+
+    def refresh_inputs(self) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
+        """What it reads that others write: (the keys of Tributary connectors,
+        the names of compatible tools' probes in app/freshness.py, e.g.
+        "fitbit-grafana"). A refresh (app/refresh.py) asks the tools for their
+        latest data and runs those connectors before this one. Empty: it reads
+        its own source only, and "Run now" is all there is."""
+        return (), ()
 
     def sync(self, cursor: Any) -> SyncResult:
         raise NotImplementedError

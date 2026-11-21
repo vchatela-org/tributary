@@ -52,6 +52,18 @@ on a page that doesn't load?* takes the address the browser landed on
 
 ![A source's page: its state at a glance, the next five runs and the schedule editor, unfolded](screenshots/schedule-light.png)
 
+A source that reads what others write (the [WHOOP models](connectors/whoop_model.md))
+also has *Refresh inputs and run*. It opens its **refresh page**,
+`/connectors/<key>/refresh`, which the Sleep planner dashboard links to as
+*Refresh now*. The page lists the steps: each compatible tool with a
+[refresh hook](compatible-tools.md#refresh-hook-asking-a-tool-to-fetch-now)
+asked to fetch now, each Tributary source it reads run, then the source itself.
+Its one button starts them, and the steps update in place. Below them, each
+tool's freshness line says how old its data is, and *Back to the Sleep planner*
+leads to the dashboard when `TRIBUTARY_GRAFANA_URL` is set. Opening the page
+starts nothing; pressing the button again while a refresh runs joins it. Its
+runs are recorded with the trigger *Refresh*. It fits a phone screen.
+
 ## Importing an export
 
 A source that only has a "download your data" file is imported from its page.
@@ -120,6 +132,7 @@ category, with garmin-grafana's freshness line.
 `/docs` has the OpenAPI description. In short: `GET /api/connectors`,
 `GET /api/runs`, `GET /api/runs/{id}` (a dry run's line protocol),
 `POST /api/connectors/{key}/run?dry_run=&full=`,
+`GET|POST /api/connectors/{key}/refresh` (a derived source: fetch what it reads, then run it),
 `POST /api/connectors/{key}/upload?dry_run=`,
 `GET|PUT /api/connectors/{key}/schedule`,
 `POST /api/connectors/{key}/import` (import what a check kept),

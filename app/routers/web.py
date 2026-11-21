@@ -14,13 +14,13 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from app import connectors, crud, freshness, influxdb, oauth, preferences, scheduler, schedule, views
+from app import connectors, crud, freshness, influxdb, oauth, preferences, refresh, scheduler, schedule, views
 from app.categories import CATEGORIES, EXTERNAL_TOOLS
 from app.config import settings
 from app.database import SessionLocal, get_db
 from app.models import ConnectorSchedule, MonthlyImportAcknowledgment, utcnow
 from app.routers.common import (connector_or_404, discard_staged, queue_promote, queue_run, queue_upload,
-                                safe_back, same_origin)
+                                refreshable_or_404, safe_back, same_origin, start_refresh)
 from app.templating import templates
 
 router = APIRouter(include_in_schema=False)
@@ -76,6 +76,25 @@ def _connector_page(db: Session, connector) -> dict:
         "ttl_hours": settings.staged_upload_ttl_hours,
         # An OAuth source's connection, as the page shows it: never a token.
         "connection": oauth.status(connector) if connector.uses_oauth else None,
+        "refreshable": refresh.refreshable(connector),
+    }
+
+
+def _refresh_page(connector) -> dict:
+    """What the refresh page and its polled fragment show: the chain (or the
+    steps a refresh would take), and how fresh each compatible tool it reads is."""
+    chain = refresh.status(connector.key)
+    _keys, tools = refresh.inputs(connector)
+    title_uid = connector.dashboard
+    back = (f"{settings.grafana_url.rstrip('/')}/d/{title_uid[1]}" if settings.grafana_url and title_uid else None)
+    return {
+        "connector_obj": connector,
+        "chain": chain,
+        "steps": chain.steps if chain is not None else refresh.plan(connector),
+        "tools": [(refresh.TOOLS[name].tool, freshness.line(name)) for name in tools],
+        "back_url": back,
+        "back_title": title_uid[0] if title_uid else None,
+        "timeout": settings.refresh_timeout_seconds,
     }
 
 
@@ -105,6 +124,14 @@ def imports_page(request: Request, db: Session = Depends(get_db)):
 def connector_page(request: Request, key: str, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "connector.html",
                                       _connector_page(db, connector_or_404(key)))
+
+
+@router.get("/connectors/{key}/refresh", response_class=HTMLResponse)
+def refresh_page(request: Request, key: str):
+    """Refresh now: what a derived connector reads, fetched, then it run. The
+    page only shows; the button posts (a link from a dashboard never starts
+    anything by itself)."""
+    return templates.TemplateResponse(request, "refresh.html", _refresh_page(refreshable_or_404(key)))
 
 
 @router.get("/runs", response_class=HTMLResponse)
@@ -168,6 +195,12 @@ def status_partial(request: Request, db: Session = Depends(get_db)):
 def imports_partial(request: Request, db: Session = Depends(get_db)):
     """Only summary/status regions: file pickers stay in the full page."""
     return templates.TemplateResponse(request, "_imports.html", views.import_checklist(db))
+
+
+@router.get("/partials/refresh/{key}", response_class=HTMLResponse)
+def refresh_partial(request: Request, key: str):
+    """The refresh page's steps and freshness lines, swapped in place."""
+    return templates.TemplateResponse(request, "_refresh.html", _refresh_page(refreshable_or_404(key)))
 
 
 @router.get("/partials/runs", response_class=HTMLResponse)
@@ -240,6 +273,20 @@ def _change_no_data(db: Session, key: str, undo: bool) -> None:
 def run_now(request: Request, key: str, dry_run: bool = Form(False), full: bool = Form(False)):
     """The "Run now" / "Dry run" / "Full resync" buttons: queue, back to the page."""
     return _write(request, lambda: queue_run(connector_or_404(key), dry_run=dry_run, full=full))
+
+
+@router.post("/connectors/{key}/refresh", dependencies=[Depends(same_origin)])
+def refresh_now(request: Request, key: str):
+    """"Refresh inputs and run": start the chain (or join it), then its page."""
+    connector = refreshable_or_404(key)
+    default = f"/connectors/{connector.key}/refresh"
+    try:
+        start_refresh(connector)
+    except HTTPException as exc:
+        if exc.status_code in _REFUSALS:
+            return _refused(request, exc, default)
+        raise
+    return RedirectResponse(default, status_code=303)
 
 
 @router.post("/connectors/{key}/check", dependencies=[Depends(same_origin)])

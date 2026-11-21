@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 from fastapi import HTTPException, Request, UploadFile
 
-from app import connectors, runner, scheduler
+from app import connectors, refresh, runner, scheduler
 from app.config import settings
 from app.connectors.base import Connector, ConnectorError
 from app.database import SessionLocal, uploads_dir
@@ -36,6 +36,21 @@ def connector_or_404(key: str) -> Connector:
     if connector is None:
         raise HTTPException(status_code=404, detail="Unknown connector")
     return connector
+
+
+def refreshable_or_404(key: str) -> Connector:
+    """A connector that reads others' data: the only kind a refresh is for."""
+    connector = connector_or_404(key)
+    if not refresh.refreshable(connector):
+        raise HTTPException(status_code=404, detail=f"{connector.label} reads no other source to refresh")
+    return connector
+
+
+def start_refresh(connector: Connector) -> refresh.Chain:
+    """Start its refresh, or join the one running (app/refresh.py)."""
+    if not connector.is_configured():
+        raise HTTPException(status_code=409, detail=f"{connector.label} is not configured")
+    return refresh.start(connector)
 
 
 def queue_run(connector: Connector, dry_run: bool = False, full: bool = False) -> None:

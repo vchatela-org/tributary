@@ -49,6 +49,31 @@ reads their **values**, because a model of them is the point. So:
 It uses `TRIBUTARY_INFLUXDB_URL`, `TRIBUTARY_INFLUXDB_USER` (the `user` of the
 WHOOP series it reads, and of the points it writes) and `TRIBUTARY_TZ`.
 
+## Refresh now
+
+It runs on what is in InfluxDB at that moment. Before bed, that may be hours
+old: the Whoop connector runs once a day, so the WHOOP strain the evening runs
+see is the morning's, and fitbit-grafana reads workouts and sleep on its own
+clock. **Refresh inputs and run**, on the connector's page, opens its refresh
+page (`/connectors/whoop_model/refresh`), which the
+[Sleep planner](../dashboards.md#sleep-planner--whoop-models) links to as
+*Refresh now*. One button runs, in order:
+
+1. the [refresh hook](../compatible-tools.md#refresh-hook-asking-a-tool-to-fetch-now)
+   of each tool among the inputs that has one: fitbit-grafana for `fitbit`,
+   garmin-grafana for `garmin`. Tributary asks them to fetch now, all at once,
+   and waits for them to answer. A tool with no hook is read as it is;
+2. the Whoop connector, when `whoop` is an input and it is configured, for
+   WHOOP's strain so far (a run re-reads the open cycle);
+3. the WHOOP models.
+
+A failed step doesn't stop the next ones: the models still run on what is
+there. The page then shows each tool's freshness line, and the planner's *Is
+the data fresh?* row shows when each device last synced. Open the device's
+phone app before you refresh: a refresh can't make it sync. The same chain is
+`POST /api/connectors/whoop_model/refresh`; `GET` on that address reports it
+step by step.
+
 ## The models
 
 Reverse-engineered on one WHOOP member's history (600 nights, 2025-2026), from

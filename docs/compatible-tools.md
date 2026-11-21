@@ -72,6 +72,56 @@ It reads InfluxDB 1.x, as the rest of Tributary does: a garmin-grafana writing
 to InfluxDB 3 is not seen. With several Garmin accounts in one database, the
 line shows the newest of them all.
 
+## Refresh hook: asking a tool to fetch now
+
+A tool fetches on its own clock: fitbit-grafana reads today's heart rate every
+few minutes but its workouts every hour and its sleep every four hours,
+counted from its own start. A connector that reads its data, such as
+[WHOOP models](connectors/whoop_model.md), then works on whatever was there at
+that moment. A **refresh hook** lets Tributary ask the tool to fetch now:
+*Refresh inputs and run* on such a connector's page (or its refresh page,
+`/connectors/<key>/refresh`, which the Sleep planner dashboard links to) calls
+the hooks of the tools it reads, runs the Tributary connectors it reads, then
+runs the connector itself.
+
+Tributary doesn't know how you run a tool (Docker Compose, Kubernetes, a
+script), so the hook is just an address that you give it, and that the tool, or
+anything in front of it, answers:
+
+- **`POST <url>`**, with no body. With a token set, it carries
+  `Authorization: Bearer <token>`.
+- **A 2xx answer means the fetch is done and written.** The tool answers once
+  its fetch has written to InfluxDB, so Tributary runs the next step on the new
+  data. Anything else is a failed step: another status, a redirect (never
+  followed, because it would carry the token elsewhere), or no answer within
+  `TRIBUTARY_REFRESH_TIMEOUT_SECONDS`. The chain goes on either way, and the
+  connector still runs on what is there.
+- The answer's body is never read, and nothing of it is logged: not the
+  address, the token or a byte of the answer. Each hook step shows only its
+  outcome ("fetched in 12 s", "answered 503").
+- The address comes from the environment only, never from a page or a request.
+  Only `http://` and `https://` are called.
+
+| Variable | Default | |
+|---|---|---|
+| `TRIBUTARY_FITBIT_GRAFANA_REFRESH_URL` | – | fitbit-grafana's refresh hook. Unset: its data is read as it is, and its freshness line says how old it is. |
+| `TRIBUTARY_FITBIT_GRAFANA_REFRESH_TOKEN` | – | Sent as `Authorization: Bearer` to that hook. |
+| `TRIBUTARY_GARMIN_GRAFANA_REFRESH_URL` | – | garmin-grafana's refresh hook (garmin-grafana already looks for a new upload every 5 minutes). |
+| `TRIBUTARY_GARMIN_GRAFANA_REFRESH_TOKEN` | – | Sent as `Authorization: Bearer` to that hook. |
+| `TRIBUTARY_REFRESH_TIMEOUT_SECONDS` | `300` | How long a hook may take to answer, and how long a refresh waits for each of its runs. |
+
+A tool with no hook of its own can still get one: a small service next to it
+that restarts or triggers it and then answers. Keep the hook off the internet:
+it starts calls to the tool's API.
+
+**What a refresh cannot force:**
+
+- **The device has to sync to its phone app.** A Fitbit or a Garmin sends its
+  data only when its app syncs. Open the app first, then refresh.
+- **A source may still be finishing what it holds.** Google Health has kept a
+  Fitbit night ending at 01:42 until noon. A fetch then reads the short
+  version, and the next refresh, once the source has finished, corrects it.
+
 ## The rules that keep them compatible
 
 - One writer per source: never sync the same source with two tools into

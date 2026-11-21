@@ -1,0 +1,5 @@
+{# The fragment the refresh page polls (static/app.js): its steps, its state,
+   the tools' freshness lines. Never the form. #}
+{% import "_macros.html" as m %}
+<div data-region="refresh:{{ connector_obj.key }}">{{ m.refresh_region(connector_obj, chain, steps, tools) }}</div>
+<div data-region="refresh-button:{{ connector_obj.key }}">{% include "_refresh_button.html" %}</div>

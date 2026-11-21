@@ -35,7 +35,7 @@
 {%- endmacro %}
 
 {% macro trigger_label(run) -%}
-{{ {"schedule": "Scheduled", "manual": "Manual", "upload": "Import"}.get(run.trigger, run.trigger) }}
+{{ {"schedule": "Scheduled", "manual": "Manual", "upload": "Import", "refresh": "Refresh"}.get(run.trigger, run.trigger) }}
 {%- endmacro %}
 
 {% macro status_word(run) -%}
@@ -387,4 +387,48 @@
 
 {% macro schedule_source(resolved) -%}
 {% if resolved %}{{ resolved.source_label }}{% else %}no schedule{% endif %}
+{%- endmacro %}
+
+{# A refresh (app/refresh.py): its steps, and how fresh each compatible tool it
+   reads is. The region the refresh page polls; a running chain carries a live
+   pill, so the page polls fast until it ends. #}
+{% macro refresh_region(connector, chain, steps, tools) -%}
+<div class="tb-refresh-state">
+  {% if chain and chain.running %}
+    <span class="tb-pill tb-tone-live live"><i class="bi bi-arrow-repeat" aria-hidden="true"></i>Refreshing</span>
+    <span class="tb-hint mb-0">Started {{ chain.started_at | localtime(seconds=True) }}.</span>
+  {% elif chain and chain.failed %}
+    <span class="tb-pill tb-tone-warning"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>Done, with a failed step</span>
+    <span class="tb-hint mb-0">Ended {{ chain.finished_at | localtime(seconds=True) }}: what ran used what was there.</span>
+  {% elif chain %}
+    <span class="tb-pill tb-tone-good"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Done</span>
+    <span class="tb-hint mb-0">Ended {{ chain.finished_at | localtime(seconds=True) }}.</span>
+  {% else %}
+    <span class="tb-pill tb-tone-mute"><i class="bi bi-pause-circle" aria-hidden="true"></i>Not refreshed since the start</span>
+  {% endif %}
+</div>
+<ol class="tb-steps tb-refresh-steps">
+  {% for step in steps %}
+  <li class="{{ {'done': 'done', 'running': 'now', 'failed': 'failed', 'skipped': 'skipped'}.get(step.state, '') }}">
+    <b>{{ step.label }}</b>
+    <span>
+      {%- if step.state == "running" %}<span class="tb-dot tb-tone-live running"></span>running…
+      {%- elif step.state == "waiting" %}waiting
+      {%- elif step.message %}{{ step.message }}
+      {%- else %}{{ step.state }}{% endif %}
+      {%- if step.run_id %} · <a href="/runs/{{ step.run_id }}">the run</a>{% endif %}
+    </span>
+  </li>
+  {% endfor %}
+</ol>
+{% if tools %}
+<div class="tb-refresh-tools">
+  <span class="tb-lab">How fresh the tools' data is</span>
+  {% for tool, line in tools %}
+  <div class="tb-tool"><b>{{ tool.label }}</b>
+    {% if line %}<div>{{ freshness(line) }}</div>{% else %}<div class="tb-hint mb-0">No freshness line (its database setting is empty).</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 {%- endmacro %}
