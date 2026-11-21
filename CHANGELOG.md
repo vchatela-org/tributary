@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.0](https://github.com/vchatela-org/tributary/compare/v0.35.0...v0.36.0) (2026-11-21)
+
+
+### Features
+
+* **refresh:** refresh hooks and a "Refresh now" chain for the WHOOP models ([#145](https://github.com/vchatela-org/tributary/issues/145)) ([16f9f27](https://github.com/vchatela-org/tributary/commit/16f9f2795f0ca52f44adf34ca010958b3297a267))
+
 ## [0.35.0](https://github.com/vchatela-org/tributary/compare/v0.34.0...v0.35.0) (2026-11-20)
 
 
