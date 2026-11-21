@@ -16,6 +16,14 @@
     <p class="tb-sub mb-0">{{ c.description }}</p>
   </div>
   <div data-region="actions:{{ c.key }}">{{ m.actions(c, page=True) }}</div>
+  {% if refreshable and c.configured %}
+  {# A derived source: fetch what it reads first, then run it (app/refresh.py). #}
+  <form method="post" action="/connectors/{{ c.key }}/refresh">
+    <button class="btn btn-sm btn-primary" type="submit"
+            title="Ask the tools it reads for their latest data, run the sources it reads, then run it"><i
+        class="bi bi-cloud-arrow-down me-1"></i>Refresh inputs and run</button>
+  </form>
+  {% endif %}
 </div>
 
 <div class="tb-kpis" data-region="kpis:{{ c.key }}">{{ m.kpis(c) }}</div>

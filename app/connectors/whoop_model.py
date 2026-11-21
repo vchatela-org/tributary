@@ -392,6 +392,7 @@ class WhoopModelConnector(Connector):
     settings_class = WhoopModelSettings
     measurements = (MODEL, TONIGHT)
     required_env = (f"{PREFIX}ENABLED",)
+    dashboard = ("Sleep planner", "tributary-sleep-planner")
 
     # Tests replace it: (database, statement) -> rows.
     def _select(self, database: str, statement: str) -> List[Dict[str, Any]]:
@@ -412,6 +413,19 @@ class WhoopModelConnector(Connector):
         if unknown:
             raise ConnectorError(f"{PREFIX}INPUTS: unknown input(s) {', '.join(unknown)} (known: {', '.join(INPUTS)})")
         return names
+
+    def refresh_inputs(self) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
+        """WHOOP through the Whoop connector, a Fitbit through fitbit-grafana, a
+        Garmin through garmin-grafana: a refresh fetches each before the models
+        run (app/refresh.py). An input list it cannot read is left to the run to
+        report."""
+        try:
+            names = self.inputs()
+        except ConnectorError:
+            return (), ()
+        tools = {"fitbit": "fitbit-grafana", "garmin": "garmin-grafana"}
+        return (("whoop",) if "whoop" in names else (),
+                tuple(tools[n] for n in names if n in tools))
 
     def _user(self) -> str:
         user = app_settings.influxdb_user

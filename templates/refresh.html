@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% set c = connector_obj %}
+{% block title %}Refresh {{ c.label }}{% endblock %}
+{% block poll %}/partials/refresh/{{ c.key }}{% endblock %}
+{% block content %}
+<nav class="tb-crumb" aria-label="Breadcrumb"><a href="/">Integrations</a><i class="bi bi-chevron-right"></i>
+  <a href="/connectors/{{ c.key }}">{{ c.label }}</a><i class="bi bi-chevron-right"></i><span>Refresh</span></nav>
+
+<div class="tb-head">
+  <span class="tb-ico lg"><i class="bi {{ c.icon }}"></i></span>
+  <div class="flex-grow-1" style="min-width: 14rem;">
+    <h1>Refresh {{ c.label }}</h1>
+    <p class="tb-sub mb-0">Fetch the latest data it reads, then run it: the tools asked to fetch now, the
+      Tributary sources it reads run, then {{ c.label }} itself.</p>
+  </div>
+</div>
+
+<section class="tb-panel tb-refresh">
+  {# The form holds no field: the button (in a polled region) posts it. #}
+  <form id="refresh-form" method="post" action="/connectors/{{ c.key }}/refresh"></form>
+  <div class="tb-actions mb-3" data-region="refresh-button:{{ c.key }}">{% include "_refresh_button.html" %}</div>
+  <div data-region="refresh:{{ c.key }}">{{ m.refresh_region(c, chain, steps, tools) }}</div>
+  {% if back_url %}
+  <p class="tb-next mb-0"><a class="btn btn-sm btn-outline-primary" href="{{ back_url }}" rel="noreferrer">
+    <i class="bi bi-bar-chart-line me-1"></i>Back to the {{ back_title }}</a></p>
+  {% endif %}
+</section>
+
+<details class="tb-panel tb-fold-panel">
+  <summary><h2>What a refresh can't force</h2></summary>
+  <p class="tb-hint mt-2">A device only sends its data when it syncs to its phone app: open the app first, then
+    refresh. A source may also still be finishing what it holds (Google Health can keep a Fitbit night short for
+    hours after the wake-up): the tool then fetches the short version, and the next refresh, once the source has
+    finished, corrects it.</p>
+  <p class="tb-hint mb-0">A tool is asked to fetch only when the deployment gave it a refresh hook
+    (<code class="tb-mono">TRIBUTARY_FITBIT_GRAFANA_REFRESH_URL</code>,
+    <code class="tb-mono">TRIBUTARY_GARMIN_GRAFANA_REFRESH_URL</code>); otherwise its data is read as it is, and its
+    line above says how old that is. Each step waits at most {{ timeout | int }} s.</p>
+</details>
+{% endblock %}

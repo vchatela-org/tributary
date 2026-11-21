@@ -416,6 +416,9 @@ a.btn { text-decoration: none; }
 }
 .tb-steps li.done::before { content: "\F26E"; font-family: "bootstrap-icons"; background: var(--tb-good); border-color: var(--tb-good); color: #fff; }
 .tb-steps li.now::before { background: var(--tb-accent); border-color: var(--tb-accent); color: #fff; }
+.tb-steps li.failed::before { content: "!"; background: var(--tb-critical); border-color: var(--tb-critical); color: #fff; }
+.tb-steps li.skipped::before { content: "–"; color: var(--tb-muted); }
+.tb-steps li.skipped b { color: var(--tb-ink-2); font-weight: 500; }
 .tb-steps b { display: block; font-size: .89rem; font-weight: 600; }
 .tb-steps span { font-size: .83rem; color: var(--tb-ink-2); }
 
@@ -494,4 +497,15 @@ pre.tb-proto-lg { max-height: 70vh; }
 @media (max-width: 380px) {
   .tb-topbar { gap: .4rem; }
   .tb-topbar .tb-brand { display: none; }
+}
+
+/* ── Refresh (app/refresh.py): one button, the chain's steps, the tools' lines.
+   Read on a phone at bedtime: the button spans the width on a narrow screen. */
+.tb-refresh-state { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .6rem; margin-bottom: .9rem; }
+.tb-refresh-steps { margin-bottom: 1rem; }
+.tb-refresh-steps .tb-dot { vertical-align: middle; }
+.tb-refresh-tools { display: grid; gap: .45rem; margin-bottom: 1rem; }
+.tb-refresh-tools .tb-tool b { font-size: .89rem; }
+@media (max-width: 575.98px) {
+  .tb-refresh .tb-actions, .tb-refresh .tb-refresh-go, .tb-refresh .tb-next .btn { width: 100%; }
 }

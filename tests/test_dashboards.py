@@ -182,6 +182,11 @@ def test_nothing_is_saved_in_the_variables(dashboard):
         elif v["type"] == "textbox" and v["name"] == "birth":
             # Healthspan's birth date: nobody's, until a deployment pins its own
             assert v["query"] == "" and current.get("value") in (None, ""), (dashboard["uid"], v["query"], current)
+        elif v["type"] == "textbox" and v["name"] == "tributary":
+            # Tributary's own address, for a link to its refresh page: nobody's,
+            # until a deployment pins its own; hidden (a setting, not a picker)
+            assert v["query"] == "" and current.get("value") in (None, "") and v["hide"] == 2, (
+                dashboard["uid"], v["query"], current)
         elif v["type"] == "textbox":
             assert v["name"] == "tz", (dashboard["uid"], v["name"])
             assert v["query"] == Settings.model_fields["tz"].default, (dashboard["uid"], v["query"])
@@ -499,9 +504,19 @@ def test_ad_hoc_filters_find_their_tags_beside_every_time_filter(dashboard):
 
 
 def test_links_stay_among_tributary_s_dashboards(dashboard):
+    """...or lead to the refresh page of a connector that has one, at the
+    address the dashboard's `tributary` variable holds (app/refresh.py)."""
+    from app import connectors, refresh
+
     uids = {_load(p)["uid"] for p in DASHBOARDS}
+    names = {v["name"] for v in _variables(dashboard)}
     for link in dashboard.get("links", []):
-        found = re.fullmatch(r"/d/([\w-]+)", link.get("url", ""))
+        url = link.get("url", "")
+        page = re.fullmatch(r"\$\{tributary\}/connectors/(\w+)/refresh", url)
+        if page:
+            assert "tributary" in names and refresh.refreshable(connectors.get(page.group(1))), (dashboard["uid"], link)
+            continue
+        found = re.fullmatch(r"/d/([\w-]+)", url)
         assert found and found.group(1) in uids, (dashboard["uid"], link)
 
 

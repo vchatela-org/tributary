@@ -51,6 +51,21 @@ class Settings(BaseSettings):
     fitbit_grafana_database: str = "FitbitHealthStats"
     fitbit_grafana_stale_hours: float = 24.0
 
+    # Refresh hooks (app/refresh.py, docs/compatible-tools.md): an address the
+    # tool answers to fetch its source now, POSTed to before a connector that
+    # reads it runs on "Refresh now". From the environment only, never from the
+    # UI (a page cannot point Tributary at an address of its choosing); http(s),
+    # no redirect followed, the answer's body never read. The token, when set,
+    # goes as `Authorization: Bearer`. Empty: no hook, the tool's data is read
+    # as it is.
+    garmin_grafana_refresh_url: Optional[str] = None
+    garmin_grafana_refresh_token: Optional[SecretStr] = None
+    fitbit_grafana_refresh_url: Optional[str] = None
+    fitbit_grafana_refresh_token: Optional[SecretStr] = None
+    # How long a hook may take to answer (it answers once its fetch is
+    # written), and how long a refresh waits for each of its runs.
+    refresh_timeout_seconds: float = 300.0
+
     # The Grafana a browser reaches, e.g. https://grafana.example.com (a subpath
     # works too). Set, the UI links to its dashboard browser, filtered to the
     # dashboards shipped in grafana/dashboards. Empty: no link (Tributary never

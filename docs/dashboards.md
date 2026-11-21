@@ -287,7 +287,13 @@ writes them.
 - **Is the data fresh?** Per device, the night the bedtimes stand on (from,
   to, its sleep against the usual), whether it is complete, still syncing or
   looks cut short (its source had not finished it: the debt is then too high),
-  when the connector last ran and when the device last synced.
+  when the connector last ran and when the device last synced. Above it,
+  **Refresh now** (also in the dashboard's links) opens Tributary's refresh
+  page: it fetches the latest data, then reruns the WHOOP models. The link
+  needs the hidden `tributary` variable, set to the address of your Tributary
+  (`https://tributary.example.com`): in your copy's *Settings → Variables*, or
+  pinned when you provision the dashboard. Empty, as shipped, the link points
+  at Grafana itself and finds nothing.
 - **Tonight's numbers:** the need, the debt carried from last night, the
   strain so far, the need at strain 12, the efficiency and the time to fall
   asleep.
@@ -296,7 +302,8 @@ writes them.
   and the app's own value dashed in grey.
 
 The models are reverse-engineered: close to the app, not the app (how close:
-the connector's page). Variables: goal, wake-up at, in bed at, time zone, user, devices.
+the connector's page). Variables: goal, wake-up at, in bed at, time zone, user, devices, and the
+hidden `tributary` (the address of Tributary, for *Refresh now*).
 
 ## Strength training
 

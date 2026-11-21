@@ -40,6 +40,18 @@
       "targetBlank": false,
       "tooltip": "",
       "tags": []
+    },
+    {
+      "type": "link",
+      "title": "Refresh now",
+      "url": "${tributary}/connectors/whoop_model/refresh",
+      "icon": "external link",
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": false,
+      "targetBlank": false,
+      "tooltip": "Fetch the latest data, then rerun the WHOOP models (Tributary)",
+      "tags": []
     }
   ],
   "annotations": {
@@ -136,6 +148,15 @@
           }
         ],
         "hide": 0
+      },
+      {
+        "type": "textbox",
+        "name": "tributary",
+        "label": "Tributary",
+        "description": "The address of Tributary (https://tributary.example.com), for the Refresh now link. Empty until a deployment sets it.",
+        "query": "",
+        "current": {},
+        "hide": 2
       },
       {
         "type": "query",
@@ -523,17 +544,32 @@
       "panels": []
     },
     {
+      "type": "text",
+      "title": "",
+      "id": 9,
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 2
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**[↻ Refresh now](${tributary}/connectors/whoop_model/refresh)**: fetch the latest data (the tools with a refresh hook are asked to\nfetch, the Whoop connector runs), then rerun the WHOOP models. Open the device's phone app first, so it has synced.\nThe link needs the dashboard's `tributary` variable: the address of Tributary."
+      }
+    },
+    {
       "type": "table",
       "title": "Is the data fresh?",
-      "id": 9,
-      "description": "What the bedtimes above stand on, per device: when the WHOOP models connector last ran (\"Run now\" on its page after a late workout or a sync), the last night it read, its sleep against the usual (the median of the 14 nights before), and when the device's heart rate was last seen. *Still syncing*: the heart rate stops before the night's end. *Looks cut short*: under 60 % of the usual sleep, or ending 3 h or more before the usual wake-up: the source had not finished the night (a Fitbit night is finished by Google Health hours after the wake-up). Either way the debt is too high and the bedtime too early, until the source rewrites the night and the connector runs again.",
+      "id": 10,
+      "description": "What the bedtimes above stand on, per device: when the WHOOP models connector last ran (*Refresh now*, above, after a late workout or a sync), the last night it read, its sleep against the usual (the median of the 14 nights before), and when the device's heart rate was last seen. *Still syncing*: the heart rate stops before the night's end. *Looks cut short*: under 60 % of the usual sleep, or ending 3 h or more before the usual wake-up: the source had not finished the night (a Fitbit night is finished by Google Health hours after the wake-up). Either way the debt is too high and the bedtime too early, until the source rewrites the night and the connector runs again.",
       "datasource": {
         "type": "influxdb",
         "uid": "${sleep}"
       },
       "gridPos": {
         "x": 0,
-        "y": 24,
+        "y": 26,
         "w": 24,
         "h": 6
       },
@@ -760,11 +796,11 @@
     {
       "type": "row",
       "title": "Tonight's numbers",
-      "id": 10,
+      "id": 11,
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 30,
+        "y": 32,
         "w": 24,
         "h": 1
       },
@@ -773,7 +809,7 @@
     {
       "type": "stat",
       "title": "Sleep need tonight",
-      "id": 11,
+      "id": 12,
       "description": "Baseline + what the strain so far adds + the debt carried from last night.",
       "datasource": {
         "type": "influxdb",
@@ -781,7 +817,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 31,
+        "y": 33,
         "w": 8,
         "h": 4
       },
@@ -839,7 +875,7 @@
     {
       "type": "stat",
       "title": "Debt carried from last night",
-      "id": 12,
+      "id": 13,
       "description": "Half of last night's shortfall (need − sleep); 9/14 after a night scored above 87.",
       "datasource": {
         "type": "influxdb",
@@ -847,7 +883,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 31,
+        "y": 33,
         "w": 8,
         "h": 4
       },
@@ -905,7 +941,7 @@
     {
       "type": "stat",
       "title": "Strain so far",
-      "id": 13,
+      "id": 14,
       "description": "Today's cycle, from last night's sleep onset: WHOOP's own for a strap, from the heart rate otherwise.",
       "datasource": {
         "type": "influxdb",
@@ -913,7 +949,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 31,
+        "y": 33,
         "w": 8,
         "h": 4
       },
@@ -971,7 +1007,7 @@
     {
       "type": "stat",
       "title": "Sleep need at strain 12",
-      "id": 14,
+      "id": 15,
       "description": "Baseline + what a day at strain 12 adds + the debt.",
       "datasource": {
         "type": "influxdb",
@@ -979,7 +1015,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 35,
+        "y": 37,
         "w": 8,
         "h": 4
       },
@@ -1037,7 +1073,7 @@
     {
       "type": "stat",
       "title": "Efficiency",
-      "id": 15,
+      "id": 16,
       "description": "Time asleep ÷ time in bed, the median of the last 14 nights.",
       "datasource": {
         "type": "influxdb",
@@ -1045,7 +1081,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 35,
+        "y": 37,
         "w": 8,
         "h": 4
       },
@@ -1103,7 +1139,7 @@
     {
       "type": "stat",
       "title": "Time to fall asleep",
-      "id": 16,
+      "id": 17,
       "description": "The median of the last 14 nights.",
       "datasource": {
         "type": "influxdb",
@@ -1111,7 +1147,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 35,
+        "y": 37,
         "w": 8,
         "h": 4
       },
@@ -1169,11 +1205,11 @@
     {
       "type": "row",
       "title": "WHOOP's scores, rebuilt from each device",
-      "id": 17,
+      "id": 18,
       "collapsed": false,
       "gridPos": {
         "x": 0,
-        "y": 39,
+        "y": 41,
         "w": 24,
         "h": 1
       },
@@ -1182,7 +1218,7 @@
     {
       "type": "timeseries",
       "title": "Recovery",
-      "id": 18,
+      "id": 19,
       "description": "The app's recovery and the model's: 100·σ(h·(ln HRV − its 30-night mean) + p·performance + c).",
       "datasource": {
         "type": "datasource",
@@ -1190,7 +1226,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 40,
+        "y": 42,
         "w": 12,
         "h": 8
       },
@@ -1327,7 +1363,7 @@
     {
       "type": "timeseries",
       "title": "Day strain",
-      "id": 19,
+      "id": 20,
       "description": "The cycle that starts with the night (sleep onset to the next one): WHOOP's own for a strap; from the heart rate otherwise, a·ln(1 + Banister's TRIMP / b).",
       "datasource": {
         "type": "datasource",
@@ -1335,7 +1371,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 40,
+        "y": 42,
         "w": 12,
         "h": 8
       },
@@ -1472,7 +1508,7 @@
     {
       "type": "timeseries",
       "title": "Sleep need",
-      "id": 20,
+      "id": 21,
       "description": "Baseline + strain + debt − naps: the app's own sum, and the model's.",
       "datasource": {
         "type": "datasource",
@@ -1480,7 +1516,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 48,
+        "y": 50,
         "w": 12,
         "h": 8
       },
@@ -1617,7 +1653,7 @@
     {
       "type": "timeseries",
       "title": "Sleep debt carried into the night",
-      "id": 21,
+      "id": 22,
       "description": "The share of the nights before still owed.",
       "datasource": {
         "type": "datasource",
@@ -1625,7 +1661,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 48,
+        "y": 50,
         "w": 12,
         "h": 8
       },
@@ -1762,7 +1798,7 @@
     {
       "type": "timeseries",
       "title": "Sleep performance",
-      "id": 22,
+      "id": 23,
       "description": "The app's sleep performance, and the model's: sleep against need, efficiency and consistency.",
       "datasource": {
         "type": "datasource",
@@ -1770,7 +1806,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 56,
+        "y": 58,
         "w": 12,
         "h": 8
       },
@@ -1907,7 +1943,7 @@
     {
       "type": "timeseries",
       "title": "Sleep consistency",
-      "id": 23,
+      "id": 24,
       "description": "How much the night's sleep window overlaps the four before it.",
       "datasource": {
         "type": "datasource",
@@ -1915,7 +1951,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 56,
+        "y": 58,
         "w": 12,
         "h": 8
       },
