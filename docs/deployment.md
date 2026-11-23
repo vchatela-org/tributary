@@ -34,7 +34,9 @@ Every setting is an environment variable (or a line in `.env`).
 |---|---|---|
 | `TRIBUTARY_INFLUXDB_URL` | – | InfluxDB 1.x base URL, e.g. `http://influxdb:8086`. Without it nothing is written; dry runs still work. |
 | `TRIBUTARY_INFLUXDB_USER` | – | The `user` tag of every point. |
-| `TRIBUTARY_INFLUXDB_CREATE_DATABASES` | `true` | Create missing databases (52-week shards). Existing ones are never altered. |
+| `TRIBUTARY_INFLUXDB_AUTH_USER` | – | HTTP basic auth user, when InfluxDB has `auth-enabled` (set with the password, or neither). |
+| `TRIBUTARY_INFLUXDB_AUTH_PASSWORD` | – | Its password (sent as a Basic header, never in the URL). |
+| `TRIBUTARY_INFLUXDB_CREATE_DATABASES` | `true` | Create missing databases (52-week shards). Existing ones are never altered. `CREATE DATABASE` needs InfluxDB admin, so with HTTP auth on set this to `false` and create a new database as an admin first. |
 | `TRIBUTARY_TZ` | `Europe/Paris` | Time zone of `local_hour` / `local_weekday`, and of the UI's times. |
 | `TRIBUTARY_GRAFANA_URL` | – | The Grafana a browser reaches (`https://grafana.example.com`, a subpath works): the UI's *Dashboards* link opens its dashboard browser, filtered to the dashboards in `grafana/dashboards`. Tributary never calls it. Unset: no link. |
 | `TRIBUTARY_DATA_DIR` | `./data` (`/app/data` in the image) | Run history and cursors (SQLite). |

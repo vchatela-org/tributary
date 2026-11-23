@@ -74,6 +74,7 @@ class FakeInflux:
         self.queries: List[Tuple[Optional[str], str]] = []
         self.writes: List[Tuple[str, str, List[str]]] = []
         self.fail: Dict[str, Tuple[int, str]] = {}
+        self.auth: List[Optional[str]] = []
         self.databases = {"_internal"}
         self.points: Dict[Tuple, Dict[str, str]] = {}
         self.hold = 0.0
@@ -84,6 +85,7 @@ class FakeInflux:
             def do_POST(self):  # noqa: N802
                 url = urlparse(self.path)
                 params = {k: v[0] for k, v in parse_qs(url.query).items()}
+                outer.auth.append(self.headers.get("Authorization"))
                 body = self.rfile.read(int(self.headers.get("Content-Length") or 0)).decode()
                 if url.path in outer.fail:
                     code, payload = outer.fail[url.path]

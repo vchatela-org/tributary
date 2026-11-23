@@ -1,6 +1,8 @@
+import base64
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from pydantic import SecretStr
 
 from app import influxdb, runner
 from app.models import Cursor
@@ -38,6 +40,23 @@ def test_the_user_tag_when_configured(abs_api, abs_connector, influx, db, monkey
     monkeypatch.setattr("app.config.settings.influxdb_user", "someone")
     runner.run(db, abs_connector)
     assert all(parse(line)[1]["user"] == "someone" for line in influx.written_lines())
+
+
+def test_basic_auth_when_influxdb_has_it_enabled(abs_api, abs_connector, influx, db, monkeypatch):
+    """A header, not `u=`/`p=` parameters: the password never reaches a URL."""
+    monkeypatch.setattr("app.config.settings.influxdb_auth_user", "tributary")
+    monkeypatch.setattr("app.config.settings.influxdb_auth_password", SecretStr("s3cret"))
+    run = runner.run(db, abs_connector)
+    assert run.status == "ok", run.message
+    header, = set(influx.auth)
+    assert header.startswith("Basic ")
+    assert base64.b64decode(header.removeprefix("Basic ")).decode() == "tributary:s3cret"
+
+
+def test_a_half_credential_is_explained(abs_api, abs_connector, influx, db, monkeypatch):
+    monkeypatch.setattr("app.config.settings.influxdb_auth_user", "tributary")
+    run = runner.run(db, abs_connector)
+    assert run.status == "error" and "must be set together" in run.message
 
 
 def test_points_beyond_retention_are_skipped_not_fatal(abs_api, abs_connector, influx, db):

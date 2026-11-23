@@ -134,7 +134,12 @@ class FakeStore:
         # The last `days` nights, all ended whatever the hour: the connector
         # writes only nights that have ended, so a fixture whose last night
         # ends "this morning" at 07:00 fails when the suite runs before then.
-        first = datetime.now(PARIS).date() - timedelta(days=days + 1)
+        # Onset is 23:00, and the last night is the live cycle: it needs a
+        # follow-up night within 40 h, or the connector drops it for want of
+        # one (after 15:00 or so, two evenings back is over 40 h).
+        now = datetime.now(PARIS)
+        last_night_evenings_ago = 2 if now.hour < 7 else 1
+        first = now.date() - timedelta(days=last_night_evenings_ago + days - 1)
         for d in range(2, 2 + days):
             n = night(d, asleep_h=6.5 + (d % 3) * 0.5, in_bed_h=8.0, hrv=45.0 + d, month_start=first)
             self.whoop.append({"time": n.end, "start": n.start, "asleep_s": int(n.asleep), "in_bed_s": int(n.in_bed),

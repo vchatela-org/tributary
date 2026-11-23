@@ -21,8 +21,15 @@ class Settings(BaseSettings):
     # The `user` tag of every point (a connector with several accounts sets
     # its own per point).
     influxdb_user: Optional[str] = None
+    # HTTP basic auth, when InfluxDB has it enabled (INFLUXDB_HTTP_AUTH_ENABLED).
+    # Deliberately not influxdb_user: that one is a data tag, and changing it
+    # would rewrite history; these are a credential. Both or neither.
+    influxdb_auth_user: Optional[str] = None
+    influxdb_auth_password: Optional[SecretStr] = None
     # Missing databases are created, with year-long shards; existing ones are
-    # never altered.
+    # never altered. Needs admin privileges on InfluxDB: with HTTP auth on,
+    # leave it off and let an admin create a new database before the connector
+    # that writes it runs.
     influxdb_create_databases: bool = True
 
     # local_hour / local_weekday fields: InfluxQL can't shift a time zone.
