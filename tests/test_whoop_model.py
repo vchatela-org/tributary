@@ -131,8 +131,10 @@ class FakeStore:
     def __init__(self, days=12, hr=True):
         self.statements = []
         self.whoop, self.strain, self.fitbit, self.daily, self.hr = [], [], [], [], []
-        # The last `days` nights, the last one this morning.
-        first = datetime.now(PARIS).date() - timedelta(days=days)
+        # The last `days` nights, all ended whatever the hour: the connector
+        # writes only nights that have ended, so a fixture whose last night
+        # ends "this morning" at 07:00 fails when the suite runs before then.
+        first = datetime.now(PARIS).date() - timedelta(days=days + 1)
         for d in range(2, 2 + days):
             n = night(d, asleep_h=6.5 + (d % 3) * 0.5, in_bed_h=8.0, hrv=45.0 + d, month_start=first)
             self.whoop.append({"time": n.end, "start": n.start, "asleep_s": int(n.asleep), "in_bed_s": int(n.in_bed),
