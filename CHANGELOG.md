@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.36.1](https://github.com/vchatela-org/tributary/compare/v0.36.0...v0.36.1) (2026-11-23)
+
+
+### Dependencies
+
+* bump chainguard/python from `2ba88df` to `e2736ac` ([#147](https://github.com/vchatela-org/tributary/issues/147)) ([1070908](https://github.com/vchatela-org/tributary/commit/107090817dce1d452e035562771f16858e2b6d96))
+* bump fastapi from 0.162.7 to 0.165.0 ([#152](https://github.com/vchatela-org/tributary/issues/152)) ([70f6d49](https://github.com/vchatela-org/tributary/commit/70f6d499df3e1bd0cd1ae05dbe5d186ebe0da845))
+* bump pydantic from 2.14.3 to 2.14.4 ([#149](https://github.com/vchatela-org/tributary/issues/149)) ([32050cc](https://github.com/vchatela-org/tributary/commit/32050cc9285a9ce9a0dffda62bdccc0f01fa2fc2))
+* bump python-multipart from 0.0.33 to 0.0.34 ([#151](https://github.com/vchatela-org/tributary/issues/151)) ([c2dd784](https://github.com/vchatela-org/tributary/commit/c2dd784d205ec9098c9841bf88a3a8cffdc4baa8))
+* bump renpho-api from 0.2.0 to 0.5.0 ([#148](https://github.com/vchatela-org/tributary/issues/148)) ([3351bcd](https://github.com/vchatela-org/tributary/commit/3351bcdc5dcb5830e11a32bc36904483e1dd8df1))
+* bump sqlalchemy from 2.1.8 to 2.1.9 ([#150](https://github.com/vchatela-org/tributary/issues/150)) ([c254059](https://github.com/vchatela-org/tributary/commit/c2540599e25d895e403d6ad92170ef5ea176472c))
+
 ## [0.36.0](https://github.com/vchatela-org/tributary/compare/v0.35.0...v0.36.0) (2026-11-21)
 
 
