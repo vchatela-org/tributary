@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.0](https://github.com/vchatela-org/tributary/compare/v0.36.2...v0.37.0) (2026-11-23)
+
+
+### Features
+
+* **influxdb:** send HTTP basic auth when configured ([#156](https://github.com/vchatela-org/tributary/issues/156)) ([a56fcee](https://github.com/vchatela-org/tributary/commit/a56fcee2510d3a2c56a8a35388398406b2e35322))
+
 ## [0.36.2](https://github.com/vchatela-org/tributary/compare/v0.36.1...v0.36.2) (2026-11-23)
 
 
