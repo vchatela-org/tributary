@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.37.1](https://github.com/vchatela-org/tributary/compare/v0.37.0...v0.37.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **whoop_model:** weigh the minutes near max HR like WHOOP in the strain from a heart rate ([#158](https://github.com/vchatela-org/tributary/issues/158)) ([5e18454](https://github.com/vchatela-org/tributary/commit/5e184542dde220b452e27338fbe63382afcf085c))
+
 ## [0.37.0](https://github.com/vchatela-org/tributary/compare/v0.36.2...v0.37.0) (2026-11-23)
 
 
