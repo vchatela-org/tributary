@@ -27,9 +27,10 @@ close they come, in docs/connectors/whoop_model.md):
   recovery     = 100·σ(h·(ln HRV − mean ln HRV of the 30 nights before)
                  + p·performance + c), from the 8th night with an HRV.
   day strain   = WHOOP's own for `whoop`; from a heart rate otherwise:
-                 a·ln(1 + L/b), L = Banister's TRIMP over the cycle (sleep onset
-                 to the next one), Σ x·0.64·e^(1.92x) per minute,
-                 x = (HR − resting HR)/(max HR − resting HR); at most 21.
+                 a·ln(1 + L/b), L = a TRIMP over the cycle (sleep onset to the
+                 next one), Σ x·0.64·e^(k·x) per minute, x = (HR − resting
+                 HR)/(max HR − resting HR); at most 21. k ≈ 4, not Banister's
+                 1.92: WHOOP weighs the minutes near max HR much more.
   bedtime      = wake-up − target × need ÷ efficiency − time to fall asleep
                  (target 100 % "peak", 85 % "perform"): the dashboard computes
                  it from `whoop_model_tonight`, for the wake-up the reader picks.
@@ -102,10 +103,13 @@ DEFAULTS: Dict[str, Any] = {
     "score": [0.4347, 1.0329, 0.3587, -73.578],  # s1 (sleep/need %), s2 (efficiency %), s3 (consistency %), s0
     "consistency": [0.938, 1.326],             # k1, k0
     "recovery": [6.628, 0.01628, -0.500],      # h, p, c
-    "hr_strain": [36.93, 696.4],               # a, b of a·ln(1 + TRIMP/b)
+    "hr_strain": [15.61, 470.0, 4.0],          # a, b, k of a·ln(1 + TRIMP/b), TRIMP = Σ x·0.64·e^(k·x)
     "typical_strain": 10.0,                    # when the cycle before has no strain
     "typical_consistency": 80.0,               # before 4 nights are known
 }
+# Banister's TRIMP intensity weight, e^(1.92·x): the k of an `hr_strain`
+# override fitted before k was (two values, a and b).
+BANISTER_K = 1.92
 # A baseline need when neither the settings nor WHOOP's own nights give one.
 BASELINE_NEED_H = 7.5
 # Max heart rate when neither the settings nor WHOOP's days give one.
@@ -281,23 +285,31 @@ def apply(nights: List[Night], strain: Dict[date, Optional[float]], c: Dict[str,
     return rows
 
 
-def banister_load(samples: List[Tuple[int, float]], rhr: float, hr_max: float, until: Optional[int] = None
-                  ) -> Tuple[float, float]:
+def banister_load(samples: List[Tuple[int, float]], rhr: float, hr_max: float, until: Optional[int] = None,
+                  intensity: float = BANISTER_K) -> Tuple[float, float]:
     """(TRIMP, seconds covered) of heart-rate samples sorted by time, each
-    standing for the time to the next one (at most HR_GAP_MAX_S)."""
+    standing for the time to the next one (at most HR_GAP_MAX_S):
+    Σ x·0.64·e^(intensity·x) per minute."""
     load = covered = 0.0
     span = max(1.0, hr_max - rhr)
-    for k, (t, hr) in enumerate(samples):
-        nxt = samples[k + 1][0] if k + 1 < len(samples) else (until if until is not None else t + 60)
+    for i, (t, hr) in enumerate(samples):
+        nxt = samples[i + 1][0] if i + 1 < len(samples) else (until if until is not None else t + 60)
         weight = max(0, min(nxt - t, HR_GAP_MAX_S))
         x = min(1.0, max(0.0, (hr - rhr) / span))
-        load += x * 0.64 * math.exp(1.92 * x) * weight / 60
+        load += x * 0.64 * math.exp(intensity * x) * weight / 60
         covered += weight
     return load, covered
 
 
+def strain_curve(c: Dict[str, Any]) -> Tuple[float, float, float]:
+    """(a, b, k) of the strain from a heart rate. A two-value `hr_strain`
+    override is a fit made with Banister's own k, 1.92."""
+    a, b, *k = c["hr_strain"]
+    return float(a), float(b), float(k[0]) if k else BANISTER_K
+
+
 def hr_strain(c: Dict[str, Any], load: float) -> float:
-    a, b = c["hr_strain"]
+    a, b, _ = strain_curve(c)
     return min(21.0, a * math.log1p(load / b))
 
 
@@ -579,6 +591,7 @@ class WhoopModelConnector(Connector):
         samples = self._heart_rate(name, nights[0].start, until)
         device.synced = samples[-1][0] if samples else None
         c = constants(self.settings.constants)
+        intensity = strain_curve(c)[2]
         rhrs: List[float] = []
         k = 0
         for i, n in enumerate(nights):
@@ -596,7 +609,7 @@ class WhoopModelConnector(Connector):
             while j < len(samples) and samples[j][0] < t1:
                 j += 1
             rhr = sum(rhrs[-30:]) / len(rhrs[-30:]) if rhrs else 60.0
-            load, covered = banister_load(samples[k:j], rhr, hr_max, until=t1)
+            load, covered = banister_load(samples[k:j], rhr, hr_max, until=t1, intensity=intensity)
             if closed and covered < HR_COVERAGE_MIN * (t1 - n.start):
                 continue
             device.strain[n.key] = hr_strain(c, load)

@@ -85,6 +85,26 @@ def test_strain_from_a_heart_rate():
     assert wm.hr_strain(C, 0) == 0 and wm.hr_strain(C, 1e9) == 21.0
 
 
+def test_strain_weighs_the_minutes_near_max_hr_more_than_banister():
+    t0 = 1_800_000_000
+    hard = [(t0 + 60 * i, 190.0) for i in range(60)]
+    k = wm.strain_curve(C)[2]
+    assert k == 4.0
+    load, _ = wm.banister_load(hard, 55, 190, intensity=k)
+    assert load == pytest.approx(60 * 0.64 * math.exp(4.0))
+    # An hour at max HR against two hours at half the heart-rate reserve: Banister's 1.92 puts
+    # the hour at under 3 times the two hours, WHOOP's strain (k about 4) at over 7 times.
+    easy = [(t0 + 60 * i, 122.5) for i in range(120)]
+    ratio = lambda k: wm.banister_load(hard, 55, 190, intensity=k)[0] / wm.banister_load(easy, 55, 190, intensity=k)[0]
+    assert ratio(1.92) < 3 < 7 < ratio(k)
+
+
+def test_a_two_value_strain_override_keeps_banisters_weight():
+    old = wm.constants({"hr_strain": [36.93, 696.4]})
+    assert wm.strain_curve(old) == (36.93, 696.4, wm.BANISTER_K)
+    assert wm.hr_strain(old, 69.64) == pytest.approx(36.93 * math.log(1.1))
+
+
 def test_tonight_needs_the_last_nights_debt_and_the_usual_efficiency():
     rows = wm.apply([night(d, asleep_h=6.0, in_bed_h=8.0) for d in range(2, 6)], {}, C, 27000)
     plan = wm.tonight(rows, C, 7.5)
