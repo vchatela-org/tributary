@@ -440,7 +440,10 @@ class RenphoConnector(Connector):
         return accounts
 
     def _client(self, account: Account) -> RenphoClient:
-        client = _Client(account.email, account.password)
+        # renpho-api 0.5 sets the timeout itself on every call; give it ours so
+        # a hung call cannot hold the scheduler. _Session keeps it too, in case
+        # a client method posts without passing one.
+        client = _Client(account.email, account.password, timeout=TIMEOUT_SECONDS)
         client._session.close()
         client._session = _Session()
         return client

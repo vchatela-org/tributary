@@ -573,7 +573,14 @@ class FakeRenpho:
         if path == "renpho-aggregation/device/count":
             return self._ok({"scale": [{"tableName": f"measurements_info_{user_id % 24}", "count": len(records),
                                         "userIds": [user_id]}]})
-        if path == "RenphoHealth/scale/queryBodyCompositionMeasureData":
+        if path == "renpho-aggregation/device/countV2":
+            # renpho-api 0.5 asks for per-store counts before reading the
+            # tables; these records live in the body-composition store.
+            return self._ok({"scale": [],
+                             "compositionScale": [{"tableName": f"measurements_info_{user_id % 24}",
+                                                   "count": len(records), "userIds": [user_id]}]})
+        if path in ("RenphoHealth/scale/queryBodyCompositionMeasureData",
+                    "RenphoHealth/scale/queryAllMeasureDataList"):
             size, page = request["pageSize"], request["pageNum"]
             chunk = records[(page - 1) * size:page * size]
             return self._ok(chunk or None)
