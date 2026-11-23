@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.36.2](https://github.com/vchatela-org/tributary/compare/v0.36.1...v0.36.2) (2026-11-23)
+
+
+### Bug Fixes
+
+* **tests:** make the WHOOP model test independent of the run time ([#154](https://github.com/vchatela-org/tributary/issues/154)) ([4631038](https://github.com/vchatela-org/tributary/commit/463103828213cd2dd0930076fec25adaec7488ab))
+
 ## [0.36.1](https://github.com/vchatela-org/tributary/compare/v0.36.0...v0.36.1) (2026-11-23)
 
 
